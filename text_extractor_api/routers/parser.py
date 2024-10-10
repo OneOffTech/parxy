@@ -46,6 +46,21 @@ async def parse_pdf(request: ExtractTextRequest) -> Document:
     logger.info(f"Parsing {filename}")
     file_path = os.path.join(resource_path, filename)
 
+    try:
+        head_resp = requests.head(request.url, allow_redirects=True, timeout=30)
+        head_resp.raise_for_status()
+
+        if head_resp.status_code in [401, 403]:
+            logger.warning(f"Authentication required for URL: {request.url}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"The provided file URL [{request.url}] requires authentication. "
+                       "Authentication protected URLs are currently not supported."
+            )
+    except (HTTPError, RequestException) as http_err:
+        logger.exception("Error while checking URL status.", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Error while checking URL status [{http_err}]")
+
     document = None
     if request.driver.lower() == "pdfact":
         try:
@@ -67,28 +82,12 @@ async def parse_pdf(request: ExtractTextRequest) -> Document:
         try:
             resp = requests.get(request.url, allow_redirects=True, timeout=120)
             resp.raise_for_status()
-
-            if resp.status_code in [401, 403]:
-                logger.warning(f"Authentication required for URL: {request.url}")
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"The provided file URL [{request.url}] requires authentication. "
-                           "Authentication protected URLs are currently not supported."
-                )
-
             with open(file_path, 'wb') as f:
                 f.write(resp.content)
             logger.info(f"Parsing {filename} with PyMuPDF")
             parser = PymupdfParser()
             document = parser.parse(filename=file_path)
         except HTTPError as http_err:
-            if http_err.response.status_code in [401, 403]:
-                logger.warning(f"Authentication required for URL: {request.url}")
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"The provided file URL [{request.url}] requires authentication. "
-                           "Authentication protected URLs are currently not supported."
-                )
             logger.exception("Error while downloading file.", exc_info=True)
             raise HTTPException(status_code=400, detail=f"Error while downloading file [{http_err}]")
         except Timeout as http_timeout:
