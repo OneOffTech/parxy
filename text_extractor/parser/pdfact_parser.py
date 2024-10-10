@@ -20,19 +20,16 @@ class PdfactParser(PDFParser):
 
     def parse(self, filename: str, **kwargs) -> Document:
         body = {"url": filename}
-        unit = kwargs.get("unit", None)
         roles = kwargs.get("roles", None)
-        if unit is not None:
-            body["unit"] = unit
+        body["unit"] = 'paragraph'
         if roles is not None:
             body["roles"] = roles
         try:
             response = requests.post(self.url, json=body)
             response.raise_for_status()
             res = response.json()
-            if unit == 'paragraph' or unit is None:
-                res = pdfact_formatter(res)
-                res = heading_filter(res)
+            res = pdfact_formatter(res)
+            res = heading_filter(res)
             document = pdfact_to_document(res)
             document = determine_heading_level(document)
             return document
@@ -251,6 +248,7 @@ def determine_heading_level(document: Document) -> Document:
     :return: The document with updated heading levels assigned to each heading node.
     """
     heading_styles = []
+    largest_font_styles = []
 
     for page in document.content:
         for node in page.content:
@@ -283,10 +281,14 @@ def determine_heading_level(document: Document) -> Document:
     # Sort the styles by font size in descending order
     heading_styles = sorted(heading_styles, key=lambda x: x['font_size'], reverse=True)
 
-    largest_font_style = heading_styles[0] if heading_styles else None
-    if largest_font_style and largest_font_style['occurrences'] == 1:
-        heading_styles = heading_styles[1:]
-    # Assign levels to the sorted heading styles
+    for style in heading_styles:
+        if style['occurrences'] == 1:
+            largest_font_styles.append(style)
+        else:
+            break
+
+    heading_styles = [style for style in heading_styles if style not in largest_font_styles]
+
     assigned_levels = assign_heading_levels(heading_styles)
 
     for page in document.content:
@@ -302,9 +304,7 @@ def determine_heading_level(document: Document) -> Document:
                         font_size = mark.font.size
 
                 if font_name and font_size:
-                    if (largest_font_style and
-                            largest_font_style['font_name'] == font_name and
-                            largest_font_style['font_size'] == font_size):
+                    if any(style['font_name'] == font_name and style['font_size'] == font_size for style in largest_font_styles):
                         node.category = "title"
                     else:
                         level = 4
