@@ -48,7 +48,6 @@ async def parse_pdf(request: ExtractTextRequest) -> Document:
 
     try:
         head_resp = requests.head(request.url, allow_redirects=True, timeout=30)
-        head_resp.raise_for_status()
 
         if head_resp.status_code in [401, 403]:
             logger.warning(f"Authentication required for URL: {request.url}")
@@ -57,6 +56,8 @@ async def parse_pdf(request: ExtractTextRequest) -> Document:
                 detail=f"The provided file URL [{request.url}] requires authentication. "
                        "Authentication protected URLs are currently not supported."
             )
+
+        head_resp.raise_for_status()
     except (HTTPError, RequestException) as http_err:
         logger.exception("Error while checking URL status.", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Error while checking URL status [{http_err}]")
