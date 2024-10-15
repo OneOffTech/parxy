@@ -130,39 +130,40 @@ def pdfact_formatter(json_file):
 
 def aggregate_paragraphs(json_file):
     output = []
-    fonts = json_file["fonts"]
-    colors = json_file["colors"]
+    fonts = json_file.get("fonts", None) or []
+    colors = json_file.get("colors", None) or []
+    paragraphs = json_file.get("paragraphs", None) or []
     i = 0
 
     # Base case: if the document consists of only one paragraph, the method terminates and returns the unmodified JSON
-    if len(json_file["paragraphs"]) == 1:
+    if len(paragraphs) <= 1:
         return json_file
 
-    while i < len(json_file["paragraphs"][:-1]):
-        paragraph1 = json_file["paragraphs"][i]
-        paragraph2 = json_file["paragraphs"][i + 1]
+    while i < len(paragraphs[:-1]):
+        paragraph1 = paragraphs[i]
+        paragraph2 = paragraphs[i + 1]
 
         if compare_paragraphs(paragraph1, paragraph2):
             paragraph = merge_pargraphs(paragraph1, paragraph2)
             output.append(paragraph)
 
             # After merging the two paragraphs, proceed to the paragraph following the (i+1)-th one
-            if i + 2 < len(json_file["paragraphs"][:-1]):
+            if i + 2 < len(paragraphs[:-1]):
                 i += 2
                 continue
             # if the paragraph following the (i+1)-th one is the last one, then concatenate it
-            elif i + 2 == len(json_file["paragraphs"][:-1]):
-                output.append(json_file["paragraphs"][i + 2])
+            elif i + 2 == len(paragraphs[:-1]):
+                output.append(paragraphs[i + 2])
                 break
             # If there is no paragraph following the (i+1)-th one, terminate
-            elif i + 2 > len(json_file["paragraphs"][:-1]):
+            elif i + 2 > len(paragraphs[:-1]):
                 break
         else:
-            output.append(json_file["paragraphs"][i])
+            output.append(paragraphs[i])
 
             # If the next paragraph is the last one, then concatenate it to the list of paragraphs
-            if i + 1 == len(json_file["paragraphs"][:-1]):
-                output.append(json_file["paragraphs"][i + 1])
+            if i + 1 == len(paragraphs[:-1]):
+                output.append(paragraphs[i + 1])
         i += 1
 
     paragraphs = {'fonts': fonts, 'paragraphs': output, 'colors': colors}
@@ -307,7 +308,8 @@ def determine_heading_level(document: Document) -> Document:
                         font_size = mark.font.size
 
                 if font_name and font_size:
-                    if any(style['font_name'] == font_name and style['font_size'] == font_size for style in largest_font_styles):
+                    if any(style['font_name'] == font_name and style['font_size'] == font_size for style in
+                           largest_font_styles):
                         node.category = "title"
                     else:
                         level = 4
