@@ -332,6 +332,8 @@ def assign_heading_levels(heading_styles: List[Dict[str, Any]]) -> List[Dict[str
             'font_size', and the assigned 'level' (from 1 to 4).
             Level 1 is for the largest and level 4 is for the smallest.
     """
+    if len(heading_styles) == 0:
+        return []
     # Count the number of occurrences for each font
     font_count = Counter([font['font_name'] for font in heading_styles])
 
