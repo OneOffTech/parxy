@@ -289,6 +289,9 @@ def determine_heading_level(document: Document) -> Document:
 
     heading_styles = [style for style in heading_styles if style not in largest_font_styles]
 
+    if not heading_styles:
+        return document
+
     assigned_levels = assign_heading_levels(heading_styles)
 
     for page in document.content:
