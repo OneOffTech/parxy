@@ -34,7 +34,7 @@ class PdfactParser(PDFParser):
             document = determine_heading_level(document)
             return document
         except RequestException as e:
-            logger.exception(f"An error occurred while trying to reach the API: {e}", exc_info=True)
+            logger.exception(f"PDFAct processing error: {e}", exc_info=True)
             raise e
 
 

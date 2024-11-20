@@ -70,11 +70,13 @@ async def parse_pdf(request: ExtractTextRequest) -> Document:
             document = parser.parse(filename=request.url, roles=request.roles)
         except RequestException as e:
             if isinstance(e, HTTPError):
-                if e.response.status_code == 422:
-                    logger.warning(f"PDFAct returned a 422 error for {request.url}")
-                    raise HTTPException(status_code=422, detail="PDFAct was unable to process the document")
+                logger.exception(f"PDFAct returned an error for {request.url}", exc_info=True)
+                raise HTTPException(
+                    status_code=e.response.status_code,
+                    detail=f"Unexpected error while processing [{request.url}]: {e}"
+                )
             logger.exception(f"Error while connecting to PDFAct or parsing file. {str(e)}", exc_info=True)
-            raise HTTPException(status_code=503, detail="The pdfact service is not reachable")
+            raise HTTPException(status_code=500, detail=f"Unexpected error while processing [{request.url}]")
         except Exception as err:
             logger.exception(f"Error while parsing file. {str(err)}", exc_info=True)
             raise HTTPException(status_code=400, detail="Error while parsing file")
