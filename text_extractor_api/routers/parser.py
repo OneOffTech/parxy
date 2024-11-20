@@ -44,36 +44,63 @@ async def parse_pdf(request: ExtractTextRequest) -> Document:
     extension = request.mime_type.split("/")[-1]
     filename = f"{filename}.{extension}"
     logger.info(f"Parsing {filename}")
-
     file_path = os.path.join(resource_path, filename)
 
     try:
-        resp = requests.get(request.url, allow_redirects=True, timeout=120)
-        resp.raise_for_status()
-        with open(file_path, 'wb') as f:
-            f.write(resp.content)
-    except HTTPError as http_err:
-        logger.exception("Error while downloading file.", exc_info=True)
-        raise HTTPException(status_code=400, detail=f"Error while downloading file [{http_err}]")
-    except Timeout as http_timeout:
-        logger.exception("Timeout while downloading file.", exc_info=True)
-        raise HTTPException(status_code=408, detail=f"File download not completed [{http_timeout}]")
+        head_resp = requests.head(request.url, allow_redirects=True, timeout=30)
 
-    try:
-        document = None
-        if request.driver.lower() == "pdfact":
+        if head_resp.status_code in [401, 403]:
+            logger.warning(f"Authentication required for URL: {request.url}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"The provided file URL [{request.url}] requires authentication. "
+                       "Authentication protected URLs are currently not supported."
+            )
+
+        head_resp.raise_for_status()
+    except (HTTPError, RequestException) as http_err:
+        logger.exception("Error while checking URL status.", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Error while checking URL status [{http_err}]")
+
+    document = None
+    if request.driver.lower() == "pdfact":
+        try:
+            logger.info(f"Forwarding request to PDFAct for {request.url}")
             parser = PdfactParser(settings.pdfact_url)
-            document = parser.parse(filename=request.url, unit=request.unit, roles=request.roles)
-        elif request.driver.lower() == "pymupdf":
+            document = parser.parse(filename=request.url, roles=request.roles)
+        except RequestException as e:
+            if isinstance(e, HTTPError):
+                logger.exception(f"PDFAct returned an error for {request.url}", exc_info=True)
+                raise HTTPException(
+                    status_code=e.response.status_code,
+                    detail=f"Unexpected error while processing [{request.url}]: {e}"
+                )
+            logger.exception(f"Error while connecting to PDFAct or parsing file. {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Unexpected error while processing [{request.url}]")
+        except Exception as err:
+            logger.exception(f"Error while parsing file. {str(err)}", exc_info=True)
+            raise HTTPException(status_code=400, detail="Error while parsing file")
+
+    elif request.driver.lower() == "pymupdf":
+        try:
+            resp = requests.get(request.url, allow_redirects=True, timeout=120)
+            resp.raise_for_status()
+            with open(file_path, 'wb') as f:
+                f.write(resp.content)
+            logger.info(f"Parsing {filename} with PyMuPDF")
             parser = PymupdfParser()
             document = parser.parse(filename=file_path)
-    except RequestException as e:
-        logger.exception(f"Error while connecting to pdfact. {str(e)}", exc_info=True)
-        raise HTTPException(status_code=503, detail="The pdfact service is not reachable")
-    except Exception as err:
-        logger.exception(f"Error while parsing file. {str(err)}", exc_info=True)
-        raise HTTPException(status_code=400, detail="Error while parsing file")
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        except HTTPError as http_err:
+            logger.exception("Error while downloading file.", exc_info=True)
+            raise HTTPException(status_code=400, detail=f"Error while downloading file [{http_err}]")
+        except Timeout as http_timeout:
+            logger.exception("Timeout while downloading file.", exc_info=True)
+            raise HTTPException(status_code=408, detail=f"File download not completed [{http_timeout}]")
+        except Exception as err:
+            logger.exception(f"Error while parsing file with pymupdf. {str(err)}", exc_info=True)
+            raise HTTPException(status_code=400, detail="Error while parsing file")
+        finally:
+            if os.path.exists(file_path):
+                os.remove(file_path)
     return document
+

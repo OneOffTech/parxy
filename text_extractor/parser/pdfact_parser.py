@@ -20,24 +20,21 @@ class PdfactParser(PDFParser):
 
     def parse(self, filename: str, **kwargs) -> Document:
         body = {"url": filename}
-        unit = kwargs.get("unit", None)
         roles = kwargs.get("roles", None)
-        if unit is not None:
-            body["unit"] = unit
+        body["unit"] = 'paragraph'
         if roles is not None:
             body["roles"] = roles
         try:
             response = requests.post(self.url, json=body)
             response.raise_for_status()
             res = response.json()
-            if unit == 'paragraph' or unit is None:
-                res = pdfact_formatter(res)
-                res = heading_filter(res)
+            res = pdfact_formatter(res)
+            res = heading_filter(res)
             document = pdfact_to_document(res)
             document = determine_heading_level(document)
             return document
         except RequestException as e:
-            logger.exception(f"An error occurred while trying to reach the API: {e}", exc_info=True)
+            logger.exception(f"PDFAct processing error: {e}", exc_info=True)
             raise e
 
 
@@ -133,39 +130,40 @@ def pdfact_formatter(json_file):
 
 def aggregate_paragraphs(json_file):
     output = []
-    fonts = json_file["fonts"]
-    colors = json_file["colors"]
+    fonts = json_file.get("fonts", None) or []
+    colors = json_file.get("colors", None) or []
+    paragraphs = json_file.get("paragraphs", None) or []
     i = 0
 
     # Base case: if the document consists of only one paragraph, the method terminates and returns the unmodified JSON
-    if len(json_file["paragraphs"]) == 1:
+    if len(paragraphs) <= 1:
         return json_file
 
-    while i < len(json_file["paragraphs"][:-1]):
-        paragraph1 = json_file["paragraphs"][i]
-        paragraph2 = json_file["paragraphs"][i + 1]
+    while i < len(paragraphs[:-1]):
+        paragraph1 = paragraphs[i]
+        paragraph2 = paragraphs[i + 1]
 
         if compare_paragraphs(paragraph1, paragraph2):
             paragraph = merge_pargraphs(paragraph1, paragraph2)
             output.append(paragraph)
 
             # After merging the two paragraphs, proceed to the paragraph following the (i+1)-th one
-            if i + 2 < len(json_file["paragraphs"][:-1]):
+            if i + 2 < len(paragraphs[:-1]):
                 i += 2
                 continue
             # if the paragraph following the (i+1)-th one is the last one, then concatenate it
-            elif i + 2 == len(json_file["paragraphs"][:-1]):
-                output.append(json_file["paragraphs"][i + 2])
+            elif i + 2 == len(paragraphs[:-1]):
+                output.append(paragraphs[i + 2])
                 break
             # If there is no paragraph following the (i+1)-th one, terminate
-            elif i + 2 > len(json_file["paragraphs"][:-1]):
+            elif i + 2 > len(paragraphs[:-1]):
                 break
         else:
-            output.append(json_file["paragraphs"][i])
+            output.append(paragraphs[i])
 
             # If the next paragraph is the last one, then concatenate it to the list of paragraphs
-            if i + 1 == len(json_file["paragraphs"][:-1]):
-                output.append(json_file["paragraphs"][i + 1])
+            if i + 1 == len(paragraphs[:-1]):
+                output.append(paragraphs[i + 1])
         i += 1
 
     paragraphs = {'fonts': fonts, 'paragraphs': output, 'colors': colors}
@@ -251,6 +249,7 @@ def determine_heading_level(document: Document) -> Document:
     :return: The document with updated heading levels assigned to each heading node.
     """
     heading_styles = []
+    largest_font_styles = []
 
     for page in document.content:
         for node in page.content:
@@ -283,10 +282,14 @@ def determine_heading_level(document: Document) -> Document:
     # Sort the styles by font size in descending order
     heading_styles = sorted(heading_styles, key=lambda x: x['font_size'], reverse=True)
 
-    largest_font_style = heading_styles[0] if heading_styles else None
-    if largest_font_style and largest_font_style['occurrences'] == 1:
-        heading_styles = heading_styles[1:]
-    # Assign levels to the sorted heading styles
+    for style in heading_styles:
+        if style['occurrences'] == 1:
+            largest_font_styles.append(style)
+        else:
+            break
+
+    heading_styles = [style for style in heading_styles if style not in largest_font_styles]
+
     assigned_levels = assign_heading_levels(heading_styles)
 
     for page in document.content:
@@ -302,9 +305,8 @@ def determine_heading_level(document: Document) -> Document:
                         font_size = mark.font.size
 
                 if font_name and font_size:
-                    if (largest_font_style and
-                            largest_font_style['font_name'] == font_name and
-                            largest_font_style['font_size'] == font_size):
+                    if any(style['font_name'] == font_name and style['font_size'] == font_size for style in
+                           largest_font_styles):
                         node.category = "title"
                     else:
                         level = 4
@@ -329,6 +331,8 @@ def assign_heading_levels(heading_styles: List[Dict[str, Any]]) -> List[Dict[str
             'font_size', and the assigned 'level' (from 1 to 4).
             Level 1 is for the largest and level 4 is for the smallest.
     """
+    if len(heading_styles) == 0:
+        return []
     # Count the number of occurrences for each font
     font_count = Counter([font['font_name'] for font in heading_styles])
 

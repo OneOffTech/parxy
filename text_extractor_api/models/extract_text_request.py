@@ -7,5 +7,4 @@ class ExtractTextRequest(BaseModel):
     url: str
     mime_type: str
     driver: str
-    unit: Optional[str] = None
     roles: Optional[List[str]] = None
