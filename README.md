@@ -1,26 +1,29 @@
-[![CI](https://github.com/data-house/pdf-text-extractor/actions/workflows/ci.yml/badge.svg)](https://github.com/data-house/pdf-text-extractor/actions/workflows/ci.yml) [![Build Docker Image](https://github.com/data-house/pdf-text-extractor/actions/workflows/docker.yml/badge.svg)](https://github.com/data-house/pdf-text-extractor/actions/workflows/docker.yml)
+[![CI](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml/badge.svg)](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml) [![Build Docker Image](https://github.com/OneOffTech/parxy/actions/workflows/docker.yml/badge.svg)](https://github.com/OneOffTech/parxy/actions/workflows/docker.yml)
 
-# PDF Text Extraction Service
+# Parxy
 
-A FastAPI application to extract text from pdf documents.
+Parxy is a gateway service that provides a unified approach to accessing PDF parsing services and libraries. It is available as a library and as an http-based application.
+
+> [!NOTE]  
+> Parxy is under active development.
 
 ## Getting started
 
-The PDF Text Extraction service is available as a Docker image.
+The easiest way to get started with Parxy is to use the Docker image provided.
 
 ```bash
-docker pull ghcr.io/data-house/pdf-text-extractor:main
+docker pull ghcr.io/OneOffTech/parxy:main
 ```
 
 A sample [`docker-compose.yaml` file](./docker-compose.yaml) is available within the repository.
 
 
-> Please refer to [Releases](https://github.com/data-house/pdf-text-extractor/releases) and [Packages](https://github.com/data-house/pdf-text-extractor/pkgs/container/pdf-text-extractor) for the available tags.
+> Please refer to [Releases](https://github.com/OneOffTech/parxy/releases) and [Packages](https://github.com/OneOffTech/parxy/pkgs/container/parxy) for the available tags.
 
 
 ## Usage
 
-The PDF Text Extract service expose a web application. The available API receive a PDF file via a URL and return the extracted text as a JSON response.
+Parxy expose a web-based application programming interface (API). The available API receive a PDF file via a URL and return the extracted text as a JSON response.
 
 The exposed service is unauthenticated therefore consider exposing it only within a trusted network. If you plan to make it available publicly consider adding a reverse proxy with authentication in front.
 
@@ -33,9 +36,11 @@ with the following input as a `json` body:
 - `mime_type`: the mime type of the file (it is expected to be `application/pdf`).
 - `driver`: two drivers are currently implemented `pymupdf` and `pdfact`. It defines the extraction backend to use.
 
-> **warning** The processing is performed synchronously
+> [!WARNING]
+> The processing is performed synchronously
 
-The response is a JSON with the extracted text organized into typed nodes, making it easy to navigate and understand the different components of a document.
+The response is a JSON structure following the [Parse Document Model](https://github.com/OneOffTech/parse-document-model-python).
+
 In particular, the structure is as follows:
 - `category`: A string specifying the node category, which is `doc`
 - `content`: A list of `page` nodes representing the pages within the document.
@@ -93,7 +98,7 @@ The body of the response can contain a JSON with the following fields:
 
 ## Development
 
-The PDF text extract service is built using [FastAPI](https://fastapi.tiangolo.com/) and Python 3.9.
+Parxy is built using [FastAPI](https://fastapi.tiangolo.com/) and Python 3.9.
 
 Given the selected stack the development requires:
 
@@ -121,7 +126,7 @@ _to be documented_
 
 ## Contributing
 
-Thank you for considering contributing to the PDF text extract service! The contribution guide can be found in the [CONTRIBUTING.md](./.github/CONTRIBUTING.md) file.
+Thank you for considering contributing to Parxy! The contribution guide can be found in the [CONTRIBUTING.md](./.github/CONTRIBUTING.md) file.
 
 
 ## Supporters

@@ -14,10 +14,10 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 FROM python:3.9.17-slim-bullseye AS runtime-image
 
 LABEL maintainer="OneOffTech <info@oneofftech.xyz>" \
-  org.label-schema.name="data-house/pdf-text-extractor" \
-  org.label-schema.description="Docker image for the Data House PDF text extractor service." \
+  org.label-schema.name="OneOffTech/parxy" \
+  org.label-schema.description="Docker image for the Parxy service. A PDF parser gateway." \
   org.label-schema.schema-version="1.0" \
-  org.label-schema.vcs-url="https://github.com/data-house/pdf-text-extractor"
+  org.label-schema.vcs-url="https://github.com/OneOffTech/parxy"
 
 RUN apt-get update -yqq && \
     apt-get install -yqq --no-install-recommends tini \
