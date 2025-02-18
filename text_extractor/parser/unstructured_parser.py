@@ -8,26 +8,27 @@ from text_extractor.parser.pdf_parser import PDFParser
 
 class UnstructuredParser(PDFParser):
 
-    def __init__(self, apy_key: str, server_url: str):
+    def __init__(self, api_key: str, server_url: str):
         self.client = unstructured_client.UnstructuredClient(
-            api_key_auth=apy_key,
+            api_key_auth=api_key,
             server_url=server_url,
         )
 
     def parse(self, filename: str, **kwargs) -> Document:
-        req = {
-            "partition_parameters": {
-                "files": {
-                    "content": open(filename, "rb"),
-                    "file_name": filename,
-                },
-                "strategy": shared.Strategy.HI_RES,
-                "languages": ['eng'],
-                "split_pdf_allow_failed": True,
-                "split_pdf_concurrency_level": 15
+        with open(filename, "rb") as f:
+            req = {
+                "partition_parameters": {
+                    "files": {
+                        "content": f,
+                        "file_name": filename,
+                    },
+                    "strategy": shared.Strategy.HI_RES,
+                    "languages": ['eng'],
+                    "split_pdf_allow_failed": True,
+                    "split_pdf_concurrency_level": 15
+                }
             }
-        }
-        res = self.client.general.partition(request=req)
+            res = self.client.general.partition(request=req)
         element_dicts = [element for element in res.elements]
         element_nodes = [Text(content=element["text"], category=element["type"]) for element in res.elements]
         pages = [Page(content=[], attributes=PageAttributes(page=i))

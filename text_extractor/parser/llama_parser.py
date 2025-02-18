@@ -9,9 +9,9 @@ from text_extractor.parser.pdf_parser import PDFParser
 
 class LlamaParser(PDFParser):
 
-    def __init__(self, apy_key: str, server_url: str = "https://api.cloud.llamaindex.ai"):
+    def __init__(self, api_key: str, server_url: str = "https://api.cloud.llamaindex.ai"):
         self.client = LlamaParse(
-            api_key=apy_key,
+            api_key=api_key,
             base_url=server_url,
             result_type=ResultType.TXT
         )
