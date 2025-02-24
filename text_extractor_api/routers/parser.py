@@ -7,6 +7,7 @@ import requests
 from fastapi import APIRouter, HTTPException
 from parse_document_model import Document
 from requests.exceptions import HTTPError, RequestException
+from unstructured_client.models.errors import ServerError, HTTPValidationError
 
 from text_extractor import assistant
 from text_extractor_api.config import settings
@@ -27,6 +28,8 @@ def extract_text(request: ExtractTextRequest) -> Document:
 
     # Check the driver
     if request.driver.lower() not in ["llama", "pdfact", "pymupdf", "unstructured"]:
+        logger.exception(f"Unsupported driver. Expecting one of 'llama', 'pdfact', 'pymupdf' or "
+                         f"'unstructured'. Received [{request.driver}].")
         raise HTTPException(status_code=400,
                             detail=f"Unsupported driver. Expecting one of 'llama', 'pdfact', 'pymupdf' or "
                                    f"'unstructured'. Received [{request.driver}].")
@@ -45,32 +48,38 @@ def extract_text(request: ExtractTextRequest) -> Document:
                    "Authentication protected URLs are currently not supported."
         )
     if resp.status_code != 200:
-        raise HTTPException(status_code=resp.status_code, detail=f"Error while checking URL status. {resp.content}")
+        logger.exception(f"The provided url is not valid. {str(resp.content)}")
+        raise HTTPException(status_code=resp.status_code,
+                            detail=f"Error while checking URL status. {str(resp.content)}")
 
     # Download the file and store it in a temp dir
     # pymupdf can read directly from an url
     file_url = request.url
-    if request.driver.lower() in ["llama", "pdfact", "unstructured"]:
-        os.makedirs("tmp", exist_ok=True)
-        filename = hashlib.sha256(file_url.encode()).hexdigest() + ".pdf"
-        tmp_filepath = os.path.join("tmp", filename)
-        try:
-            resp = requests.get(file_url, allow_redirects=True, timeout=120)
-            resp.raise_for_status()
-            with open(tmp_filepath, 'wb') as f:
-                f.write(resp.content)
-            file_url = tmp_filepath
-        except Exception as e:
-            raise HTTPException(status_code=404, detail=f"Unable to download the file at the specified URL. {str(e)}")
+    os.makedirs("tmp", exist_ok=True)
+    filename = hashlib.sha256(file_url.encode()).hexdigest() + ".pdf"
+    tmp_filepath = os.path.join("tmp", filename)
+    try:
+        resp = requests.get(file_url, allow_redirects=True, timeout=120)
+        resp.raise_for_status()
+        with open(tmp_filepath, 'wb') as f:
+            f.write(resp.content)
+        file_url = tmp_filepath
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Unable to download the file at the specified URL. {str(e)}")
+    logger.debug(f"File temporary downloaded to {tmp_filepath}")
 
     # Parse the file
     try:
         document = parse(file_url, request.driver.lower(), request.roles)
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error while parsing file. {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error while parsing the given document. {str(e)}")
     finally:
         if os.path.exists(file_url):
             os.remove(file_url)
+            logger.debug(f"Temporary directory {tmp_filepath} deleted")
+    logger.info(f"The document has been parsed resulting in {len(document.content)} pages")
     return document
 
 
@@ -85,4 +94,9 @@ def parse(file_url: str, driver: str, roles: Optional[List[str]] = None) -> Docu
     elif driver == "unstructured":
         kwargs["service_url"] = settings.unstructured_url
         kwargs["api_key"] = settings.unstructured_api_key
-    return getattr(assistant, f"parse_with_{driver}")(**kwargs)
+    try:
+        res = getattr(assistant, f"parse_with_{driver}")(**kwargs)
+    except RequestException | HTTPError | ServerError | HTTPValidationError as e:
+        logger.exception("Request exception.", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
+    return res

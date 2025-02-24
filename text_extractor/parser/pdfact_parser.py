@@ -1,4 +1,3 @@
-import logging
 from collections import Counter
 from typing import List, Dict, Any
 
@@ -7,11 +6,8 @@ from parse_document_model import Document, Page
 from parse_document_model.attributes import TextAttributes, PageAttributes, BoundingBox
 from parse_document_model.document import Text
 from parse_document_model.marks import Mark, TextStyleMark, Color, Font
-from requests.exceptions import RequestException
 
 from text_extractor.parser.pdf_parser import PDFParser
-
-logger = logging.getLogger(__name__)
 
 
 class PdfactParser(PDFParser):
@@ -24,18 +20,14 @@ class PdfactParser(PDFParser):
         body["unit"] = 'paragraph'
         if roles is not None:
             body["roles"] = roles
-        try:
-            response = requests.post(self.url, json=body)
-            response.raise_for_status()
-            res = response.json()
-            res = pdfact_formatter(res)
-            res = heading_filter(res)
-            document = pdfact_to_document(res)
-            document = determine_heading_level(document)
-            return document
-        except RequestException as e:
-            logger.exception(f"PDFAct processing error: {e}", exc_info=True)
-            raise e
+        response = requests.post(self.url, json=body)
+        response.raise_for_status()
+        res = response.json()
+        res = pdfact_formatter(res)
+        res = heading_filter(res)
+        document = pdfact_to_document(res)
+        document = determine_heading_level(document)
+        return document
 
 
 def pdfact_to_document(json_data: dict) -> Document:
