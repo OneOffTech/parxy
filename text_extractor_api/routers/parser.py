@@ -3,6 +3,7 @@ import logging
 import os
 from typing import List, Optional
 
+import magic
 import requests
 from fastapi import APIRouter, HTTPException
 from parse_document_model import Document
@@ -20,11 +21,6 @@ logger = logging.getLogger(__name__)
 @router.post("/extract-text", response_model=Document)
 def extract_text(request: ExtractTextRequest) -> Document:
     logger.info("Received parse request.")
-
-    # Check the document format
-    if request.mime_type != 'application/pdf':
-        mime = request.mime_type
-        raise HTTPException(status_code=422, detail=f"Unsupported mime type '{mime}'. Expecting application/pdf.")
 
     # Check the driver
     if request.driver.lower() not in ["llama", "pdfact", "pymupdf", "unstructured"]:
@@ -68,12 +64,20 @@ def extract_text(request: ExtractTextRequest) -> Document:
         raise HTTPException(status_code=400, detail=f"Unable to download the file at the specified URL. {str(e)}")
     logger.debug(f"File temporary downloaded to {tmp_filepath}")
 
+    # Check the document mime type
+    mime = magic.from_file(file_url, mime=True)
+    if mime != "application/pdf":
+        logger.exception(f"Unsupported mime type: {mime}")
+        raise HTTPException(status_code=422, detail=f"Unsupported mime type '{mime}'. Expecting application/pdf.")
+
     # Parse the file
     try:
         document = parse(file_url, request.driver.lower(), request.roles)
-    except HTTPException as e:
-        raise e
+    except (ConnectionError, RequestException, HTTPError, ServerError, HTTPValidationError) as e:
+        logger.exception("Request exception.", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
     except Exception as e:
+        logger.exception("Internal server error while parsing the given document..", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error while parsing the given document. {str(e)}")
     finally:
         if os.path.exists(file_url):
@@ -94,9 +98,4 @@ def parse(file_url: str, driver: str, roles: Optional[List[str]] = None) -> Docu
     elif driver == "unstructured":
         kwargs["service_url"] = settings.unstructured_url
         kwargs["api_key"] = settings.unstructured_api_key
-    try:
-        res = getattr(assistant, f"parse_with_{driver}")(**kwargs)
-    except RequestException | HTTPError | ServerError | HTTPValidationError as e:
-        logger.exception("Request exception.", exc_info=True)
-        raise HTTPException(status_code=400, detail=f"Bad request. {str(e)}")
-    return res
+    return getattr(assistant, f"parse_with_{driver}")(**kwargs)

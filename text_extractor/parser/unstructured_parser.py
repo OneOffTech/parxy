@@ -31,6 +31,8 @@ class UnstructuredParser(PDFParser):
             res = self.client.general.partition(request=req)
         element_dicts = [element for element in res.elements]
         element_nodes = [Text(content=element["text"], category=element["type"]) for element in res.elements]
+        if len(element_nodes) == 0:
+            return Document(content=[])
         pages = [Page(content=[], attributes=PageAttributes(page=i))
                  for i in range(element_dicts[-1]["metadata"]["page_number"])]
         for el_dict, el_node in zip(element_dicts, element_nodes):
