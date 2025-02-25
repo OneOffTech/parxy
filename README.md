@@ -13,7 +13,7 @@ available as a library and as an http-based application.
 The easiest way to get started with Parxy is to use the Docker image provided.
 
 ```bash
-docker pull ghcr.io/OneOffTech/parxy:v0.4.0
+docker pull ghcr.io/OneOffTech/parxy:v0.5.0
 ```
 
 A sample [`docker-compose.yaml` file](./docker-compose.yaml) is available within the repository.
