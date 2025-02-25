@@ -59,13 +59,14 @@ def extract_text(request: ExtractTextRequest) -> Document:
         resp.raise_for_status()
         with open(tmp_filepath, 'wb') as f:
             f.write(resp.content)
-        file_url = tmp_filepath
+        if request.driver.lower() != "pdfact":
+            file_url = tmp_filepath
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Unable to download the file at the specified URL. {str(e)}")
     logger.debug(f"File temporary downloaded to {tmp_filepath}")
 
     # Check the document mime type
-    mime = magic.from_file(file_url, mime=True)
+    mime = magic.from_file(tmp_filepath, mime=True)
     if mime != "application/pdf":
         logger.exception(f"Unsupported mime type: {mime}")
         raise HTTPException(status_code=422, detail=f"Unsupported mime type '{mime}'. Expecting application/pdf.")
