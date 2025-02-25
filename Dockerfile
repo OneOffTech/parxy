@@ -21,6 +21,7 @@ LABEL maintainer="OneOffTech <info@oneofftech.xyz>" \
 
 RUN apt-get update -yqq && \
     apt-get install -yqq --no-install-recommends tini \
+    && apt-get install -y --no-install-recommends libmagic1 \
     && apt-get autoremove -yq --purge \
     && apt-get autoclean -yq \
     && apt-get clean \

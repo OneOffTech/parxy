@@ -2,7 +2,8 @@
 
 # Parxy
 
-Parxy is a gateway service that provides a unified approach to accessing PDF parsing services and libraries. It is available as a library and as an http-based application.
+Parxy is a gateway service that provides a unified approach to accessing PDF parsing services and libraries. It is
+available as a library and as an http-based application.
 
 > [!NOTE]  
 > Parxy is under active development.
@@ -12,20 +13,22 @@ Parxy is a gateway service that provides a unified approach to accessing PDF par
 The easiest way to get started with Parxy is to use the Docker image provided.
 
 ```bash
-docker pull ghcr.io/OneOffTech/parxy:main
+docker pull ghcr.io/OneOffTech/parxy:v0.4.0
 ```
 
 A sample [`docker-compose.yaml` file](./docker-compose.yaml) is available within the repository.
 
 
-> Please refer to [Releases](https://github.com/OneOffTech/parxy/releases) and [Packages](https://github.com/OneOffTech/parxy/pkgs/container/parxy) for the available tags.
-
+> Please refer to [Releases](https://github.com/OneOffTech/parxy/releases)
+> and [Packages](https://github.com/OneOffTech/parxy/pkgs/container/parxy) for the available tags.
 
 ## Usage
 
-Parxy expose a web-based application programming interface (API). The available API receive a PDF file via a URL and return the extracted text as a JSON response.
+Parxy expose a web-based application programming interface (API). The available API receive a PDF file via a URL and
+return the extracted text as a JSON response.
 
-The exposed service is unauthenticated therefore consider exposing it only within a trusted network. If you plan to make it available publicly consider adding a reverse proxy with authentication in front.
+The exposed service is unauthenticated therefore consider exposing it only within a trusted network. If you plan to make
+it available publicly consider adding a reverse proxy with authentication in front.
 
 ### Text extraction endpoint
 
@@ -33,41 +36,63 @@ The service expose only one endpoint `/extract-text` that accepts a `POST` reque
 with the following input as a `json` body:
 
 - `url`: the URL of the PDF file to process.
-- `mime_type`: the mime type of the file (it is expected to be `application/pdf`).
-- `driver`: two drivers are currently implemented `pymupdf` and `pdfact`. It defines the extraction backend to use.
+- `driver`: the extraction backend to use (e.g., `pymupdf`).
 
 > [!WARNING]
 > The processing is performed synchronously
 
-The response is a JSON structure following the [Parse Document Model](https://github.com/OneOffTech/parse-document-model-python).
+The response is a JSON structure following
+the [Parse Document Model](https://github.com/OneOffTech/parse-document-model-python).
 
 In particular, the structure is as follows:
+
 - `category`: A string specifying the node category, which is `doc`
 - `content`: A list of `page` nodes representing the pages within the document.
 
 Each page node contains the following information:
+
 - `category`: A string specifying the node category, which is `page`.
-- `attributes`: A list containing attributes of the page. Currently, it includes only `page`, the number of the node page.
+- `attributes`: A list containing attributes of the page. Currently, it includes only `page`, the number of the node
+  page.
 - `content`: A list of chunk each representing a segment of text extracted from the page.
 
 In particular, each `content` contains the following information:
-  - `role`: The role of the chunk in the document (e.g., _heading_, _body_, etc.)
-  - `text`: The text extracted from the chunk.
-  - `marks`: A list of marks that characterize the text extracted from the chunk.
-  - `attributes`: A list containing attributes of the chunk, currently including:
-    - A list of `bounding_box` attributes that contain the text. Each bounding box is identified by 4 coordinated: 
-    `min_x`,`min_y`, `max_x`, `max_y` and `page`, which is the page number where the bounding box is located.
+
+- `role`: The role of the chunk in the document (e.g., _heading_, _body_, etc.)
+- `text`: The text extracted from the chunk.
+- `marks`: A list of marks that characterize the text extracted from the chunk.
+- `attributes`: A list containing attributes of the chunk, currently including:
+    - A list of `bounding_box` attributes that contain the text. Each bounding box is identified by 4 coordinated:
+      `min_x`,`min_y`, `max_x`, `max_y` and `page`, which is the page number where the bounding box is located.
 
 The `marks` of the chunks contains:
+
 - `category`: the type of the mark, which can be: `bold`, `italic`, `textStyle`, `link`
 
 If the mark type is `textStyle`, it includes additional attributes:
-- `font`: An object representing the font of the text chunk. 
-Each font is represented by `name`, `id`, and `size`. Available only using `pdfact` driver.
-- `color`: Which is the color of the text chunk. 
-Each color is represented by `r`, `g`, `b` and `id`. Available only using `pdfact` driver.
+
+- `font`: An object representing the font of the text chunk.
+  Each font is represented by `name`, `id`, and `size`. Available only using `pdfact` driver.
+- `color`: Which is the color of the text chunk.
+  Each color is represented by `r`, `g`, `b` and `id`. Available only using `pdfact` driver.
 
 if the mark category is `link`, it provides the `url` of the link.
+
+### Available drivers
+
+Four different backends are currently implemented:
+
+- `pymupdf`: it uses the [PyMyPDF](https://github.com/pymupdf/PyMuPDF) Python library to process the document.
+- `pdfact`: it uses the [pdfact](https://github.com/data-house/pdfact) Java service to process the document.
+  To use this driver the url where the pdfact service is deployed have to be set as an enviroment variable (
+  `PDFACT_URL`).
+- `unstructured`: it uses the [unstructured](https://unstructured.io/) web service to process the document.
+  To use this driver you need an active unstructured subscription and the `UNSTRUCTURED_URL` (e.g. `https://api.unstructuredapp.io/general/v0/general`) and `UNSTRUCTURED_API_KEY`
+  enviroment variable have to be set.
+  Only the v0 APIs are supported.
+- `llama`: it uses the [llamaparse](https://www.llamaindex.ai/llamaparse) web service to process the document.
+  To use this driver you need an active LlamaCloud subscription and the `LLAMA_URL` (e.g. `https://api.cloud.llamaindex.ai`) and `LLAMA_API_KEY` enviroment
+  variable have to be set.
 
 ### Error handling
 
@@ -81,7 +106,6 @@ The service can return the following errors
 | `500` | Error while saving file       | In case it was not possible to download the file from the specified URL |
 | `500` | Error while parsing file      | In case it was not possible to open the file after download             |
 
-
 The body of the response can contain a JSON with the following fields:
 
 - `code` the error code
@@ -92,7 +116,7 @@ The body of the response can contain a JSON with the following fields:
 {
   "code": 500,
   "message": "Error while parsing file",
-  "type": "Internal Server Error",
+  "type": "Internal Server Error"
 }
 ```
 
@@ -104,7 +128,6 @@ Given the selected stack the development requires:
 
 - [Python 3.9](https://www.python.org/) with PIP
 - [Docker](https://www.docker.com/) (optional) to test the build
-
 
 Install all the required dependencies:
 
@@ -118,16 +141,14 @@ Run the local development application using:
 fastapi dev text_extractor_api/main.py
 ```
 
-
 ### Testing
 
 _to be documented_
 
-
 ## Contributing
 
-Thank you for considering contributing to Parxy! The contribution guide can be found in the [CONTRIBUTING.md](./.github/CONTRIBUTING.md) file.
-
+Thank you for considering contributing to Parxy! The contribution guide can be found in
+the [CONTRIBUTING.md](./.github/CONTRIBUTING.md) file.
 
 ## Supporters
 
@@ -135,7 +156,7 @@ The project is provided and supported by [OneOff-Tech (UG)](https://oneofftech.d
 
 <p align="left"><a href="https://oneofftech.de" target="_blank"><img src="https://raw.githubusercontent.com/OneOffTech/.github/main/art/oneofftech-logo.svg" width="200"></a></p>
 
-
 ## Security Vulnerabilities
 
-If you discover a security vulnerability within PDF Text Extract, please send an e-mail to OneOff-Tech team via [security@oneofftech.xyz](mailto:security@oneofftech.xyz). All security vulnerabilities will be promptly addressed.
+If you discover a security vulnerability within PDF Text Extract, please send an e-mail to OneOff-Tech team
+via [security@oneofftech.xyz](mailto:security@oneofftech.xyz). All security vulnerabilities will be promptly addressed.
