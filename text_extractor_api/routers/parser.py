@@ -15,7 +15,7 @@ from text_extractor_api.config import settings
 from text_extractor_api.models import ExtractTextRequest
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("text-extractor")
 
 
 @router.post("/extract-text", response_model=Document)
