@@ -13,7 +13,7 @@ available as a library and as an http-based application.
 The easiest way to get started with Parxy is to use the Docker image provided.
 
 ```bash
-docker pull ghcr.io/OneOffTech/parxy:main
+docker pull ghcr.io/OneOffTech/parxy:v0.4.0
 ```
 
 A sample [`docker-compose.yaml` file](./docker-compose.yaml) is available within the repository.
@@ -87,11 +87,11 @@ Four different backends are currently implemented:
   To use this driver the url where the pdfact service is deployed have to be set as an enviroment variable (
   `PDFACT_URL`).
 - `unstructured`: it uses the [unstructured](https://unstructured.io/) web service to process the document.
-  To use this driver you need an active unstructured subscription and the `UNSTRUCTURED_URL` and `UNSTRUCTURED_API_KEY`
+  To use this driver you need an active unstructured subscription and the `UNSTRUCTURED_URL` (e.g. `https://api.unstructuredapp.io/general/v0/general`) and `UNSTRUCTURED_API_KEY`
   enviroment variable have to be set.
-  Note that, currently, only the v0 APIs are supported.
+  Only the v0 APIs are supported.
 - `llama`: it uses the [llamaparse](https://www.llamaindex.ai/llamaparse) web service to process the document.
-  To use this driver you need an active LlamaCloud subscription and the `LLAMA_URL` and `LLAMA_API_KEY` enviroment
+  To use this driver you need an active LlamaCloud subscription and the `LLAMA_URL` (e.g. `https://api.cloud.llamaindex.ai`) and `LLAMA_API_KEY` enviroment
   variable have to be set.
 
 ### Error handling
