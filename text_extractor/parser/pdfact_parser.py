@@ -30,6 +30,20 @@ class PdfactParser(PDFParser):
         return document
 
 
+def assign_sections(document: Document) -> Document:
+    current_heading = ["", "", "", ""]
+    for page in document.content:
+        for chunk in page.content:
+            if chunk.category == "heading":
+                level = chunk.attributes.level
+                if 1 <= level <= 4:
+                    current_heading[level - 1] = chunk.content
+                    for i in range(level, len(current_heading)):
+                        current_heading[i] = ""
+            chunk.attributes.section = " |>| ".join([heading for heading in current_heading if heading != ""])
+    return document
+
+
 def pdfact_to_document(json_data: dict) -> Document:
     colors = [Color(**color) for color in json_data.get('colors', [])]
     fonts = [Font(id=font['id'], name=font['name'], size=-1) for font in json_data.get('fonts', [])]

@@ -2,7 +2,7 @@ fastapi~=0.111.0
 llama-cloud-services~=0.6.1
 numpy~=1.24.3
 pandas==2.0.2
-parse-document-model==0.2.0
+parse-document-model==0.2.1
 pydantic
 pydantic_settings~=2.2.1
 python-magic; platform_system != "Windows"
