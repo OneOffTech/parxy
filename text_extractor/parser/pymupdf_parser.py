@@ -57,7 +57,6 @@ def span_to_texts(block: dict, page: int) -> list[Text]:
 
 
 def flag_to_mark(flag: int) -> Literal["superscripted", "italic", "serifed", "monospaced", "bold"]:
-    # TODO: Implement this
     pass
 
 
