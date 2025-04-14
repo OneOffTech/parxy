@@ -7,7 +7,7 @@ pydantic
 pydantic_settings~=2.2.1
 python-magic; platform_system != "Windows"
 python-magic-bin; platform_system == "Windows"
-pymupdf~=1.24.3
+pymupdf==1.25.5
 requests==2.32.3
 unstructured-client~=0.29.0
 uvicorn==0.22.0
