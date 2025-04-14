@@ -2,12 +2,12 @@ fastapi~=0.111.0
 llama-cloud-services~=0.6.1
 numpy~=1.24.3
 pandas==2.0.2
-parse-document-model==0.2.0
+parse-document-model==0.2.2
 pydantic
 pydantic_settings~=2.2.1
 python-magic; platform_system != "Windows"
 python-magic-bin; platform_system == "Windows"
-pymupdf~=1.24.3
+pymupdf==1.25.5
 requests==2.32.3
 unstructured-client~=0.29.0
 uvicorn==0.22.0

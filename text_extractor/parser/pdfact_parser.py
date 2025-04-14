@@ -27,7 +27,22 @@ class PdfactParser(PDFParser):
         res = heading_filter(res)
         document = pdfact_to_document(res)
         document = determine_heading_level(document)
+        document = assign_sections(document)
         return document
+
+
+def assign_sections(document: Document) -> Document:
+    current_heading = ["", "", "", ""]
+    for page in document.content:
+        for chunk in page.content:
+            if chunk.category == "heading" and len(chunk.content) <= 100:
+                level = chunk.attributes.level
+                if level is not None and 1 <= level <= 4:
+                    current_heading[level - 1] = chunk.content
+                    for i in range(level, len(current_heading)):
+                        current_heading[i] = ""
+            chunk.attributes.section = " |>| ".join([heading for heading in current_heading if heading != ""])
+    return document
 
 
 def pdfact_to_document(json_data: dict) -> Document:
@@ -241,7 +256,7 @@ def determine_heading_level(document: Document) -> Document:
     :return: The document with updated heading levels assigned to each heading node.
     """
     heading_styles = []
-    largest_font_styles = []
+    single_occurrences_fonts = []
 
     for page in document.content:
         for node in page.content:
@@ -274,13 +289,12 @@ def determine_heading_level(document: Document) -> Document:
     # Sort the styles by font size in descending order
     heading_styles = sorted(heading_styles, key=lambda x: x['font_size'], reverse=True)
 
+    # Ignore headings that occur only once and headings that occur too many times
     for style in heading_styles:
         if style['occurrences'] == 1:
-            largest_font_styles.append(style)
-        else:
-            break
-
-    heading_styles = [style for style in heading_styles if style not in largest_font_styles]
+            single_occurrences_fonts.append(style)
+    heading_styles = [style for style in heading_styles
+                      if (style not in single_occurrences_fonts) and (style['occurrences'] < len(document.content))]
 
     assigned_levels = assign_heading_levels(heading_styles)
 
@@ -298,10 +312,10 @@ def determine_heading_level(document: Document) -> Document:
 
                 if font_name and font_size:
                     if any(style['font_name'] == font_name and style['font_size'] == font_size for style in
-                           largest_font_styles):
+                           single_occurrences_fonts):
                         node.category = "title"
                     else:
-                        level = 4
+                        level = None
                         for style in assigned_levels:
                             if style['font_name'] == font_name and style['font_size'] == font_size:
                                 level = style['level']
