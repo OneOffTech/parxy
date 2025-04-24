@@ -1,5 +1,5 @@
 import unstructured_client
-from parse_document_model.attributes import PageAttributes
+from parse_document_model.attributes import PageAttributes, BoundingBox, TextAttributes
 from parse_document_model.document import Text, Page, Document
 from unstructured_client.models import shared
 
@@ -25,12 +25,35 @@ class UnstructuredParser(PDFParser):
                     "strategy": shared.Strategy.HI_RES,
                     "languages": ['eng'],
                     "split_pdf_allow_failed": True,
-                    "split_pdf_concurrency_level": 15
+                    "split_pdf_concurrency_level": 15,
+                    "coordinates": True
                 }
             }
             res = self.client.general.partition(request=req)
         element_dicts = [element for element in res.elements]
-        element_nodes = [Text(content=element["text"], category=element["type"]) for element in res.elements]
+        element_nodes = []
+        for element in res.elements:
+            metadata = element["metadata"]
+            coordinates = metadata["coordinates"]
+            points = coordinates["points"]
+            if points:
+                xs = [point[0] for point in points]
+                ys = [point[1] for point in points]
+                bbox = BoundingBox(
+                    min_x=min(xs),
+                    min_y=min(ys),
+                    max_x=max(xs),
+                    max_y=max(ys),
+                    page=metadata["page_number"]
+                )
+                bboxes = [bbox]
+            else:
+                bboxes = []
+            text = Text(content=element["text"],
+                        category=element["type"],
+                        attributes=TextAttributes(bounding_box=bboxes),
+                        )
+            element_nodes.append(text)
         if len(element_nodes) == 0:
             return Document(content=[])
         pages = [Page(content=[], attributes=PageAttributes(page=i))
