@@ -16,6 +16,7 @@ class Style(BaseModel):
     font_size: Optional[float] = None
     font_style: Optional[str] = None
     color: Optional[str] = None
+    alpha: Optional[int] = None
     weight: Optional[float] = None
 
 
