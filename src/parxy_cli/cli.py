@@ -8,7 +8,6 @@ from enum import Enum
 import typer
 from rich import print
 from rich.console import Console
-from rich.table import Table
 
 from parxy_core.facade import Parxy
 
@@ -93,7 +92,7 @@ def parse(
         # Process each file
         for file_path in files:
             try:
-                console.print(f'----')
+                console.print('----')
 
                 # Parse the document
                 doc = Parxy.parse(
