@@ -5,7 +5,6 @@ import validators
 from typing import TYPE_CHECKING
 
 
-
 # Type hints that will be available at runtime when llm whisperer is installed
 if TYPE_CHECKING:
     from unstract.llmwhisperer import LLMWhispererClientV2
