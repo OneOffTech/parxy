@@ -1,0 +1,13 @@
+
+services:
+    ## PDFAct service
+    pdfact:
+        image: "ghcr.io/data-house/pdfact:main"
+        ports:
+            - "4567:4567"
+        networks:
+            - parxy
+
+networks:
+    parxy:
+        driver: bridge

@@ -1,0 +1,72 @@
+[project]
+name = "parxy-core"
+version = "0.1.0"
+description = "Parxy document processing gateway"
+readme = "README.md"
+authors = [
+    { name = "Alessio Vertemati", email = "alessio@oneofftech.xyz" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.10.1",
+    "pymupdf>=1.26.3",
+    "requests>=2.32.4",
+    "validators>=0.35.0",
+    "typer>=0.9.0",
+    "rich>=13.7.0",
+    "python-dotenv>=1.0.1",
+    "importlib-resources>=6.1.3",
+]
+
+[project.scripts]
+parxy = "parxy_cli.cli:main"
+
+[tool.setuptools.package-data]
+parxy_cli = [".env.example", "compose.example.yaml"]
+
+[project.optional-dependencies]
+llama = [
+    "llama-cloud-services>=0.6.60",
+]
+llmwhisperer = [
+    "llmwhisperer-client>=2.4.2",
+]
+unstructured_local = [
+    "unstructured[pdf]>=0.18.13",
+]
+
+all = [
+    "llama-cloud-services>=0.6.60",
+    "llmwhisperer-client>=2.4.2",
+    "unstructured[pdf]>=0.18.13",
+]
+
+
+
+
+[build-system]
+requires = ["uv_build>=0.8.11,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["parxy_core", "parxy_cli"]
+
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "ruff>=0.12.9",
+]
+
+[tool.uv]
+default-groups = "all"
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+docstring-code-format = true
