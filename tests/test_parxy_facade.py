@@ -2,13 +2,8 @@ import pytest
 
 from parxy_core.facade import Parxy
 from parxy_core.drivers import DriverFactory
-from parxy_core.drivers import Driver
 from parxy_core.drivers import PyMuPdfDriver
 from parxy_core.drivers import PdfActDriver
-from parxy_core.drivers import LlamaParseDriver
-from parxy_core.drivers import LlmWhispererDriver
-from parxy_core.models import Document
-from parxy_core.models import ParxyConfig
 
 
 class TestParxyFacade:

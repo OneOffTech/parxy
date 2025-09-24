@@ -2,9 +2,8 @@ import io
 
 import validators
 
-from typing import TYPE_CHECKING, Dict, Any
+from typing import TYPE_CHECKING
 
-from logging import Logger
 
 
 # Type hints that will be available at runtime when llm whisperer is installed

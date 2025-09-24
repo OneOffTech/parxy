@@ -2,7 +2,7 @@ import io
 import json
 import os
 from datetime import datetime
-from typing import Optional, Dict, Any, Callable
+from typing import Any
 
 
 class Tracer:

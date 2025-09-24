@@ -1,7 +1,7 @@
 """Facade for accessing Parxy document parsing functionality."""
 
 import io
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Callable
 
 from parxy_core.drivers import DriverFactory, Driver
 from parxy_core.models import Document

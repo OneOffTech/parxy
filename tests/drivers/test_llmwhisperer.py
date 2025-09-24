@@ -5,7 +5,7 @@ from parxy_core.exceptions import (
     AuthenticationException,
     FileNotFoundException,
 )
-from parxy_core.models import TextBlock, Page
+from parxy_core.models import Page
 
 from parxy_core.drivers import LlmWhispererDriver
 from parxy_core.models import LlmWhispererConfig
