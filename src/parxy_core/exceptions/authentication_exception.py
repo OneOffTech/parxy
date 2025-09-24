@@ -1,6 +1,6 @@
 class AuthenticationException(Exception):
     """Exception raised for authentication errors.
-    
+
     This exception should be raised when authentication fails with external services
     or APIs, such as invalid API keys, expired tokens, or insufficient permissions.
 
@@ -51,7 +51,7 @@ class AuthenticationException(Exception):
         str
             Formatted error message including service name and details
         """
-        base_message = f"Authentication failed for {self.service}: {self.message}"
+        base_message = f'Authentication failed for {self.service}: {self.message}'
         if self.details:
-            return f"{base_message}\nDetails: {self.details}"
+            return f'{base_message}\nDetails: {self.details}'
         return base_message

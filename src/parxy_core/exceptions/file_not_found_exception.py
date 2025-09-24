@@ -1,6 +1,6 @@
 class FileNotFoundException(FileNotFoundError):
     """Exception raised for file not found errors.
-    
+
     This exception is raised when a file cannot be accessed for parsing.
 
     Attributes
@@ -50,7 +50,7 @@ class FileNotFoundException(FileNotFoundError):
         str
             Formatted error message including service name and details
         """
-        base_message = f"Parsing failed for {self.service}: {self.message}"
+        base_message = f'Parsing failed for {self.service}: {self.message}'
         if self.details:
-            return f"{base_message}\nDetails: {self.details}"
+            return f'{base_message}\nDetails: {self.details}'
         return base_message

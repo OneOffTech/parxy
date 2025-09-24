@@ -1,4 +1,3 @@
-
 # Use an explicit re-export https://github.com/astral-sh/ruff/issues/5697#issuecomment-1631647211
 
 from parxy_core.models.models import (

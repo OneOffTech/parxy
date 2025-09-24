@@ -1,6 +1,6 @@
 class UnsupportedFormatException(Exception):
     """Exception raised for file format not supported.
-    
+
     This exception is raised when a file is of a format not supported by the parsing service.
 
     Attributes
@@ -50,7 +50,7 @@ class UnsupportedFormatException(Exception):
         str
             Formatted error message including service name and details
         """
-        base_message = f"Unsupported format for {self.service}: {self.message}"
+        base_message = f'Unsupported format for {self.service}: {self.message}'
         if self.details:
-            return f"{base_message}\nDetails: {self.details}"
+            return f'{base_message}\nDetails: {self.details}'
         return base_message

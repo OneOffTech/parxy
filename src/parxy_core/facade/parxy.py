@@ -9,7 +9,7 @@ from parxy_core.models import Document
 
 class Parxy:
     """Static facade for accessing Parxy document processing features.
-    
+
     This class provides a simplified interface to the document parsing functionality.
     It maintains a single DriverFactory instance and provides static methods for
     common operations like parsing documents and accessing specific drivers.
@@ -18,14 +18,14 @@ class Parxy:
     -------
     Parse a document with default driver:
     >>> doc = Parxy.parse('path/to/document.pdf')
-    
+
     Use a specific driver:
     >>> doc = Parxy.driver(Parxy.PYMUPDF).parse('path/to/document.pdf')
-    
+
     """
 
     # Constants for common document processing drivers
-    
+
     PYMUPDF = 'pymupdf'
     PDFACT = 'pdfact'
     LLAMAPARSE = 'llamaparse'
@@ -37,12 +37,12 @@ class Parxy:
 
     def __new__(cls):
         """Prevent instantiation of this static class."""
-        raise TypeError(f"{cls.__name__} is a static class and cannot be instantiated")
+        raise TypeError(f'{cls.__name__} is a static class and cannot be instantiated')
 
     @classmethod
     def _get_factory(cls) -> DriverFactory:
         """Get or create the DriverFactory instance.
-        
+
         Returns
         -------
         DriverFactory
@@ -53,9 +53,14 @@ class Parxy:
         return cls._factory
 
     @classmethod
-    def parse(cls, file: str | io.BytesIO | bytes, level: str = "block", driver_name: Optional[str] = None) -> Document:
+    def parse(
+        cls,
+        file: str | io.BytesIO | bytes,
+        level: str = 'block',
+        driver_name: Optional[str] = None,
+    ) -> Document:
         """Parse a document using the specified or default driver.
-        
+
         Parameters
         ----------
         file : str | io.BytesIO | bytes
@@ -64,7 +69,7 @@ class Parxy:
             The level of detail for parsing, by default "block"
         driver_name : str, optional
             Name of the driver to use. If None, uses the default driver
-            
+
         Returns
         -------
         Document
@@ -75,12 +80,12 @@ class Parxy:
     @classmethod
     def driver(cls, name: Optional[str] = None) -> Driver:
         """Get a driver instance by name.
-        
+
         Parameters
         ----------
         name : str, optional
             Name of the driver to get. If None, returns the default driver
-            
+
         Returns
         -------
         Driver
@@ -91,7 +96,7 @@ class Parxy:
     @classmethod
     def drivers(cls) -> Dict[str, Driver]:
         """Get the list of supported drivers.
-            
+
         Returns
         -------
         Driver
@@ -99,11 +104,10 @@ class Parxy:
         """
         return cls._get_factory().get_supported_drivers()
 
-
     @classmethod
     def extend(cls, name: str, callback: Callable[[], Driver]) -> 'DriverFactory':
         """Register a new driver with the factory.
-        
+
         Parameters
         ----------
         name : str
