@@ -35,13 +35,13 @@ Parxy is available as a standalone command line and a library. The quickest way 
 Use with minimal footprint (fewer drivers supported):
 
 ```bash
-uvx --from "git+https://github.com/oneofftech/parxy.git" parxy --help
+uvx parxy --help
 ```
 
 Use all supported drivers:
 
 ```bash
-uvx --from "git+https://github.com/oneofftech/parxy.git[all]" parxy --help
+uvx parxy[all] --help
 ```
 
 See [Supported services](#supported-services) for the list of included drivers and their extras for the installation.
