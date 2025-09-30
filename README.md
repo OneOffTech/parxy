@@ -1,5 +1,4 @@
-[![CI](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml/badge.svg)](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml) [![Build Docker Image](https://github.com/OneOffTech/parxy/actions/workflows/docker.yml/badge.svg)](https://github.com/OneOffTech/parxy/actions/workflows/docker.yml)
- [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![CI](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml/badge.svg)](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml) [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
 # OneOffTech Parxy
 

@@ -1,5 +1,5 @@
 [project]
-name = "parxy-core"
+name = "parxy"
 version = "0.1.0"
 description = "Parxy document processing gateway"
 readme = "README.md"
