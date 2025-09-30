@@ -1,3 +1,4 @@
+import os
 import pytest
 
 from parxy_core.drivers import DriverFactory
@@ -95,6 +96,10 @@ class TestDriverFactory:
         driver = DriverFactory.build().driver('pdfact')
         assert isinstance(driver, PdfActDriver)
 
+    @pytest.mark.skipif(
+        os.getenv('GITHUB_ACTIONS') == 'true',
+        reason='External service required, skipping tests in GitHub Actions.',
+    )
     def test_llamaparse_driver_instantiated(self):
         DriverFactory.reset()
         driver = DriverFactory.build().driver('llamaparse')

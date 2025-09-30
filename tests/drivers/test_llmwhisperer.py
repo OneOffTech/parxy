@@ -24,7 +24,7 @@ class TestLlmWhispererDriver:
     def test_llmwhisperer_driver_can_be_created(self):
         driver = LlmWhispererDriver(LlmWhispererConfig().model_dump())
 
-        assert driver.supported_levels == ['page']
+        assert driver.supported_levels == ['page', 'block']
 
     def test_llmwhisperer_driver_handle_invalid_key(self):
         driver = LlmWhispererDriver(LlmWhispererConfig(api_key='invalid').model_dump())
