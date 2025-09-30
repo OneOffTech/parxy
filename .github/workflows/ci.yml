@@ -7,6 +7,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test
@@ -25,5 +30,16 @@ jobs:
     - name: Install the latest version of uv and set the python version
       uses: astral-sh/setup-uv@v6.7.0
       with:
-        enable-cache: false
+        enable-cache: true
         python-version: ${{ matrix.python }}
+    
+    - name: Pull dependencies
+      run: uv sync --all-extras --all-groups
+    
+    - name: Execute tests
+      run: |
+        uv run pytest -qs .\tests\drivers\test_pymupdf.py
+        uv run pytest -qs .\tests\drivers\test_unstructured_local.py
+        uv run pytest -qs .\tests\test_parxy_facade.py
+        uv run pytest -qs .\tests\test_models.py
+        uv run pytest -qs .\tests\test_base.py
