@@ -50,7 +50,7 @@ class LlamaParseDriver(Driver):
         except ImportError as e:
             raise ImportError(
                 'LlamaParse dependencies not installed. '
-                "Install with 'pip install parxy-core[llama]'"
+                "Install with 'pip install parxy[llama]'"
             ) from e
 
         self.__client = LlamaParse(**self._config)

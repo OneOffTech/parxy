@@ -48,7 +48,7 @@ class LlmWhispererDriver(Driver):
         except ImportError as e:
             raise ImportError(
                 'LlmWhisperer dependencies not installed. '
-                "Install with 'pip install parxy-core[llmwhisperer]'"
+                "Install with 'pip install parxy[llmwhisperer]'"
             ) from e
 
         self.__client = LLMWhispererClientV2(**self._config)
