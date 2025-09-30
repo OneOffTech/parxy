@@ -7,6 +7,10 @@ from parxy_core.drivers import PdfActDriver
 from parxy_core.models import PdfActConfig
 
 
+@pytest.mark.skipif(
+    os.getenv("GITHUB_ACTIONS") == "true",
+    reason="External service required, skipping tests in GitHub Actions."
+)
 class TestPdfActDriver:
     def __fixture_path(self, file: str) -> str:
         current_dir = os.path.dirname(os.path.abspath(__file__))
