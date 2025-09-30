@@ -43,7 +43,7 @@ class UnstructuredLocalDriver(Driver):
         except ImportError as e:
             raise ImportError(
                 'Unstructured dependencies not installed. '
-                "Install with 'pip install parxy-core[unstructured_local]'"
+                "Install with 'pip install parxy[unstructured_local]'"
             ) from e
 
     def _handle(

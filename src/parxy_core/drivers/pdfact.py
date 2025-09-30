@@ -1,11 +1,10 @@
 import io
-from typing import Optional, Dict, Any
+from typing import Optional
 
 import requests
 import validators
 
 from urllib.parse import urljoin
-from logging import Logger
 
 from parxy_core.drivers import Driver
 from parxy_core.models import (

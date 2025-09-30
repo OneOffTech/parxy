@@ -1,0 +1,35 @@
+name: Lint
+
+on:
+  push:
+    paths:
+      - '**.py'
+      - '.github/workflows/lint.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  lint:
+    name: Lint Shell scripts
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - uses: astral-sh/setup-uv@v6.7.0
+
+    - name: Ruff lint
+      run: uv run ruff check --exit-zero .
+    
+    - name: Ruff format
+      run: uv run ruff format .
+
+    - name: Commit changes
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: Fix styling
+
+    

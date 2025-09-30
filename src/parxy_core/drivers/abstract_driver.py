@@ -121,7 +121,7 @@ class Driver(ABC):
 
         except Exception as ex:
             self._logger.error(
-                f'Error while parsing file',
+                'Error while parsing file',
                 file,
                 self.__class__.__name__,
                 exc_info=True,

@@ -1718,7 +1718,7 @@ wheels = [
 ]
 
 [[package]]
-name = "parxy-core"
+name = "parxy"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

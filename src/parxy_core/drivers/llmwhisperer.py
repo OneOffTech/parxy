@@ -2,9 +2,7 @@ import io
 
 import validators
 
-from typing import TYPE_CHECKING, Dict, Any
-
-from logging import Logger
+from typing import TYPE_CHECKING
 
 
 # Type hints that will be available at runtime when llm whisperer is installed
@@ -50,7 +48,7 @@ class LlmWhispererDriver(Driver):
         except ImportError as e:
             raise ImportError(
                 'LlmWhisperer dependencies not installed. '
-                "Install with 'pip install parxy-core[llmwhisperer]'"
+                "Install with 'pip install parxy[llmwhisperer]'"
             ) from e
 
         self.__client = LLMWhispererClientV2(**self._config)

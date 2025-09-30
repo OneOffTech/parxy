@@ -1,5 +1,5 @@
-[![CI](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml/badge.svg)](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml) [![Build Docker Image](https://github.com/OneOffTech/parxy/actions/workflows/docker.yml/badge.svg)](https://github.com/OneOffTech/parxy/actions/workflows/docker.yml)
- [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+![pypi](https://img.shields.io/pypi/v/parxy.svg)
+[![Pydantic v2](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v2.json)](https://docs.pydantic.dev/latest/contributing/#badges) [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv) [![CI](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml/badge.svg)](https://github.com/OneOffTech/parxy/actions/workflows/ci.yml)
 
 # OneOffTech Parxy
 
@@ -36,13 +36,13 @@ Parxy is available as a standalone command line and a library. The quickest way 
 Use with minimal footprint (fewer drivers supported):
 
 ```bash
-uvx --from "git+https://github.com/oneofftech/parxy.git" parxy --help
+uvx parxy --help
 ```
 
 Use all supported drivers:
 
 ```bash
-uvx --from "git+https://github.com/oneofftech/parxy.git[all]" parxy --help
+uvx parxy[all] --help
 ```
 
 See [Supported services](#supported-services) for the list of included drivers and their extras for the installation.

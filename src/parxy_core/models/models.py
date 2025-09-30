@@ -29,7 +29,7 @@ class Character(BaseModel):
     source_data: Optional[dict[str, Any]] = None
 
     def isEmpty(self) -> bool:
-        return not self.text or self.text.strip() == ""
+        return not self.text or self.text.strip() == ''
 
 
 class Span(BaseModel):
@@ -41,7 +41,7 @@ class Span(BaseModel):
     source_data: Optional[dict[str, Any]] = None
 
     def isEmpty(self) -> bool:
-        return not self.text or self.text.strip() == ""
+        return not self.text or self.text.strip() == ''
 
 
 class Line(BaseModel):
@@ -53,7 +53,7 @@ class Line(BaseModel):
     source_data: Optional[dict[str, Any]] = None
 
     def isEmpty(self) -> bool:
-        return not self.text or self.text.strip() == ""
+        return not self.text or self.text.strip() == ''
 
 
 class Block(BaseModel, ABC):
@@ -75,15 +75,13 @@ class TextBlock(BaseModel):
     text: str
 
     def isEmpty(self) -> bool:
-        return not self.text or self.text.strip() == ""
+        return not self.text or self.text.strip() == ''
 
 
-class ImageBlock(Block):
-    ...
+class ImageBlock(Block): ...
 
 
-class TableBlock(Block):
-    ...
+class TableBlock(Block): ...
 
 
 class Page(BaseModel):
@@ -95,7 +93,7 @@ class Page(BaseModel):
     source_data: Optional[dict[str, Any]] = None
 
     def isEmpty(self) -> bool:
-        return not self.text or self.text.strip() == ""
+        return not self.text or self.text.strip() == ''
 
 
 class Metadata(BaseModel):
@@ -120,90 +118,94 @@ class Document(BaseModel):
     def isEmpty(self) -> bool:
         return all(page.isEmpty() for page in self.pages)
 
-    def text(self, page_separator: str = "---") -> str:
+    def text(self, page_separator: str = '---') -> str:
         """Get the full text content of the document.
-        
+
         Parameters
         ----------
         page_separator : str, optional
             String to use as separator between pages, by default "---"
             Set to empty string or None to disable page separation
-            
+
         Returns
         -------
         str
             The concatenated text of all pages with optional separators
         """
         if not self.pages:
-            return ""
-            
+            return ''
+
         # Filter out empty pages
         texts = [page.text.strip() for page in self.pages if page.text]
-        
+
         if not texts:
-            return ""
-            
+            return ''
+
         # Add separator between pages if specified
         if page_separator:
-            return f"\n{page_separator}\n".join(texts)
-        
-        return "\n".join(texts)
+            return f'\n{page_separator}\n'.join(texts)
+
+        return '\n'.join(texts)
 
     def markdown(self) -> str:
         """Get the document content formatted as Markdown.
-        
+
         The method attempts to preserve the document structure by:
         1. Converting TextBlocks to paragraphs based on their category
         2. Preserving line breaks where meaningful
         3. Adding section headers based on block levels
-        
+
         Returns
         -------
         str
             The document content formatted as Markdown
         """
         if not self.pages:
-            return ""
-            
+            return ''
+
         markdown_parts = []
-        
+
         for page in self.pages:
             if not page.blocks:
                 if page.text.strip():
                     markdown_parts.append(page.text.strip())
                 continue
-                
+
             page_parts = []
-            
+
             for block in page.blocks:
                 if isinstance(block, TextBlock):
                     # Handle different block categories
-                    if block.category and block.category.lower() in ['heading', 'title', 'header']:
+                    if block.category and block.category.lower() in [
+                        'heading',
+                        'title',
+                        'header',
+                    ]:
                         # Determine heading level (h1-h6) based on block level or default to h2
                         level = min(block.level or 2, 6)
-                        page_parts.append(f"{'#' * level} {block.text.strip()}")
+                        page_parts.append(f'{"#" * level} {block.text.strip()}')
                     elif block.category and block.category.lower() == 'list':
                         # Convert to bullet points
                         for line in block.text.splitlines():
                             if line.strip():
-                                page_parts.append(f"- {line.strip()}")
+                                page_parts.append(f'- {line.strip()}')
                     else:
                         # Regular paragraph
                         if block.text.strip():
                             page_parts.append(block.text.strip())
-                
+
                 elif isinstance(block, ImageBlock):
                     # Placeholder for images - could be enhanced with actual image data
-                    page_parts.append("![Image]")
-                
+                    page_parts.append('![Image]')
+
                 elif isinstance(block, TableBlock):
                     # Placeholder for tables - could be enhanced with actual table data
-                    page_parts.append("| Table content |")
-            
+                    page_parts.append('| Table content |')
+
             if page_parts:
-                markdown_parts.append("\n\n".join(page_parts))
-        
-        return "\n\n".join(markdown_parts)
+                markdown_parts.append('\n\n'.join(page_parts))
+
+        return '\n\n'.join(markdown_parts)
 
 
 class HierarchyLevel(IntEnum):
@@ -217,8 +219,7 @@ class HierarchyLevel(IntEnum):
 
 
 def estimate_lines_from_block(
-        block: TextBlock,
-        default_font_size: float = 11
+    block: TextBlock, default_font_size: float = 11
 ) -> TextBlock:
     """Estimate line-level layout inside a text block by splitting text and assigning bounding boxes.
 
@@ -268,8 +269,8 @@ def estimate_lines_from_block(
             bbox=line_bbox,
             style=block.style,
             page=block.page,
-            source_data={"source": "split_from_block"},
-            spans=None
+            source_data={'source': 'split_from_block'},
+            spans=None,
         )
         block.lines.append(line)
     return block

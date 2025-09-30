@@ -1,6 +1,6 @@
 class ParsingException(Exception):
     """Exception raised for parsing errors.
-    
+
     This exception is raised when parsing document fails.
 
     Attributes
@@ -50,7 +50,7 @@ class ParsingException(Exception):
         str
             Formatted error message including service name and details
         """
-        base_message = f"Parsing failed for {self.service}: {self.message}"
+        base_message = f'Parsing failed for {self.service}: {self.message}'
         if self.details:
-            return f"{base_message}\nDetails: {self.details}"
+            return f'{base_message}\nDetails: {self.details}'
         return base_message

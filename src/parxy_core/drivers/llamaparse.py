@@ -1,6 +1,5 @@
 import io
-from typing import TYPE_CHECKING, Dict, Any, Optional, Union
-from logging import Logger
+from typing import TYPE_CHECKING
 
 # Type hints that will be available at runtime when llama_cloud_services is installed
 if TYPE_CHECKING:
@@ -51,7 +50,7 @@ class LlamaParseDriver(Driver):
         except ImportError as e:
             raise ImportError(
                 'LlamaParse dependencies not installed. '
-                "Install with 'pip install parxy-core[llama]'"
+                "Install with 'pip install parxy[llama]'"
             ) from e
 
         self.__client = LlamaParse(**self._config)
@@ -123,7 +122,7 @@ class LlamaParseDriver(Driver):
             # For all other errors, raise as parsing exception
             raise ParsingException(str(ex), self.__class__) from ex
 
-        if not res.error is None:
+        if res.error is not None:
             raise ParsingException(
                 res.error, self.__class__, res.model_dump(exclude={'file_name'})
             )
