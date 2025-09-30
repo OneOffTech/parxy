@@ -4,7 +4,6 @@ on:
   push:
     branches: 
       - "main"
-      - "ci-workflows"
   release:
     types: [created]
 
@@ -53,8 +52,10 @@ jobs:
     steps:
       - name: Install the latest version of uv and set the python version
         uses: astral-sh/setup-uv@v6.7.0
+        if: github.event_name == 'release'
         with:
           enable-cache: false
+          ignore-empty-workdir: true
           python-version: "3.12"
 
       - name: Download build
@@ -64,4 +65,5 @@ jobs:
           path: dist
 
       - name: Publish package distributions to PyPI
+        if: github.event_name == 'release'
         run: uv publish
