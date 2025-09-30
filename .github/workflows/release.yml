@@ -44,6 +44,7 @@ jobs:
 
   pypi:
     name: Upload release to PyPI
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     needs: build
     environment: pypi
