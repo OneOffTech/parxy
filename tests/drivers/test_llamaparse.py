@@ -10,9 +10,10 @@ from parxy_core.models import TextBlock, Page
 from parxy_core.drivers import LlamaParseDriver
 from parxy_core.models import LlamaParseConfig
 
+
 @pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") == "true",
-    reason="External service required, skipping tests in GitHub Actions."
+    os.getenv('GITHUB_ACTIONS') == 'true',
+    reason='External service required, skipping tests in GitHub Actions.',
 )
 class TestLlamaParseDriver:
     def __fixture_path(self, file: str) -> str:

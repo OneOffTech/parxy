@@ -10,9 +10,10 @@ from parxy_core.models import Page
 from parxy_core.drivers import LlmWhispererDriver
 from parxy_core.models import LlmWhispererConfig
 
+
 @pytest.mark.skipif(
-    os.getenv("GITHUB_ACTIONS") == "true",
-    reason="External service required, skipping tests in GitHub Actions."
+    os.getenv('GITHUB_ACTIONS') == 'true',
+    reason='External service required, skipping tests in GitHub Actions.',
 )
 class TestLlmWhispererDriver:
     def __fixture_path(self, file: str) -> str:
