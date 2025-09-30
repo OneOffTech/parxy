@@ -54,6 +54,7 @@ jobs:
       - name: Install the latest version of uv and set the python version
         uses: astral-sh/setup-uv@v6.7.0
         with:
+          enable-cache: false
           python-version: "3.12"
 
       - name: Download build
