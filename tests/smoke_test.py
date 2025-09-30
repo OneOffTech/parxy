@@ -8,6 +8,6 @@ from parxy_core.drivers import PyMuPdfDriver
 
 driver = Parxy.driver()
 if isinstance(driver, PyMuPdfDriver):
-    print("Smoke test succeeded")
+    print('Smoke test succeeded')
 else:
-    raise RuntimeError("Failed to obtain PyMuPdfDriver")
+    raise RuntimeError('Failed to obtain PyMuPdfDriver')
