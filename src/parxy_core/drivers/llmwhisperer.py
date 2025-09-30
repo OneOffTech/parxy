@@ -8,11 +8,9 @@ from typing import TYPE_CHECKING
 # Type hints that will be available at runtime when llm whisperer is installed
 if TYPE_CHECKING:
     from unstract.llmwhisperer import LLMWhispererClientV2
-    from unstract.llmwhisperer.client_v2 import LLMWhispererClientException
 else:
     # Placeholder types for when package is not installed
     LLMWhispererClientV2 = None
-    LLMWhispererClientException = None
 
 from parxy_core.drivers import Driver
 from parxy_core.exceptions import (
@@ -77,6 +75,9 @@ class LlmWhispererDriver(Driver):
         Document or dict
             A parsed `Document` in unified format, or the raw response dict if `raw=True`.
         """
+
+        from unstract.llmwhisperer.client_v2 import LLMWhispererClientException
+
         if level == 'block':
             level = 'page'  # Only page is really supported, added block as it is the default for Parxy
 
