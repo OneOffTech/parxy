@@ -76,7 +76,8 @@ class DriverFactory:
             level=self._config.logging_level,
             add_console_handler=True,
             add_file_handler=True if self._config.logging_file is not None else False,
-            file_path=self._config.logging_file)
+            file_path=self._config.logging_file,
+        )
 
         self._tracer = Tracer(
             enabled=self._config.tracing_enabled, path=self._config.tracing_directory
