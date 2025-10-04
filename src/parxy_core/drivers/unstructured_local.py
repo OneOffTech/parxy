@@ -87,14 +87,15 @@ class UnstructuredLocalDriver(Driver):
             file = ''
 
         try:
-            res = self.__client(filename=file, url=url, file=stream, **kwargs)
+            res = self.__client(filename=file, url=url, file=stream, languages=["eng"], **kwargs)
+            # languages=["eng"] is added to suppress the warning about no language detected that is printed to stdout https://github.com/Unstructured-IO/unstructured/blob/8fd07fd9f6702d0b3536ca52db8fb017def252b4/unstructured/partition/pdf.py#L332
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.__class__) from fex
         except Exception as wex:
             if isinstance(wex, FileNotFoundException):
                 raise wex
             raise ParsingException(
-                wex.error_message(), self.__class__, details=wex.value
+                ex.error_message if hasattr(wex, "error_message") else str(wex), self.__class__, details=wex.value
             ) from wex
 
         return unstructured_to_parxy(doc=res, level=level)

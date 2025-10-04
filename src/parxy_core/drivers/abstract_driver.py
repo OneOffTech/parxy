@@ -13,6 +13,7 @@ from parxy_core.exceptions import (
     AuthenticationException,
 )
 from parxy_core.tracing import Tracer
+from parxy_core.logging import create_null_logger
 
 
 class Driver(ABC):
@@ -57,8 +58,7 @@ class Driver(ABC):
         self._config = config
 
         if logger is None:
-            logger = Logger(name=self.__class__)
-            logger.addHandler(NullHandler())
+            logger = create_null_logger(name=f'parxy.{self.__class__.__name__}')
 
         if tracer is None:
             tracer = Tracer(enabled=False)
@@ -121,7 +121,7 @@ class Driver(ABC):
 
         except Exception as ex:
             self._logger.error(
-                'Error while parsing file',
+                f'Error while parsing file [{str(file)}]: {ex.message if hasattr(ex, "message") else str(ex)}',
                 file,
                 self.__class__.__name__,
                 exc_info=True,
