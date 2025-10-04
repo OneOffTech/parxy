@@ -28,16 +28,9 @@ def create_isolated_logger(
         Configured logger instance
     """
 
-    # Create logger with unique name
     logger = logging.getLogger(name)
-
-    # Prevent interference with other loggers
-    logger.propagate = propagate
-
-    # Set logging level
     logger.setLevel(level)
-
-    # Clear any existing handlers to avoid duplicates
+    logger.propagate = propagate
     logger.handlers.clear()
 
     # Default format if none provided
