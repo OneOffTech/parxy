@@ -119,7 +119,9 @@ class LlmWhispererDriver(Driver):
                 )  # from wex
             else:
                 raise ParsingException(
-                    wex.error_message(), self.SERVICE_NAME, details=wex.value
+                    ex.error_message if hasattr(wex, 'error_message') else str(wex),
+                    self.SERVICE_NAME,
+                    details=wex.value,
                 ) from wex
 
         doc = llmwhisperer_to_parxy(res)

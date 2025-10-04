@@ -15,6 +15,7 @@ from parxy_core.models import (
     UnstructuredLocalConfig,
     ParxyConfig,
 )
+from parxy_core.logging import create_isolated_logger
 from parxy_core.tracing import Tracer
 
 
@@ -70,20 +71,13 @@ class DriverFactory:
     def initialize(self, config: ParxyConfig) -> Self:
         self._config = config
 
-        logger = logging.getLogger('parxy')
-
-        formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-
-        if self._config.logging_file is not None:
-            handler = logger.addHandler(
-                logging.FileHandler(self._config.logging_file).setFormatter(formatter)
-            )
-        else:
-            handler = logger.addHandler(logging.StreamHandler().setFormatter(formatter))
-
-        logger.addHandler(handler)
-
-        self._logger = logger
+        self._logger = create_isolated_logger(
+            name='parxy',
+            level=self._config.logging_level,
+            add_console_handler=True,
+            add_file_handler=True if self._config.logging_file is not None else False,
+            file_path=self._config.logging_file,
+        )
 
         self._tracer = Tracer(
             enabled=self._config.tracing_enabled, path=self._config.tracing_directory
