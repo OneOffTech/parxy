@@ -114,6 +114,7 @@ class Document(BaseModel):
     pages: List[Page]
     outline: Optional[List[str]] = None
     source_data: Optional[dict[str, Any]] = None
+    parsing_metadata: Optional[dict[str, Any]] = None
 
     def isEmpty(self) -> bool:
         return all(page.isEmpty() for page in self.pages)
