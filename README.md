@@ -49,7 +49,47 @@ See [Supported services](#supported-services) for the list of included drivers a
 
 ### Use on the command line
 
-_to be documented_
+You can install Parxy globally using either pip or uv. If you prefer you can execute without installation using [uvx](https://docs.astral.sh/uv/guides/tools/).
+
+```bash
+# Using pip
+pip install parxy       # Basic installation
+pip install parxy[all]  # All drivers included
+
+# Using uv
+uv pip install parxy       # Basic installation
+uv pip install parxy[all]  # All drivers included
+
+# Using uvx
+uvx parxy       # Basic installation
+uvx parxy[all]  # All drivers included
+```
+
+Once installed, you can use the `parxy` command to:
+
+- `parxy parse`: Extract text content from documents with customizable granularity levels (page, block, line, span, or character)
+- `parxy markdown`: Convert documents into Markdown format, with optional combining of multiple documents
+- `parxy drivers`: List available document processing drivers
+- `parxy env`: Create a configuration file with default settings
+- `parxy docker`: Generate a Docker Compose configuration for self-hosted services
+
+Example usage:
+
+```bash
+# Extract text from a PDF using the default driver
+parxy parse document.pdf
+
+# Convert multiple PDFs to markdown and combine them
+parxy markdown --combine -o output/ doc1.pdf doc2.pdf
+
+# List available drivers
+parxy drivers
+
+# Create default configuration
+parxy env
+```
+
+See `parxy --help` for more information about available commands and options.
 
 ### Use as a library in your project
 
