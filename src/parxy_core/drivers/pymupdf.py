@@ -66,10 +66,6 @@ class PyMuPdfDriver(Driver):
         except pymupdf.FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.__class__) from fex
 
-        finally:
-            if not doc.is_closed:
-                doc.close()
-
         return res
 
 
