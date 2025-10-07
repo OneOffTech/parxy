@@ -151,15 +151,13 @@ In this tutorial you:
 
 You're now ready to try more advanced use cases, such as:
 
-* Using Parxy from the command line
+* [Using Parxy from the command line](using_cli.md)
 * Comparing different parsers on the same document
-* Extending Parxy with a custom driver
-
-👉 Continue to the next tutorial:
-[**Using Parxy from the CLI**](using_cli.md)
+* [Extending Parxy with a custom driver](../howto/add_new_parser.md)
 
 
-> 💡 **Tip:** If your parsed text seems incomplete or misaligned, try a different driver:
+> [!TIP]
+> If your parsed text seems incomplete or misaligned, try a different driver:
 >
 > ```python
 > doc = Parxy.parse("file.pdf", driver_name=Parxy.UNSTRUCTURED_LIBRARY)
