@@ -12,9 +12,6 @@ Parxy is a document processing gateway providing a unified interface to interact
 - Trace the execution for debug purposes
 - Pair with evaluation utilities to compare extraction results (coming soon)
 
-> [!NOTE]  
-> Parxy is being rewritten from the ground up. Versions 0.6 and below are preserved in the legacy branch for historical purposes. The main branch contains the rewrite, which focuses on library and CLI usage. If you still need the HTTP API, continue using version 0.6.
-
 **Requirements**
 
 - Python 3.12 or above (Python 3.10 and 3.11 are supported on best-effort).
@@ -49,15 +46,73 @@ See [Supported services](#supported-services) for the list of included drivers a
 
 ### Use on the command line
 
-_to be documented_
+You can install Parxy globally using either pip or uv. If you prefer you can execute without installation using [uvx](https://docs.astral.sh/uv/guides/tools/).
+
+```bash
+# Using pip
+pip install parxy       # Basic installation
+pip install parxy[all]  # All drivers included
+
+# Using uv
+uv pip install parxy       # Basic installation
+uv pip install parxy[all]  # All drivers included
+
+# Using uvx
+uvx parxy       # Basic installation
+uvx parxy[all]  # All drivers included
+```
+
+Once installed, you can use the `parxy` command to:
+
+- `parxy parse`: Extract text content from documents with customizable granularity levels (page, block, line, span, or character)
+- `parxy markdown`: Convert documents into Markdown format, with optional combining of multiple documents
+- `parxy drivers`: List available document processing drivers
+- `parxy env`: Create a configuration file with default settings
+- `parxy docker`: Generate a Docker Compose configuration for self-hosted services
+
+Example usage:
+
+```bash
+# Extract text from a PDF using the default driver
+parxy parse document.pdf
+
+# Convert multiple PDFs to markdown and combine them
+parxy markdown --combine -o output/ doc1.pdf doc2.pdf
+
+# List available drivers
+parxy drivers
+
+# Create default configuration
+parxy env
+```
+
+See [Using the Parxy Command Line Interface](./docs/tutorials/using_cli.md) or run `parxy --help` for more information about available commands and options.
 
 ### Use as a library in your project
 
-_to be documented_
-
 1. Install, all or the driver you need
 
+```bash
+# Install all supported drivers via Pip
+pip install parxy[all]
+
+# add to your project using when using UV
+uv add parxy[all]
+```
+
+You can also install [optional parser backends](#supported-services) depending on your needs (e.g. PyMuPDF, Unstructured, LlamaParse):
+
 2. Add the env variables when needed
+
+Some services require an api key. Parxy support those as environment variables. You can create a `.env` file in your project root.
+
+```bash
+# LlamaParse 
+PARXY_LLAMAPARSE_API_KEY=
+
+# Unstract LLMWhisperer
+PARXY_LLMWHISPERER_API_KEY=
+```
 
 3. Call the driver
 
@@ -65,12 +120,19 @@ _to be documented_
 ```python
 from parxy_core.facade import Parxy
 
-# Using the default driver, usually pymupdf
-Parxy.parse('path/to/document.pdf')
+# Parse a document using the default driver
+doc = Parxy.parse('path/to/document.pdf')
 
-# Using a specific driver
+# Print basic information
+print(f"Pages: {len(doc.pages)}")
+print(f"Title: {doc.metadata.title}")
+
+# Parse a document using a specific driver
 Parxy.driver(Parxy.LLAMAPARSE).parse('path/to/document.pdf')
 ```
+
+For more information take a look at our [Getting Started with Parxy tutorial](./docs/tutorials/getting_started.md).
+
 
 ## Supported services
 
@@ -118,9 +180,13 @@ Parxy.extend(name='my_parser', callback=lambda: CustomDriverExample())
 Parxy.driver('my_parser').parse('path/to/document.pdf')
 ```
 
+More on the live extension in our [How to Add a New Parser to Parxy](./docs/howto/add_new_parser.md) guide.
+
 ## Contributing
 
 Thank you for considering contributing to Parxy! You can find how to get started in our [contribution guide](./.github/CONTRIBUTING.md).
+
+Interested in adding a new parser to the supported list, take a look at our [How to Add a New Parser to Parxy](./docs/howto/add_new_parser.md) guide.
 
 ### Development
 
