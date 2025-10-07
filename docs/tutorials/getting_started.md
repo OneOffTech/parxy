@@ -76,21 +76,21 @@ Once parsed, the returned object is a [`Document`](../../src/parxy_core/models/m
 
 You can access its text content in different ways:
 
-##🔹 Get all text as a single string
+**Get all text as a single string**
 
 ```python
 text = doc.text()
 print(text[:500])  # print first 500 characters
 ```
 
-##🔹 Convert the document to Markdown
+**Convert the document to Markdown**
 
 ```python
 markdown = doc.markdown()
 print(markdown[:500])
 ```
 
-This method preserves headings, paragraphs, and lists (when available in the original document).
+This method preserves headings, paragraphs, and lists (when identified by the parser).
 
 
 ## Step 3 — Explore the Unified Document Model
