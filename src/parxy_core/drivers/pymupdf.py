@@ -54,9 +54,15 @@ class PyMuPdfDriver(Driver):
             )
 
         try:
+            pymupdf.TOOLS.mupdf_display_errors(False)
+            pymupdf.TOOLS.mupdf_display_warnings(False)
+
             doc = pymupdf.open(filename=file, stream=stream)
             res = pymupdf_to_parxy(doc=doc, level=level)
             doc.close()
+
+            res.parsing_metadata = {'warnings': pymupdf.TOOLS.mupdf_warnings()}
+
         except pymupdf.FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.__class__) from fex
 
