@@ -1,6 +1,7 @@
 import os
 import pytest
 import re
+from unittest.mock import Mock, patch, MagicMock
 
 from parxy_core.exceptions import (
     AuthenticationException,
@@ -109,3 +110,64 @@ class TestLandingAIADEDriver:
             stripped_text
             == 'This is the header\n\n\nThis is a test PDF to be used as input in unit\ntests\n\n\n## This is a heading 1\nThis is a paragraph below heading 1\n\n\n1'
         )
+
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_landingai_driver_tracing_span_created(self, mock_tracer):
+        # Setup mocks for the span context manager
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.info = Mock()
+
+        driver = LandingAIADEDriver(LandingAIConfig())
+        path = self.__fixture_path('empty-doc.pdf')
+        document = driver.parse(path, level='block')
+
+        # Verify tracer.span was called to create span
+        mock_tracer.span.assert_called()
+
+        # Find the 'document-processing' span call (from abstract_driver.parse)
+        span_calls = mock_tracer.span.call_args_list
+        doc_processing_call = [
+            c for c in span_calls if c[0][0] == 'document-processing'
+        ][0]
+
+        # Verify span attributes
+        assert doc_processing_call[1]['driver'] == 'LandingAIADEDriver'
+        assert doc_processing_call[1]['level'] == 'block'
+
+        # Verify counter was incremented via tracer.count
+        mock_tracer.count.assert_called_once()
+        count_call = mock_tracer.count.call_args
+        assert count_call[0][0] == 'documents.processed'
+        assert count_call[1]['driver'] == 'LandingAIADEDriver'
+
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_landingai_driver_tracing_exception_recorded(self, mock_tracer):
+        # Setup mocks
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.error = Mock()
+
+        driver = LandingAIADEDriver(LandingAIConfig())
+        path = self.__fixture_path('non-existing-file.pdf')
+
+        # Attempt to parse non-existing file
+        with pytest.raises(FileNotFoundException):
+            driver.parse(path)
+
+        # Verify error was logged via tracer.error
+        mock_tracer.error.assert_called_once()
+        error_call = mock_tracer.error.call_args
+        assert error_call[0][0] == 'Parsing failed'
+
+        # Verify documents.failures counter was incremented
+        mock_tracer.count.assert_called_once()
+        count_call = mock_tracer.count.call_args
+        assert count_call[0][0] == 'documents.failures'
+        assert count_call[1]['driver'] == 'LandingAIADEDriver'

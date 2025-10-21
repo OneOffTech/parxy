@@ -18,6 +18,7 @@ from parxy_core.models import (
     ParxyConfig,
 )
 from parxy_core.logging import create_isolated_logger
+from parxy_core.tracing import tracer
 
 
 class DriverFactory:
@@ -78,6 +79,14 @@ class DriverFactory:
             add_console_handler=True,
             add_file_handler=True if self._config.logging_file is not None else False,
             file_path=self._config.logging_file,
+        )
+
+        # Configure tracing with the configuration
+        tracer.configure(
+            config=self._config,
+            logger=self._logger,
+            verbose=self._config.logging_level < logging.INFO
+            or self._config.tracing.verbose,
         )
 
         return self
@@ -246,6 +255,16 @@ class DriverFactory:
             The created driver instances
         """
         return self.__drivers
+
+    def get_config(self) -> ParxyConfig:
+        """Get the Parxy configuration.
+
+        Returns
+        -------
+        ParxyConfig
+            The Parxy configuration
+        """
+        return self._config
 
     def get_supported_drivers(self) -> List[str]:
         """Get the list of supported drivers.

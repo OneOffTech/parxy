@@ -5,6 +5,7 @@ from typing import Optional, Dict, Callable
 
 from parxy_core.drivers import DriverFactory, Driver
 from parxy_core.models import Document
+from parxy_core.models.config import ParxyConfig
 
 
 class Parxy:
@@ -103,6 +104,17 @@ class Parxy:
             The requested driver instance
         """
         return cls._get_factory().get_supported_drivers()
+
+    @classmethod
+    def config(cls) -> ParxyConfig:
+        """Get the Parxy configuration.
+
+        Returns
+        -------
+        ParxyConfig
+            The Parxy configuration
+        """
+        return cls._get_factory().get_config()
 
     @classmethod
     def default_driver(cls) -> str:

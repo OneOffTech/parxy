@@ -1,10 +1,12 @@
+import base64
+import hashlib
 import io
-import requests
-import validators
-
-from typing import Self
 from abc import ABC, abstractmethod
 from logging import Logger
+from typing import Dict, Any, Self, Tuple, Optional
+
+import requests
+import validators
 
 from parxy_core.models import Document
 from parxy_core.exceptions import (
@@ -14,6 +16,7 @@ from parxy_core.exceptions import (
 )
 from parxy_core.models.config import BaseConfig
 from parxy_core.logging import create_null_logger
+from parxy_core.tracing import tracer
 
 
 class Driver(ABC):
@@ -43,12 +46,12 @@ class Driver(ABC):
 
     _logger: Logger
 
-    def __new__(cls, config: BaseConfig = None, logger: Logger = None):
+    def __new__(cls, config: Dict[str, Any] = [], logger: Logger = None):
         instance = super().__new__(cls)
         instance.__init__(config=config, logger=logger)
         return instance
 
-    def __init__(self, config: BaseConfig = None, logger: Logger = None):
+    def __init__(self, config: Dict[str, Any] = None, logger: Logger = None):
         self._config = config
 
         if logger is None:
@@ -96,28 +99,53 @@ class Driver(ABC):
 
         self._logger.debug(f'Parsing file using {self.__class__.__name__}', file)
 
-        self._validate_level(level)
+        with tracer.span(
+            'document-processing',
+            driver=self.__class__.__name__,
+            level=level,
+            **kwargs,
+        ) as span:
+            self._validate_level(level)
 
-        try:
-            document = self._handle(file=file, level=level, **kwargs)
+            try:
+                document = self._handle(file=file, level=level, **kwargs)
 
-            return document
+                # Increment the documents processed counter
+                tracer.count(
+                    'documents.processed',
+                    description='Total documents processed by each driver',
+                    unit='documents',
+                    driver=self.__class__.__name__,
+                )
 
-        except Exception as ex:
-            self._logger.error(
-                f'Error while parsing file [{str(file)}]: {ex.message if hasattr(ex, "message") else str(ex)}',
-                file,
-                self.__class__.__name__,
-                exc_info=True,
-            )
+                return document
 
-            if isinstance(ex, FileNotFoundError):
-                raise FileNotFoundException(ex, self.__class__) from ex
-            elif isinstance(
-                ex, (FileNotFoundException, AuthenticationException, ParsingException)
-            ):
-                raise ex
-            raise ParsingException(ex, self.__class__) from ex
+            except Exception as ex:
+                self._logger.error(
+                    'Error while parsing file',
+                    file,
+                    self.__class__.__name__,
+                    exc_info=True,
+                )
+
+                tracer.count(
+                    'documents.failures',
+                    description='Failure during document processing by each driver',
+                    unit='documents',
+                    driver=self.__class__.__name__,
+                )
+
+                if isinstance(ex, FileNotFoundError):
+                    parxy_exc = FileNotFoundException(ex, self.__class__)
+                elif isinstance(
+                    ex,
+                    (FileNotFoundException, AuthenticationException, ParsingException),
+                ):
+                    parxy_exc = ex
+                else:
+                    parxy_exc = ParsingException(ex, self.__class__)
+                tracer.error('Parsing failed', exception=str(parxy_exc))
+                raise parxy_exc from ex
 
     def _initialize_driver(self) -> Self:
         """Initialize driver internal logic. It is called automatically during class initialization"""
@@ -137,6 +165,46 @@ class Driver(ABC):
             raise ValueError(
                 f'The level is not supported. Expected [{self.supported_levels}], received [{level}].'
             )
+
+    def _trace_parse(self, filename: str, stream: bytes, **kwargs):
+        """Create a tracing span for parsing operations with common attributes.
+
+        This helper method reduces boilerplate in driver implementations by
+        automatically adding common tracing attributes like file hash and
+        driver information.
+
+        Parameters
+        ----------
+        filename : str
+            The name or path of the file being parsed
+        stream : bytes
+            The file content as bytes
+        **kwargs : dict
+            Additional keyword arguments passed to the driver
+
+        Returns
+        -------
+        ContextManager[Span]
+            A context manager yielding the OpenTelemetry span with common attributes pre-set
+
+        Example
+        -------
+        >>> def _handle(self, file, level='block', **kwargs):
+        ...     filename, stream = self.handle_file_input(file)
+        ...     with self._trace_parse(filename, stream, **kwargs) as span:
+        ...         result = do_parsing(stream)
+        ...         tracer.info('Parsing complete', pages=len(result))
+        ...     return convert_to_document(result)
+        """
+        return tracer.span(
+            'parsing',
+            file_name=filename,
+            # file_stream=base64.b64encode(stream).decode('utf-8'),
+            file_hash=self.hash_document(stream),
+            file_size=len(stream),
+            driver_class=self.__class__.__name__,
+            **kwargs,
+        )
 
     @classmethod
     def get_stream_from_url(cls, url: str) -> io.BytesIO:
@@ -162,3 +230,31 @@ class Driver(ABC):
             -1
         ]  # TODO: improve as some urls have accessible filename, others don't
         return file_input
+
+    @classmethod
+    def handle_file_input(
+        cls, file: str | io.BytesIO | bytes
+    ) -> Tuple[Optional[str], bytes]:
+        filename = ''
+        if isinstance(file, str):
+            filename = file
+            if validators.url(file) is True:
+                stream = Driver.get_stream_from_url(url=filename)
+            else:
+                with open(filename, 'rb') as filestream:
+                    stream = filestream.read()
+        elif isinstance(file, io.BytesIO):
+            stream = file.read()
+        elif isinstance(file, bytes):
+            stream = file
+        else:
+            raise ValueError(
+                'The given file is not supported. Expected `str` or bytes-like.'
+            )
+        return filename, stream
+
+    @classmethod
+    def hash_document(cls, stream: bytes) -> str:
+        h = hashlib.new('sha256')
+        h.update(stream)
+        return h.hexdigest()

@@ -17,3 +17,8 @@ wheels/
 
 # Env file
 .env
+
+# Local testing configuration
+
+compose.yaml
+otel-collector-config.yaml

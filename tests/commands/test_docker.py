@@ -50,6 +50,10 @@ def test_docker_command_creates_compose_file(runner, mock_compose_content):
         assert compose_file.exists()
         assert compose_file.read_text() == mock_compose_content
 
+        # Verify file was created with correct content
+        otel_file = Path.cwd() / 'otel-collector-config.yaml'
+        assert otel_file.exists()
+
 
 def test_docker_command_asks_for_confirmation_when_compose_exists(
     runner, mock_compose_content
@@ -71,7 +75,7 @@ def test_docker_command_asks_for_confirmation_when_compose_exists(
         # Clean ANSI codes and verify warning and abort messages
         cleaned_output = strip_ansi(result.stdout)
         assert 'compose.yaml file already exists' in cleaned_output
-        assert 'Leaving your file as is' in cleaned_output
+        assert 'Leaving compose.yaml as is' in cleaned_output
 
         # Verify original file was not modified
         assert compose_file.read_text() == "version: '3'\nservices: {}"

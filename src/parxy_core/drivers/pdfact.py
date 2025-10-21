@@ -1,4 +1,5 @@
 import io
+import json
 from typing import Optional
 
 import requests
@@ -17,6 +18,7 @@ from parxy_core.models import (
     Document,
 )
 from parxy_core.models.config import PdfActConfig
+from parxy_core.tracing.utils import trace_with_output
 
 
 class PdfActDriver(Driver):
@@ -63,8 +65,12 @@ class PdfActDriver(Driver):
         self,
         file: str | io.BytesIO | bytes,
         level: str = 'block',
+        **kwargs,
     ) -> Document:
-        res = self._request(file, level)
+        filename, stream = self.handle_file_input(file)
+        with self._trace_parse(filename, stream, **kwargs) as span:
+            res = self._request(file, level)
+            span.set_attribute('output.document', json.dumps(res))
 
         return pdfact_to_parxy(doc=res, level=level, filename=file)
 
@@ -118,6 +124,7 @@ class PdfActDriver(Driver):
         return self.__api_key is not None
 
 
+@trace_with_output('converting')
 def pdfact_to_parxy(doc: dict, level: str, filename: str) -> Document:
     """Convert a raw PdfAct response to a `Document`.
 
