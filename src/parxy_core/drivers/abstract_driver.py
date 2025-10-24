@@ -2,9 +2,9 @@ import io
 import requests
 import validators
 
-from typing import Dict, Any, Self
+from typing import Self
 from abc import ABC, abstractmethod
-from logging import Logger, NullHandler
+from logging import Logger
 
 from parxy_core.models import Document
 from parxy_core.exceptions import (
@@ -12,6 +12,7 @@ from parxy_core.exceptions import (
     ParsingException,
     AuthenticationException,
 )
+from parxy_core.models.config import BaseConfig
 from parxy_core.tracing import Tracer
 from parxy_core.logging import create_null_logger
 
@@ -30,7 +31,7 @@ class Driver(ABC):
     supported_levels : list of str
         The list of supported extraction levels (e.g., `page`, `block`, `line`, etc.).
 
-    _config : Dict[str, Any]
+    _config : BaseConfig
         The configuration dictionary with specific parameters for initializing the document processing driver.
 
     _logger : Logger
@@ -39,21 +40,21 @@ class Driver(ABC):
 
     supported_levels: list[str] = ['page', 'block']
 
-    _config: Dict[str, Any]
+    _config: BaseConfig
 
     _logger: Logger
 
     _tracer: Tracer
 
     def __new__(
-        cls, config: Dict[str, Any] = [], logger: Logger = None, tracer: Tracer = None
+        cls, config: BaseConfig = None, logger: Logger = None, tracer: Tracer = None
     ):
         instance = super().__new__(cls)
         instance.__init__(config=config, logger=logger, tracer=tracer)
         return instance
 
     def __init__(
-        self, config: Dict[str, Any] = [], logger: Logger = None, tracer: Tracer = None
+        self, config: BaseConfig = None, logger: Logger = None, tracer: Tracer = None
     ):
         self._config = config
 

@@ -17,12 +17,12 @@ class TestUnstructuredLocalDriver:
         return os.path.join(fixtures_dir, file)
 
     def test_unstructured_local_driver_can_be_created(self):
-        driver = UnstructuredLocalDriver(UnstructuredLocalConfig().model_dump())
+        driver = UnstructuredLocalDriver(UnstructuredLocalConfig())
 
         assert driver.supported_levels == ['page', 'block']
 
     def test_unstructured_local_driver_handle_not_existing_file(self):
-        driver = UnstructuredLocalDriver(UnstructuredLocalConfig().model_dump())
+        driver = UnstructuredLocalDriver(UnstructuredLocalConfig())
 
         path = self.__fixture_path('non-existing-file.pdf')
 
@@ -30,7 +30,7 @@ class TestUnstructuredLocalDriver:
             driver.parse(path)
 
     def test_unstructured_local_driver_unrecognized_level_handled(self):
-        driver = UnstructuredLocalDriver(UnstructuredLocalConfig().model_dump())
+        driver = UnstructuredLocalDriver(UnstructuredLocalConfig())
 
         path = self.__fixture_path('empty-doc.pdf')
 
@@ -41,7 +41,7 @@ class TestUnstructuredLocalDriver:
         assert '[custom]' in str(excinfo.value)
 
     def test_unstructured_local_driver_read_empty_document_page_level(self):
-        driver = UnstructuredLocalDriver(UnstructuredLocalConfig().model_dump())
+        driver = UnstructuredLocalDriver(UnstructuredLocalConfig())
 
         path = self.__fixture_path('empty-doc.pdf')
         document = driver.parse(path, level='page')
@@ -55,7 +55,7 @@ class TestUnstructuredLocalDriver:
         assert document.pages[0].text == '1'
 
     def test_unstructured_local_driver_read_document(self):
-        driver = UnstructuredLocalDriver(UnstructuredLocalConfig().model_dump())
+        driver = UnstructuredLocalDriver(UnstructuredLocalConfig())
 
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='page')

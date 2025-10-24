@@ -4,6 +4,8 @@ import validators
 
 from typing import TYPE_CHECKING
 
+from parxy_core.models.config import LlmWhispererConfig
+
 
 # Type hints that will be available at runtime when llm whisperer is installed
 if TYPE_CHECKING:
@@ -38,6 +40,8 @@ class LlmWhispererDriver(Driver):
 
     supported_levels: list[str] = ['page', 'block']
 
+    _config: LlmWhispererConfig
+
     def _initialize_driver(self):
         """Initialize the LlmWhisperer driver."""
 
@@ -49,7 +53,9 @@ class LlmWhispererDriver(Driver):
                 "Install with 'pip install parxy[llmwhisperer]'"
             ) from e
 
-        self.__client = LLMWhispererClientV2(**self._config)
+        self.__client = LLMWhispererClientV2(
+            api_key=self._config.api_key.get_secret_value(), **self._config.model_dump()
+        )
 
     def _handle(
         self,
@@ -119,7 +125,7 @@ class LlmWhispererDriver(Driver):
                 )  # from wex
             else:
                 raise ParsingException(
-                    ex.error_message if hasattr(wex, 'error_message') else str(wex),
+                    wex.error_message if hasattr(wex, 'error_message') else str(wex),
                     self.SERVICE_NAME,
                     details=wex.value,
                 ) from wex

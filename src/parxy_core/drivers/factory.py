@@ -163,7 +163,7 @@ class DriverFactory:
             A new instance
         """
         return PdfActDriver(
-            config=PdfActConfig().model_dump(), logger=self._logger, tracer=self._tracer
+            config=PdfActConfig(), logger=self._logger, tracer=self._tracer
         )
 
     def _create_llamaparse_driver(self) -> LlamaParseDriver:
@@ -175,7 +175,7 @@ class DriverFactory:
             A new instance
         """
         return LlamaParseDriver(
-            config=LlamaParseConfig().model_dump(),
+            config=LlamaParseConfig(),
             logger=self._logger,
             tracer=self._tracer,
         )
@@ -189,7 +189,7 @@ class DriverFactory:
             A new instance
         """
         return LlmWhispererDriver(
-            config=LlmWhispererConfig().model_dump(),
+            config=LlmWhispererConfig(),
             logger=self._logger,
             tracer=self._tracer,
         )
@@ -203,7 +203,7 @@ class DriverFactory:
             A new instance
         """
         return UnstructuredLocalDriver(
-            config=UnstructuredLocalConfig().model_dump(),
+            config=UnstructuredLocalConfig(),
             logger=self._logger,
             tracer=self._tracer,
         )

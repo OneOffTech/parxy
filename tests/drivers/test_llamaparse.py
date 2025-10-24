@@ -22,12 +22,12 @@ class TestLlamaParseDriver:
         return os.path.join(fixtures_dir, file)
 
     def test_llamaparse_driver_can_be_created(self):
-        driver = LlamaParseDriver(LlamaParseConfig().model_dump())
+        driver = LlamaParseDriver(LlamaParseConfig())
 
         assert driver.supported_levels == ['page', 'block']
 
     def test_llamaparse_driver_handle_invalid_key(self):
-        driver = LlamaParseDriver(LlamaParseConfig(api_key='invalid').model_dump())
+        driver = LlamaParseDriver(LlamaParseConfig(api_key='invalid'))
 
         path = self.__fixture_path('empty-doc.pdf')
 
@@ -35,7 +35,7 @@ class TestLlamaParseDriver:
             driver.parse(path)
 
     def test_llamaparse_driver_handle_not_existing_file(self):
-        driver = LlamaParseDriver(LlamaParseConfig().model_dump())
+        driver = LlamaParseDriver(LlamaParseConfig())
 
         path = self.__fixture_path('non-existing-file.pdf')
 
@@ -43,7 +43,7 @@ class TestLlamaParseDriver:
             driver.parse(path)
 
     def test_llamaparse_driver_unrecognized_level_handled(self):
-        driver = LlamaParseDriver(LlamaParseConfig().model_dump())
+        driver = LlamaParseDriver(LlamaParseConfig())
 
         path = self.__fixture_path('empty-doc.pdf')
 
@@ -54,7 +54,7 @@ class TestLlamaParseDriver:
         assert '[custom]' in str(excinfo.value)
 
     def test_llamaparse_driver_read_empty_document_block_level(self):
-        driver = LlamaParseDriver(LlamaParseConfig().model_dump())
+        driver = LlamaParseDriver(LlamaParseConfig())
 
         path = self.__fixture_path('empty-doc.pdf')
         document = driver.parse(path)
@@ -70,7 +70,7 @@ class TestLlamaParseDriver:
         assert isinstance(document.pages[0].blocks[0], TextBlock)
 
     def test_llamaparse_driver_read_empty_document_page_level(self):
-        driver = LlamaParseDriver(LlamaParseConfig().model_dump())
+        driver = LlamaParseDriver(LlamaParseConfig())
 
         path = self.__fixture_path('empty-doc.pdf')
         document = driver.parse(path, level='page')
@@ -84,7 +84,7 @@ class TestLlamaParseDriver:
         assert document.pages[0].text == '1'
 
     def test_llamaparse_driver_read_document(self):
-        driver = LlamaParseDriver(LlamaParseConfig().model_dump())
+        driver = LlamaParseDriver(LlamaParseConfig())
 
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='page')
@@ -97,5 +97,5 @@ class TestLlamaParseDriver:
         assert isinstance(document.pages[0], Page)
         assert (
             document.pages[0].text
-            == 'This is the header\n\nThis is a test PDF to be used as input in unit\ntests\n\nThis is a heading 1\nThis is a paragraph below heading 1\n\n\n1'
+            == 'This is the header\n\nThis is a test PDF to be used as input in unit\ntests\n\nThis is a heading 1\nThis is a paragraph below heading 1\n\n1'
         )

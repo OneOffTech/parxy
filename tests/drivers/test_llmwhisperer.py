@@ -22,12 +22,12 @@ class TestLlmWhispererDriver:
         return os.path.join(fixtures_dir, file)
 
     def test_llmwhisperer_driver_can_be_created(self):
-        driver = LlmWhispererDriver(LlmWhispererConfig().model_dump())
+        driver = LlmWhispererDriver(LlmWhispererConfig())
 
         assert driver.supported_levels == ['page', 'block']
 
     def test_llmwhisperer_driver_handle_invalid_key(self):
-        driver = LlmWhispererDriver(LlmWhispererConfig(api_key='invalid').model_dump())
+        driver = LlmWhispererDriver(LlmWhispererConfig(api_key='invalid'))
 
         path = self.__fixture_path('empty-doc.pdf')
 
@@ -35,7 +35,7 @@ class TestLlmWhispererDriver:
             driver.parse(path)
 
     def test_llmwhisperer_driver_handle_not_existing_file(self):
-        driver = LlmWhispererDriver(LlmWhispererConfig().model_dump())
+        driver = LlmWhispererDriver(LlmWhispererConfig())
 
         path = self.__fixture_path('non-existing-file.pdf')
 
@@ -43,7 +43,7 @@ class TestLlmWhispererDriver:
             driver.parse(path)
 
     def test_llmwhisperer_driver_unrecognized_level_handled(self):
-        driver = LlmWhispererDriver(LlmWhispererConfig().model_dump())
+        driver = LlmWhispererDriver(LlmWhispererConfig())
 
         path = self.__fixture_path('empty-doc.pdf')
 
@@ -54,7 +54,7 @@ class TestLlmWhispererDriver:
         assert '[custom]' in str(excinfo.value)
 
     def test_llmwhisperer_driver_read_empty_document_page_level(self):
-        driver = LlmWhispererDriver(LlmWhispererConfig().model_dump())
+        driver = LlmWhispererDriver(LlmWhispererConfig())
 
         path = self.__fixture_path('empty-doc.pdf')
         document = driver.parse(path, level='page')
@@ -68,7 +68,7 @@ class TestLlmWhispererDriver:
         assert document.pages[0].text == '\n\n1 \n'
 
     def test_llmwhisperer_driver_read_document(self):
-        driver = LlmWhispererDriver(LlmWhispererConfig().model_dump())
+        driver = LlmWhispererDriver(LlmWhispererConfig())
 
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='page')

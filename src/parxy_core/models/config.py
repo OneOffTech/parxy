@@ -4,8 +4,16 @@ import logging
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from pydantic import Field, SecretStr
 
-class ParxyConfig(BaseSettings):
+
+class BaseConfig(BaseSettings):
+    """Base class for configuration values."""
+
+    pass
+
+
+class ParxyConfig(BaseConfig):
     """Configuration values for Parxy. All env variables must start with parxy_"""
 
     default_driver: Optional[str] = 'pymupdf'
@@ -28,13 +36,13 @@ class ParxyConfig(BaseSettings):
     )
 
 
-class PdfActConfig(BaseSettings):
+class PdfActConfig(BaseConfig):
     """Configuration values for PdfAct service. All env variables must start with parxy_pdfact_"""
 
     base_url: str = 'http://localhost:4567/'
     """The base URL of the PdfAct API."""
 
-    api_key: Optional[str] = None
+    api_key: Optional[SecretStr] = Field(exclude=True, default=None)
     """The authentication key."""
 
     model_config = SettingsConfigDict(
@@ -42,13 +50,13 @@ class PdfActConfig(BaseSettings):
     )
 
 
-class LlamaParseConfig(BaseSettings):
+class LlamaParseConfig(BaseConfig):
     """Configuration values for LlamaParse service. All env variables must start with parxy_llamaparse_"""
 
     base_url: str = 'https://api.cloud.eu.llamaindex.ai'
     """The base URL of the Llama Parsing API."""
 
-    api_key: str = None
+    api_key: SecretStr = Field(exclude=True, default=None)
     """The authentication key"""
 
     organization_id: Optional[str] = None
@@ -82,13 +90,13 @@ class LlamaParseConfig(BaseSettings):
     )
 
 
-class LlmWhispererConfig(BaseSettings):
+class LlmWhispererConfig(BaseConfig):
     """Configuration values for LlmWhisperer service. All env variables must start with `parxy_llmwhisperer_`"""
 
     base_url: str = 'https://llmwhisperer-api.eu-west.unstract.com/api/v2'
     """The base URL of the LlmWhisperer API v2."""
 
-    api_key: Optional[str] = None
+    api_key: Optional[SecretStr] = Field(exclude=True, default=None)
     """The authentication key."""
 
     logging_level: Optional[str] = 'INFO'
@@ -99,7 +107,7 @@ class LlmWhispererConfig(BaseSettings):
     )
 
 
-class UnstructuredLocalConfig(BaseSettings):
+class UnstructuredLocalConfig(BaseConfig):
     """Configuration values for Unstructured library. All env variables must start with `parxy_unstructured_local_`"""
 
     model_config = SettingsConfigDict(
