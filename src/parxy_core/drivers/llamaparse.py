@@ -58,7 +58,8 @@ class LlamaParseDriver(Driver):
             ) from e
 
         self.__client = LlamaParse(
-            api_key=self._config.api_key.get_secret_value(), **self._config.model_dump()
+            api_key=self._config.api_key.get_secret_value() if self._config and self._config.api_key else None,
+            **self._config.model_dump() if self._config else {}
         )
 
     def _handle(
