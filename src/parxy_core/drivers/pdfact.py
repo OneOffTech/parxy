@@ -52,7 +52,11 @@ class PdfActDriver(Driver):
                 f'Invalid base URL. Expected URL, found [{self._config.base_url}].'
             )
 
-        self.__api_key = self._config.api_key.get_secret_value() if self._config and self._config.api_key else None
+        self.__api_key = (
+            self._config.api_key.get_secret_value()
+            if self._config and self._config.api_key
+            else None
+        )
         self.__base_url = self._config.base_url
 
     def _handle(
