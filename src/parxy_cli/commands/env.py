@@ -19,6 +19,8 @@ def env():
     try:
         example_content = files('parxy_cli').joinpath('.env.example').read_text()
 
+        print(os.path.abspath('.'))
+
         # Check if .env already exists
         if os.path.exists('.env'):
             console.print('[bold yellow]Warning: .env file already exists[/]')
