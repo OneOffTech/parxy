@@ -109,4 +109,4 @@ def parse(
     except Exception as e:
         console.print(f'[bold red]Error:[/] {str(e)}')
         console.print_exception(e)
-        sys.exit(1)
+        raise typer.Exit()
