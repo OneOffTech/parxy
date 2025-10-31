@@ -1,6 +1,5 @@
 import os
-import sys
-from typing import Optional, List
+from typing import Optional, List, Annotated
 
 import typer
 from rich.console import Console
@@ -15,50 +14,62 @@ console = Console()
 
 @app.command()
 def markdown(
-    files: List[str] = typer.Argument(
-        ...,
-        help='One or more files to parse',
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-    ),
-    driver: Optional[str] = typer.Option(
-        None,
-        '--driver',
-        '-d',
-        help='Driver to use for parsing (default: pymupdf or PARXY_DEFAULT_DRIVER)',
-    ),
-    level: Level = typer.Option(
-        Level.BLOCK,
-        '--level',
-        '-l',
-        help='Extraction level',
-    ),
-    env_file: Optional[str] = typer.Option(
-        '.env',
-        '--env',
-        '-e',
-        help='Path to .env file with configuration',
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-    ),
-    output_dir: Optional[str] = typer.Option(
-        None,
-        '--output',
-        '-o',
-        help='Directory to save markdown files. If not specified, output will be printed to console',
-        dir_okay=True,
-        file_okay=False,
-    ),
-    combine: bool = typer.Option(
-        False,
-        '--combine',
-        '-c',
-        help='Combine all documents into a single markdown file',
-    ),
+    files: Annotated[
+        List[str],
+        typer.Argument(
+            help='One or more files to parse',
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ],
+    driver: Annotated[
+        Optional[str],
+        typer.Option(
+            '--driver',
+            '-d',
+            help='Driver to use for parsing (default: pymupdf or PARXY_DEFAULT_DRIVER)',
+        ),
+    ] = None,
+    level: Annotated[
+        Level,
+        typer.Option(
+            '--level',
+            '-l',
+            help='Extraction level',
+        ),
+    ] = Level.BLOCK,
+    env_file: Annotated[
+        str,
+        typer.Option(
+            '--env',
+            '-e',
+            help='Path to .env file with configuration',
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ] = '.env',
+    output_dir: Annotated[
+        Optional[str],
+        typer.Option(
+            '--output',
+            '-o',
+            help='Directory to save markdown files. If not specified, output will be printed to console',
+            dir_okay=True,
+            file_okay=False,
+        ),
+    ] = None,
+    combine: Annotated[
+        bool,
+        typer.Option(
+            '--combine',
+            '-c',
+            help='Combine all documents into a single markdown file',
+        ),
+    ] = False,
 ):
     """Parse documents to Markdown."""
     try:

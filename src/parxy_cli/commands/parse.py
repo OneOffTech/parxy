@@ -2,7 +2,7 @@
 
 import os
 import sys
-from typing import Optional, List
+from typing import Optional, List, Annotated
 
 
 import typer
@@ -19,51 +19,63 @@ console = Console()
 
 @app.command()
 def parse(
-    files: List[str] = typer.Argument(
-        ...,
-        help='One or more files to parse',
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-    ),
-    driver: Optional[str] = typer.Option(
-        None,
-        '--driver',
-        '-d',
-        help='Driver to use for parsing (default: pymupdf or PARXY_DEFAULT_DRIVER)',
-    ),
-    level: Level = typer.Option(
-        Level.BLOCK,
-        '--level',
-        '-l',
-        help='Extraction level',
-    ),
-    env_file: Optional[str] = typer.Option(
-        '.env',
-        '--env',
-        '-e',
-        help='Path to .env file with configuration',
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-    ),
-    preview: Optional[int] = typer.Option(
-        None,
-        '--preview',
-        help='Output a preview of the extracted text for each document. Specify the number of characters to preview',
-        min=1,
-        max=6000,
-    ),
-    output_dir: Optional[str] = typer.Option(
-        None,
-        '--output',
-        '-o',
-        help='Directory to save output files. If not specified, output will be printed to console',
-        dir_okay=True,
-        file_okay=False,
-    ),
+    files: Annotated[
+        List[str],
+        typer.Argument(
+            help='One or more files to parse',
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ],
+    driver: Annotated[
+        Optional[str],
+        typer.Option(
+            '--driver',
+            '-d',
+            help='Driver to use for parsing (default: pymupdf or PARXY_DEFAULT_DRIVER)',
+        ),
+    ] = None,
+    level: Annotated[
+        Level,
+        typer.Option(
+            '--level',
+            '-l',
+            help='Extraction level',
+        ),
+    ] = Level.BLOCK,
+    env_file: Annotated[
+        str,
+        typer.Option(
+            '--env',
+            '-e',
+            help='Path to .env file with configuration',
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ] = '.env',
+    preview: Annotated[
+        Optional[int],
+        typer.Option(
+            '--preview',
+            help='Output a preview of the extracted text for each document. Specify the number of characters to preview',
+            min=1,
+            max=6000,
+        ),
+    ] = None,
+    output_dir: Annotated[
+        Optional[str],
+        typer.Option(
+            '--output',
+            '-o',
+            help='Directory to save output files. If not specified, output will be printed to console',
+            dir_okay=True,
+            file_okay=False,
+        ),
+    ] = None,
 ):
     """Parse documents."""
     try:
