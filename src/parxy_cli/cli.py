@@ -6,6 +6,7 @@ from typing import Optional, List
 
 import typer
 from typing_extensions import Annotated
+from importlib.metadata import version as metadata_version
 
 from rich import print
 from rich.console import Console
@@ -31,16 +32,17 @@ app = typer.Typer(
 console = Console()
 
 
-__version__ = '0.1.0'
-
-
 def version_callback(value: bool):
-    if value:
-        print('Parxy. Every document matters.\n')
-        print(f'Version: {__version__}')
+    try:
+        parxy_version = metadata_version('parxy')
+    except Exception:
+        parxy_version = 'Development version'
 
-        print('For more information on Parxy and its components run `parxy version`.')
-        raise typer.Exit()
+    print('Parxy. Every document matters.\n')
+    print(f'Version: {parxy_version}')
+
+    print('For more information on Parxy run `parxy version`.')
+    raise typer.Exit()
 
 
 @app.callback()
