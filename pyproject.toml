@@ -36,10 +36,15 @@ unstructured_local = [
     "unstructured[pdf]>=0.18.13",
 ]
 
+landingai = [
+    "landingai-ade>=0.15.1"
+]
+
 all = [
     "llama-cloud-services>=0.6.60",
     "llmwhisperer-client>=2.4.2",
     "unstructured[pdf]>=0.18.13",
+    "landingai-ade>=0.15.1",
 ]
 
 
@@ -68,7 +73,8 @@ addopts = [
 ]
 
 [tool.ruff.lint]
-select = ["T201"]
+extend-select = ["T201"]
+
 
 [tool.ruff.format]
 quote-style = "single"

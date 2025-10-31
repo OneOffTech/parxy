@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 import logging
 
@@ -47,6 +47,23 @@ class PdfActConfig(BaseConfig):
 
     model_config = SettingsConfigDict(
         env_prefix='parxy_pdfact_', env_file='.env', extra='ignore'
+    )
+
+
+class LandingAIConfig(BaseConfig):
+    """Configuration values for LandingAI service. All env variables must start with parxy_landingai_"""
+
+    api_key: Optional[SecretStr] = Field(exclude=True, default=None)
+    """The authentication key."""
+
+    environment: Literal['production', 'eu'] | None = 'eu'
+    """The environment to use. Production generally means https://api.va.landing.ai, while eu points to https://api.va.eu-west-1.landing.ai"""
+
+    base_url: Optional[str] = None
+    """The base URL of the Landing AI ADE API. When setting a custom base URL ensure environment is set to None"""
+
+    model_config = SettingsConfigDict(
+        env_prefix='parxy_landingai_', env_file='.env', extra='ignore'
     )
 
 

@@ -1,12 +1,18 @@
 from pydantic import SecretStr
 import pytest
 
-from parxy_core.models.config import LlmWhispererConfig, LlamaParseConfig, PdfActConfig
+from parxy_core.models.config import (
+    LlmWhispererConfig,
+    LlamaParseConfig,
+    PdfActConfig,
+    LandingAIConfig,
+)
 
 
 class TestConfig:
     @pytest.mark.parametrize(
-        'config_class', [LlmWhispererConfig, LlamaParseConfig, PdfActConfig]
+        'config_class',
+        [LlmWhispererConfig, LlamaParseConfig, PdfActConfig, LandingAIConfig],
     )
     def test_sensitive_field_hidden_when_dumping_config(self, config_class):
         """Test that api_key is properly masked in all configuration classes that use it."""

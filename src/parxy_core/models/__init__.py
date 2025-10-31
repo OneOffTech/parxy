@@ -21,6 +21,7 @@ from parxy_core.models.config import (
     ParxyConfig as ParxyConfig,
     PdfActConfig as PdfActConfig,
     LlamaParseConfig as LlamaParseConfig,
+    LandingAIConfig as LandingAIConfig,
     LlmWhispererConfig as LlmWhispererConfig,
     UnstructuredLocalConfig as UnstructuredLocalConfig,
 )

@@ -141,6 +141,7 @@ For more information take a look at our [Getting Started with Parxy tutorial](./
 | [**PyMuPDF**](https://pymupdf.readthedocs.io/en/latest/) | Live | - | ✅ | ✅ |
 | [**PdfAct**](https://github.com/data-house/pdfact) | Live | - | ✅ | ✅ |
 | [**Unstructured** library](https://docs.unstructured.io/open-source/introduction/overview) | Preview | `unstructured_local` | ✅ | ✅ |
+| [**Landing AI Agentic Document Extraction**](https://landing.ai/agentic-document-extraction) | Preview | `landingai` | ✅ | ✅ |
 | [**LlamaParse**](https://docs.cloud.llamaindex.ai/llamaparse/overview) | Preview | `llama` | ✅ | ✅ |
 | [**LLMWhisperer**](https://docs.unstract.com/llmwhisperer/index.html) | Preview | `llmwhisperer` | ✅ | ✅ |
 | [**Unstructured.io** cloud service](https://docs.unstructured.io/open-source/introduction/overview) | Planned |  |  |  |
