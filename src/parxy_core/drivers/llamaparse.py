@@ -1,6 +1,8 @@
 import io
 from typing import TYPE_CHECKING
 
+from parxy_core.models.config import LlamaParseConfig
+
 # Type hints that will be available at runtime when llama_cloud_services is installed
 if TYPE_CHECKING:
     from llama_cloud_services import LlamaParse
@@ -35,6 +37,8 @@ class LlamaParseDriver(Driver):
         The LlamaParse client instance.
     """
 
+    _config: LlamaParseConfig
+
     # supported_levels: list[str] = ["page", "block"]
 
     def _initialize_driver(self):
@@ -53,7 +57,12 @@ class LlamaParseDriver(Driver):
                 "Install with 'pip install parxy[llama]'"
             ) from e
 
-        self.__client = LlamaParse(**self._config)
+        self.__client = LlamaParse(
+            api_key=self._config.api_key.get_secret_value()
+            if self._config and self._config.api_key
+            else None,
+            **self._config.model_dump() if self._config else {},
+        )
 
     def _handle(
         self,

@@ -17,6 +17,7 @@ else:
 from parxy_core.drivers import Driver
 from parxy_core.exceptions import FileNotFoundException, ParsingException
 from parxy_core.models import Document, TextBlock, BoundingBox, Page, HierarchyLevel
+from parxy_core.models.config import UnstructuredLocalConfig
 
 
 class UnstructuredLocalDriver(Driver):
@@ -32,6 +33,8 @@ class UnstructuredLocalDriver(Driver):
     """
 
     supported_levels: list[str] = ['page', 'block']
+
+    _config: UnstructuredLocalConfig
 
     def _initialize_driver(self):
         """Initialize the Unstructured driver."""
@@ -97,7 +100,7 @@ class UnstructuredLocalDriver(Driver):
             if isinstance(wex, FileNotFoundException):
                 raise wex
             raise ParsingException(
-                ex.error_message if hasattr(wex, 'error_message') else str(wex),
+                wex.error_message if hasattr(wex, 'error_message') else str(wex),
                 self.__class__,
                 details=wex.value,
             ) from wex

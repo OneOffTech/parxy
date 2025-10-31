@@ -16,6 +16,7 @@ from parxy_core.models import (
     Page,
     Document,
 )
+from parxy_core.models.config import PdfActConfig
 
 
 class PdfActDriver(Driver):
@@ -36,6 +37,8 @@ class PdfActDriver(Driver):
 
     supported_levels: list[str] = ['page', 'paragraph', 'block']
 
+    _config: PdfActConfig
+
     ___base_url: str
 
     ___api_key: Optional[str] = None
@@ -43,14 +46,18 @@ class PdfActDriver(Driver):
     def _initialize_driver(self):
         """Initialize PdfAct driver."""
 
-        if validators.url(self._config.get('base_url'), simple_host=True) != True:
+        if validators.url(self._config.base_url, simple_host=True) != True:
             # simple_host=True allow validation of localhost URLs https://github.com/python-validators/validators/issues/285#issuecomment-1676336214
             raise ValueError(
-                f'Invalid base URL. Expected URL, found [{self._config.get("base_url")}].'
+                f'Invalid base URL. Expected URL, found [{self._config.base_url}].'
             )
 
-        self.__api_key = self._config.get('api_key')
-        self.__base_url = self._config.get('base_url')
+        self.__api_key = (
+            self._config.api_key.get_secret_value()
+            if self._config and self._config.api_key
+            else None
+        )
+        self.__base_url = self._config.base_url
 
     def _handle(
         self,
@@ -105,7 +112,7 @@ class PdfActDriver(Driver):
         return res.json()
 
     def getHost(self) -> str:
-        return self.__host
+        return self.__base_url
 
     def isSecured(self) -> bool:
         return self.__api_key is not None
