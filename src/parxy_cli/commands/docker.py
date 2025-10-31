@@ -1,7 +1,4 @@
-"""Command line interface for Parxy document processing."""
-
-import os
-import sys
+from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -23,17 +20,18 @@ def docker():
             files('parxy_cli').joinpath('compose.example.yaml').read_text()
         )
 
+        compose_file_path: Path = Path.cwd() / 'compose.yaml'
+
         # Check if compose.yaml already exists
-        if os.path.exists('compose.yaml'):
+        if compose_file_path.exists():
             console.print('[bold yellow]Warning: compose.yaml file already exists[/]')
             overwrite = typer.confirm('Do you want to overwrite it?', default=False)
             if not overwrite:
                 console.print('Aborted.')
-                return
+                raise typer.Exit()
 
         # Write the content to compose.yaml
-        with open('compose.yaml', 'w', encoding='utf-8') as f:
-            f.write(example_content)
+        compose_file_path.write_text(example_content)
 
         console.print('[green]Created compose.yaml file with default configuration[/]')
         console.print(
@@ -41,4 +39,4 @@ def docker():
         )
     except Exception as e:
         console.print(f'[bold red]Error creating compose.yaml file:[/] {str(e)}')
-        sys.exit(1)
+        raise typer.Exit(1)

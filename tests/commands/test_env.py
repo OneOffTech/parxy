@@ -72,9 +72,6 @@ def test_env_command_asks_for_confirmation_when_env_exists(
         # Run command and simulate "no" to overwrite prompt
         result = runner.invoke(app, input='n\n')
 
-        # Command should complete successfully
-        # assert result.exit_code == 0
-
         # Clean ANSI codes and verify warning and abort messages
         cleaned_output = strip_ansi(result.stdout)
         assert 'Warning: .env file already exists' in cleaned_output
