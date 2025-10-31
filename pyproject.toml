@@ -67,6 +67,9 @@ addopts = [
     "--import-mode=importlib",
 ]
 
+[tool.ruff.lint]
+select = ["T201"]
+
 [tool.ruff.format]
 quote-style = "single"
 docstring-code-format = true
