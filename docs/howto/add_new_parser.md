@@ -29,7 +29,7 @@ Your driver can:
 
 * Read files from disk, bytes, or URLs
 * Support specific extraction levels (page, block, line, span, character)
-* Leverage logging (`self._logger`) and tracing (`self._tracer`) for diagnostics
+* Leverage logging (`self._logger`) for diagnostics
 
 
 ### 2. Register the Driver Dynamically
@@ -91,7 +91,6 @@ Parxy automatically wraps low-level exceptions into these structured types when 
 ## Best Practices
 
 * Use `self._logger` for debug or error messages — Parxy sets it up automatically.
-* Trace content and metadata via `self._tracer` if you want your driver's operations logged in Parxy's tracing system.
 * Keep `_handle` atomic and stateless — initialization should happen in `_initialize_driver()` if needed.
 * Always validate the `level` before parsing files.
 

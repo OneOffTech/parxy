@@ -33,7 +33,6 @@ Parxy is a document processing gateway that provides:
    - `models/`: Data structures and config
    - `exceptions/`: Error handling
    - `logging/`: Debug support
-   - `tracing/`: Process tracking
 
 2. **CLI Tool (`parxy_cli/`)**
    - Document processing commands
@@ -108,7 +107,7 @@ Always use appropriate exceptions:
 2. **Configuration**
    - Copy `.env.example` to `.env`
    - Configure required services
-   - Set logging/tracing as needed
+   - Set logging as needed
 
 ## Need Help?
 

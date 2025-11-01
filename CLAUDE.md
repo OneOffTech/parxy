@@ -106,7 +106,6 @@ The `Parxy` class (src/parxy_core/facade/parxy.py) provides the main public inte
   - `facade/` - Public API (`Parxy` class)
   - `models/` - Document models and configuration (models.py, config.py)
   - `exceptions/` - Custom exceptions
-  - `tracing/` - Execution tracing for debugging
   - `logging/` - Logger setup
 - `src/parxy_cli/` - CLI implementation
   - `commands/` - CLI command implementations
@@ -212,8 +211,6 @@ Core configuration (prefix: `parxy_`):
 - `PARXY_DEFAULT_DRIVER` - Default driver name (default: 'pymupdf')
 - `PARXY_LOGGING_LEVEL` - Logging level (default: INFO)
 - `PARXY_LOGGING_FILE` - Log file path (default: None)
-- `PARXY_TRACING_ENABLED` - Enable tracing (default: false)
-- `PARXY_TRACING_DIRECTORY` - Trace output dir (default: 'storage/traces')
 
 Driver-specific (see config.py for each driver):
 - `PARXY_LLAMAPARSE_API_KEY`
@@ -232,13 +229,11 @@ Driver-specific (see config.py for each driver):
 
 3. **Logging**: Use `self._logger` (passed to driver automatically)
 
-4. **Tracing**: Results are automatically traced when `_handle()` returns
+4. **Configuration**: Access via `self._config` in driver implementation
 
-5. **Configuration**: Access via `self._config` in driver implementation
+5. **PyMuPDF Warnings**: Collect warnings and add to `parsing_metadata` (see pymupdf.py:64)
 
-6. **PyMuPDF Warnings**: Collect warnings and add to `parsing_metadata` (see pymupdf.py:64)
-
-7. **Hierarchy Levels**: Use `HierarchyLevel` enum to conditionally populate model fields based on requested level (see pymupdf.py:200-206)
+6. **Hierarchy Levels**: Use `HierarchyLevel` enum to conditionally populate model fields based on requested level (see pymupdf.py:200-206)
 
 ## Build System
 

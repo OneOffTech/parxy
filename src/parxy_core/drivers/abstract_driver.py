@@ -13,7 +13,6 @@ from parxy_core.exceptions import (
     AuthenticationException,
 )
 from parxy_core.models.config import BaseConfig
-from parxy_core.tracing import Tracer
 from parxy_core.logging import create_null_logger
 
 
@@ -44,28 +43,18 @@ class Driver(ABC):
 
     _logger: Logger
 
-    _tracer: Tracer
-
-    def __new__(
-        cls, config: BaseConfig = None, logger: Logger = None, tracer: Tracer = None
-    ):
+    def __new__(cls, config: BaseConfig = None, logger: Logger = None):
         instance = super().__new__(cls)
-        instance.__init__(config=config, logger=logger, tracer=tracer)
+        instance.__init__(config=config, logger=logger)
         return instance
 
-    def __init__(
-        self, config: BaseConfig = None, logger: Logger = None, tracer: Tracer = None
-    ):
+    def __init__(self, config: BaseConfig = None, logger: Logger = None):
         self._config = config
 
         if logger is None:
             logger = create_null_logger(name=f'parxy.{self.__class__.__name__}')
 
-        if tracer is None:
-            tracer = Tracer(enabled=False)
-
         self._logger = logger
-        self._tracer = tracer
         self._initialize_driver()
 
     def parse(
@@ -111,12 +100,6 @@ class Driver(ABC):
 
         try:
             document = self._handle(file=file, level=level, **kwargs)
-
-            self._tracer.trace(
-                content=document,
-                driver=self.__class__.__name__,
-                file_source=file,
-            )
 
             return document
 
