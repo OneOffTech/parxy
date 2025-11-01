@@ -18,7 +18,6 @@ from parxy_core.models import (
     ParxyConfig,
 )
 from parxy_core.logging import create_isolated_logger
-from parxy_core.tracing import Tracer
 
 
 class DriverFactory:
@@ -79,10 +78,6 @@ class DriverFactory:
             add_console_handler=True,
             add_file_handler=True if self._config.logging_file is not None else False,
             file_path=self._config.logging_file,
-        )
-
-        self._tracer = Tracer(
-            enabled=self._config.tracing_enabled, path=self._config.tracing_directory
         )
 
         return self
@@ -154,7 +149,7 @@ class DriverFactory:
         PyMuPdfDriver
             A new instance
         """
-        return PyMuPdfDriver(logger=self._logger, tracer=self._tracer)
+        return PyMuPdfDriver(logger=self._logger)
 
     def _create_pdfact_driver(self) -> PdfActDriver:
         """Create a PdfAct Driver instance.
@@ -165,7 +160,7 @@ class DriverFactory:
             A new instance
         """
         return PdfActDriver(
-            config=PdfActConfig(), logger=self._logger, tracer=self._tracer
+            config=PdfActConfig(), logger=self._logger
         )
 
     def _create_llamaparse_driver(self) -> LlamaParseDriver:
@@ -179,7 +174,6 @@ class DriverFactory:
         return LlamaParseDriver(
             config=LlamaParseConfig(),
             logger=self._logger,
-            tracer=self._tracer,
         )
 
     def _create_llmwhisperer_driver(self) -> LlmWhispererDriver:
@@ -193,7 +187,6 @@ class DriverFactory:
         return LlmWhispererDriver(
             config=LlmWhispererConfig(),
             logger=self._logger,
-            tracer=self._tracer,
         )
 
     def _create_unstructured_local_driver(self) -> UnstructuredLocalDriver:
@@ -207,7 +200,6 @@ class DriverFactory:
         return UnstructuredLocalDriver(
             config=UnstructuredLocalConfig(),
             logger=self._logger,
-            tracer=self._tracer,
         )
 
     def _create_landingai_driver(self) -> LandingAIADEDriver:
@@ -221,7 +213,6 @@ class DriverFactory:
         return LandingAIADEDriver(
             config=LandingAIConfig(),
             logger=self._logger,
-            tracer=self._tracer,
         )
 
     def extend(self, name: str, callback: Callable[[], Driver]) -> 'DriverFactory':
@@ -242,7 +233,7 @@ class DriverFactory:
         if name in self.__custom_creators:
             raise ValueError(f'Driver [{name}] already registered.')
 
-        # TODO: pass logger and tracer to callback
+        # TODO: pass logger to callback
         self.__custom_creators[name] = callback
 
         return self

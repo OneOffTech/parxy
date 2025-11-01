@@ -25,12 +25,6 @@ class ParxyConfig(BaseConfig):
     logging_file: Optional[str] = None
     """The log file path. Specify to save logs to file. Default "None"."""
 
-    tracing_enabled: Optional[bool] = False
-    """Set to true to enable saving raw document processing drivers output to file. Default false."""
-
-    tracing_directory: Optional[str] = 'storage/traces'
-    """The directory to save trace files. Default "storage/traces"."""
-
     model_config = SettingsConfigDict(
         env_prefix='parxy_', env_file='.env', extra='ignore'
     )
