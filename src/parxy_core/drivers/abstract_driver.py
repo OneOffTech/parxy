@@ -43,16 +43,12 @@ class Driver(ABC):
 
     _logger: Logger
 
-    def __new__(
-        cls, config: BaseConfig = None, logger: Logger = None
-    ):
+    def __new__(cls, config: BaseConfig = None, logger: Logger = None):
         instance = super().__new__(cls)
         instance.__init__(config=config, logger=logger)
         return instance
 
-    def __init__(
-        self, config: BaseConfig = None, logger: Logger = None
-    ):
+    def __init__(self, config: BaseConfig = None, logger: Logger = None):
         self._config = config
 
         if logger is None:

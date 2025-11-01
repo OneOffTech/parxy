@@ -159,9 +159,7 @@ class DriverFactory:
         PdfActDriver
             A new instance
         """
-        return PdfActDriver(
-            config=PdfActConfig(), logger=self._logger
-        )
+        return PdfActDriver(config=PdfActConfig(), logger=self._logger)
 
     def _create_llamaparse_driver(self) -> LlamaParseDriver:
         """Create a LlamaParse Driver instance.
