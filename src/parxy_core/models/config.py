@@ -25,6 +25,9 @@ class ParxyConfig(BaseConfig):
     logging_file: Optional[str] = None
     """The log file path. Specify to save logs to file. Default "None"."""
 
+    theme: Optional[Literal['light', 'dark']] = None
+    """The console theme to use. Set to 'light' for light terminals or 'dark' for dark terminals. Default None (auto-detect)."""
+
     model_config = SettingsConfigDict(
         env_prefix='parxy_', env_file='.env', extra='ignore'
     )

@@ -3,6 +3,8 @@ Flexoki-themed Console class for Rich library
 Uses the warm, inky Flexoki color scheme by Steph Ango
 """
 
+import os
+import sys
 from rich.console import Console as RichConsole
 from rich.theme import Theme
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
@@ -10,15 +12,18 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from contextlib import contextmanager
 
+from parxy_core.models.config import ParxyConfig
+
 
 class Console:
     """
     A themed console wrapper using the Flexoki color scheme.
     Provides methods for styled output, progress bars, and spinners.
+    Automatically detects terminal background and uses appropriate theme.
     """
-    
-    # Flexoki color palette (dark theme optimized)
-    COLORS = {
+
+    # Flexoki color palette (dark theme - 400 series)
+    COLORS_DARK = {
         # Base colors
         'bg': '#1C1B1A',
         'bg_2': '#282726',
@@ -28,7 +33,7 @@ class Console:
         'tx_3': '#B7B5AC',
         'tx_2': '#CECDC3',
         'tx': '#E6E4D9',
-        
+
         # Accent colors (400 series for dark theme)
         'red': '#D14D41',
         'orange': '#DA702C',
@@ -39,26 +44,122 @@ class Console:
         'purple': '#8B7EC8',
         'magenta': '#CE5D97',
     }
-    
-    def __init__(self):
-        """Initialize the console with Flexoki theme."""
+
+    # Flexoki color palette (light theme - 600 series)
+    COLORS_LIGHT = {
+        # Base colors
+        'bg': '#FFFCF0',
+        'bg_2': '#F2F0E5',
+        'ui': '#E6E4D9',
+        'ui_2': '#DAD8CE',
+        'ui_3': '#B7B5AC',
+        'tx_3': '#6F6E69',
+        'tx_2': '#403E3C',
+        'tx': '#100F0F',
+
+        # Accent colors (600 series for light theme)
+        'red': '#AF3029',
+        'orange': '#BC5215',
+        'yellow': '#AD8301',
+        'green': '#66800B',
+        'cyan': '#24837B',
+        'blue': '#205EA6',
+        'purple': '#5E409D',
+        'magenta': '#A02F6F',
+    }
+
+    @staticmethod
+    def detect_terminal_background(config: ParxyConfig = None):
+        """
+        Detect if the terminal has a light or dark background.
+        Returns 'dark' or 'light'.
+
+        Detection methods:
+        1. Check ParxyConfig theme setting
+        2. Check COLORFGBG environment variable
+        3. Check TERM_PROGRAM for known terminals
+        4. Default to 'dark' if uncertain
+
+        Args:
+            config: Optional ParxyConfig instance. If provided and theme is set, uses that value.
+        """
+        # Method 1: Check ParxyConfig theme setting (highest priority)
+        if config is not None and config.theme is not None:
+            return config.theme
+
+        # Method 2: Check COLORFGBG environment variable
+        # Format is typically "foreground;background" where background color:
+        # 0-6 or 8 = dark background, 7 or 15 = light background
+        colorfgbg = os.environ.get('COLORFGBG', '')
+        if colorfgbg:
+            parts = colorfgbg.split(';')
+            if len(parts) >= 2:
+                try:
+                    bg_color = int(parts[-1])
+                    # Background colors 0-6, 8 are dark; 7, 15 are light
+                    if bg_color in (7, 15):
+                        return 'light'
+                    elif bg_color in (0, 1, 2, 3, 4, 5, 6, 8):
+                        return 'dark'
+                except ValueError:
+                    pass
+
+        # Method 3: Check for Windows Terminal light theme
+        if sys.platform == 'win32':
+            wt_profile = os.environ.get('WT_PROFILE_ID', '')
+            # Windows Terminal doesn't expose theme directly, but we can check registry
+            # For now, we'll default based on common settings
+            pass
+
+        # Method 4: Check TERM_PROGRAM for known defaults
+        term_program = os.environ.get('TERM_PROGRAM', '').lower()
+        if term_program in ('apple_terminal', 'iterm.app'):
+            # These often default to light themes
+            # But we can't be certain, so we won't make assumptions
+            pass
+
+        # Default to dark theme (most terminal defaults)
+        return 'dark'
+
+    def __init__(self, theme_mode=None, config: ParxyConfig = None):
+        """
+        Initialize the console with Flexoki theme.
+
+        Args:
+            theme_mode: Optional theme mode ('light' or 'dark').
+                       If None, auto-detects based on config or terminal background.
+            config: Optional ParxyConfig instance for loading theme from configuration.
+        """
+        # Load config if not provided
+        if config is None:
+            config = ParxyConfig()
+
+        # Detect or use specified theme
+        if theme_mode is None:
+            theme_mode = self.detect_terminal_background(config)
+
+        # Select appropriate color palette
+        self.theme_mode = theme_mode
+        self.COLORS = self.COLORS_LIGHT if theme_mode == 'light' else self.COLORS_DARK
+
+        # Build theme with selected colors
         self.theme = Theme({
             # Base text styles
             "default": f"{self.COLORS['tx']}",
             "muted": f"{self.COLORS['tx_2']}",
             "faint": f"{self.COLORS['tx_3']}",
-            
+
             # Message types
             "success": f"bold {self.COLORS['green']}",
             "info": f"{self.COLORS['cyan']}",
             "warning": f"bold {self.COLORS['orange']}",
             "error": f"bold {self.COLORS['red']}",
-            
+
             # Semantic colors
             "highlight": f"bold {self.COLORS['yellow']}",
             "link": f"underline {self.COLORS['blue']}",
             "code": f"{self.COLORS['purple']}",
-            
+
             # Progress/spinner colors
             "progress.description": f"{self.COLORS['tx_2']}",
             "progress.percentage": f"{self.COLORS['cyan']}",
@@ -66,7 +167,7 @@ class Console:
             "bar.finished": f"{self.COLORS['cyan']}",
             "bar.pulse": f"{self.COLORS['blue']}",
         })
-        
+
         self.console = RichConsole(theme=self.theme)
     
     def print(self, *args, style=None, **kwargs):
@@ -219,42 +320,64 @@ class Console:
     def clear(self):
         """Clear the console."""
         self.console.clear()
-    
+
     def newline(self, count: int = 1):
         """Print newlines."""
         self.console.print("\n" * (count - 1))
+
+    def get_theme_mode(self):
+        """Get the current theme mode ('light' or 'dark')."""
+        return self.theme_mode
 
 
 # Example usage
 if __name__ == "__main__":
     import time
-    
+
+    # Console automatically detects terminal background
     console = Console()
-    
+
+    console.info(f"Using {console.get_theme_mode()} theme")
+    console.newline()
+
+    # You can also force a specific theme in code:
+    # console_light = Console(theme_mode='light')
+    # console_dark = Console(theme_mode='dark')
+
+    # Or set PARXY_THEME environment variable in .env file or shell:
+    # PARXY_THEME=light
+    # PARXY_THEME=dark
+
+    # Or pass a custom config:
+    # from parxy_core.models.config import ParxyConfig
+    # config = ParxyConfig(theme='light')
+    # console_custom = Console(config=config)
+
     # Basic messages
     console.success("Operation completed successfully!")
     console.info("This is an informational message")
     console.warning("This is a warning message")
     console.error("This is an error message")
     console.newline()
-    
+
     # Different text styles
     console.print("This is [highlight]highlighted[/highlight] text")
     console.muted("This is muted text")
     console.faint("This is faint text")
     console.newline()
-    
+
     # Markdown
     console.markdown("""
 # Flexoki Console
 This console uses the **Flexoki** color scheme for a warm, inky feel.
 
-- Feature 1: Themed messages
-- Feature 2: Progress bars
-- Feature 3: Spinners
+- Feature 1: Auto-detects light/dark terminal background
+- Feature 2: Themed messages (success, info, warning, error)
+- Feature 3: Progress bars and spinners
+- Feature 4: Shimmer effect for long operations
     """)
     console.newline()
-    
+
     # Panel
     console.panel(
         "This is content inside a panel with a nice border",
@@ -262,18 +385,24 @@ This console uses the **Flexoki** color scheme for a warm, inky feel.
         style="info"
     )
     console.newline()
-    
+
     # Progress bar
     with console.progress("Processing items") as progress:
         task = progress.add_task("", total=50)
         for i in range(50):
             time.sleep(0.02)
             progress.update(task, advance=1)
-    
+
     console.newline()
-    
+
     # Spinner
     with console.spinner("Fetching data from API..."):
         time.sleep(2)
-    
+
+    console.newline()
+
+    # Shimmer
+    with console.shimmer("Fetching data from API..."):
+        time.sleep(2)
+
     console.success("All demonstrations complete!")
