@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import typer
-from rich.console import Console
+
+from parxy_cli.console.console import Console
 
 app = typer.Typer()
 
@@ -24,19 +25,17 @@ def docker():
 
         # Check if compose.yaml already exists
         if compose_file_path.exists():
-            console.print('[bold yellow]Warning: compose.yaml file already exists[/]')
+            console.warning('compose.yaml file already exists')
             overwrite = typer.confirm('Do you want to overwrite it?', default=False)
             if not overwrite:
-                console.print('Aborted.')
+                console.muted('Aborted.')
                 raise typer.Exit()
 
         # Write the content to compose.yaml
         compose_file_path.write_text(example_content)
 
-        console.print('[green]Created compose.yaml file with default configuration[/]')
-        console.print(
-            'Execute `docker compose pull` and `docker compose up -d` to start the services.'
-        )
+        console.success('Created compose.yaml file with default configuration')
+        console.muted('Execute `docker compose pull` and `docker compose up -d` to start the services.')
     except Exception as e:
-        console.print(f'[bold red]Error creating compose.yaml file:[/] {str(e)}')
+        console.error(f'Error creating compose.yaml file: {str(e)}')
         raise typer.Exit(1)

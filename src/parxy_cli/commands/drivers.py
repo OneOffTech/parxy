@@ -1,8 +1,7 @@
 import typer
-from rich import print
-from rich.console import Console
 
 from parxy_core.facade import Parxy
+from parxy_cli.console.console import Console
 
 app = typer.Typer()
 
@@ -15,5 +14,8 @@ def drivers():
 
     drivers = Parxy.drivers()
 
+    console.info('Available drivers:')
+    console.newline()
+
     for driver_name in drivers:
-        print(driver_name)
+        console.print(f'  • {driver_name}', style='muted')

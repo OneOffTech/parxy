@@ -4,10 +4,13 @@ import sys
 import platform
 from importlib.metadata import version as metadata_version
 import typer
-from rich import print
+
+from parxy_cli.console.console import Console
 
 
 app = typer.Typer()
+
+console = Console()
 
 
 @app.command()
@@ -18,11 +21,11 @@ def version():
     except Exception:
         parxy_version = 'Development version'
 
-    print('Parxy. Every document matters.\n')
+    console.highlight('Parxy. Every document matters.')
+    console.newline()
 
-    print(f'Version: {parxy_version}')
-
-    print(
-        f'Python Version {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}'
+    console.info(f'Version: {parxy_version}')
+    console.muted(
+        f'Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}'
     )
-    print(f'Platform {platform.platform()}')
+    console.muted(f'Platform: {platform.platform()}')
