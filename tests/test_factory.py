@@ -8,6 +8,7 @@ from parxy_core.drivers import PdfActDriver
 from parxy_core.drivers import LlamaParseDriver
 from parxy_core.drivers import LlmWhispererDriver
 from parxy_core.drivers import UnstructuredLocalDriver
+from parxy_core.drivers.landingai import LandingAIADEDriver
 from parxy_core.models import Document
 from parxy_core.models import ParxyConfig
 
@@ -114,3 +115,12 @@ class TestDriverFactory:
         DriverFactory.reset()
         driver = DriverFactory.build().driver('unstructured_local')
         assert isinstance(driver, UnstructuredLocalDriver)
+
+    @pytest.mark.skipif(
+        os.getenv('GITHUB_ACTIONS') == 'true',
+        reason='External service required, skipping tests in GitHub Actions.',
+    )
+    def test_landingai_driver_instantiated(self):
+        DriverFactory.reset()
+        driver = DriverFactory.build().driver('landingai')
+        assert isinstance(driver, LandingAIADEDriver)

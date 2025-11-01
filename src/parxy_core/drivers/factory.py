@@ -3,6 +3,7 @@ import logging
 from typing import Dict, Optional, Callable, Self, List
 
 from parxy_core.drivers.abstract_driver import Driver
+from parxy_core.drivers.landingai import LandingAIADEDriver
 from parxy_core.drivers.pymupdf import PyMuPdfDriver
 from parxy_core.drivers.pdfact import PdfActDriver
 from parxy_core.drivers.llamaparse import LlamaParseDriver
@@ -10,6 +11,7 @@ from parxy_core.drivers.llmwhisperer import LlmWhispererDriver
 from parxy_core.drivers.unstructured_local import UnstructuredLocalDriver
 from parxy_core.models import (
     PdfActConfig,
+    LandingAIConfig,
     LlamaParseConfig,
     LlmWhispererConfig,
     UnstructuredLocalConfig,
@@ -208,6 +210,20 @@ class DriverFactory:
             tracer=self._tracer,
         )
 
+    def _create_landingai_driver(self) -> LandingAIADEDriver:
+        """Create a LandingAI ADE Driver instance.
+
+        Returns
+        -------
+        LandingAIADEDriver
+            A new instance
+        """
+        return LandingAIADEDriver(
+            config=LandingAIConfig(),
+            logger=self._logger,
+            tracer=self._tracer,
+        )
+
     def extend(self, name: str, callback: Callable[[], Driver]) -> 'DriverFactory':
         """Register a custom driver creator callable.
 
@@ -255,6 +271,7 @@ class DriverFactory:
         supported_drivers: List[str] = [
             'pymupdf',
             'pdfact',
+            'landingai',
             'llamaparse',
             'llmwhisperer',
             'unstructured_local',
