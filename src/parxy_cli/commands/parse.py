@@ -86,7 +86,7 @@ def parse(
         # Process each file
         for file_path in files:
             try:
-                with console.shimmer("Processing document..."):
+                with console.shimmer('Processing document...'):
                     # Parse the document
                     doc = Parxy.parse(
                         file=file_path,

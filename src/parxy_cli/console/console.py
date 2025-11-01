@@ -7,7 +7,14 @@ import os
 import sys
 from rich.console import Console as RichConsole
 from rich.theme import Theme
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+    TimeRemainingColumn,
+)
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.live import Live
@@ -35,7 +42,6 @@ class Console:
         'tx_3': '#B7B5AC',
         'tx_2': '#CECDC3',
         'tx': '#E6E4D9',
-
         # Accent colors (400 series for dark theme)
         'red': '#D14D41',
         'orange': '#DA702C',
@@ -58,7 +64,6 @@ class Console:
         'tx_3': '#6F6E69',
         'tx_2': '#403E3C',
         'tx': '#100F0F',
-
         # Accent colors (600 series for light theme)
         'red': '#AF3029',
         'orange': '#BC5215',
@@ -145,91 +150,91 @@ class Console:
         self.COLORS = self.COLORS_LIGHT if theme_mode == 'light' else self.COLORS_DARK
 
         # Build theme with selected colors
-        self.theme = Theme({
-            # Base text styles
-            "default": f"{self.COLORS['tx']}",
-            "muted": f"{self.COLORS['tx_2']}",
-            "faint": f"{self.COLORS['tx_3']}",
-
-            # Message types
-            "success": f"bold {self.COLORS['green']}",
-            "info": f"{self.COLORS['cyan']}",
-            "warning": f"bold {self.COLORS['orange']}",
-            "error": f"bold {self.COLORS['red']}",
-
-            # Semantic colors
-            "highlight": f"bold {self.COLORS['yellow']}",
-            "link": f"underline {self.COLORS['blue']}",
-            "code": f"{self.COLORS['purple']}",
-
-            # Progress/spinner colors
-            "progress.description": f"{self.COLORS['tx_2']}",
-            "progress.percentage": f"{self.COLORS['tx_2']}",
-            "bar.complete": f"{self.COLORS['green']}",
-            "bar.finished": f"{self.COLORS['cyan']}",
-            "bar.pulse": f"{self.COLORS['blue']}",
-        })
+        self.theme = Theme(
+            {
+                # Base text styles
+                'default': f'{self.COLORS["tx"]}',
+                'muted': f'{self.COLORS["tx_2"]}',
+                'faint': f'{self.COLORS["tx_3"]}',
+                # Message types
+                'success': f'bold {self.COLORS["green"]}',
+                'info': f'{self.COLORS["cyan"]}',
+                'warning': f'bold {self.COLORS["orange"]}',
+                'error': f'bold {self.COLORS["red"]}',
+                # Semantic colors
+                'highlight': f'bold {self.COLORS["yellow"]}',
+                'link': f'underline {self.COLORS["blue"]}',
+                'code': f'{self.COLORS["purple"]}',
+                # Progress/spinner colors
+                'progress.description': f'{self.COLORS["tx_2"]}',
+                'progress.percentage': f'{self.COLORS["tx_2"]}',
+                'bar.complete': f'{self.COLORS["green"]}',
+                'bar.finished': f'{self.COLORS["cyan"]}',
+                'bar.pulse': f'{self.COLORS["blue"]}',
+            }
+        )
 
         self.console = RichConsole(theme=self.theme)
-    
+
     def print(self, *args, style=None, **kwargs):
         """Print with optional style."""
         self.console.print(*args, style=style, **kwargs)
-    
-    def success(self, message: str, prefix: str = "✓"):
+
+    def success(self, message: str, prefix: str = '✓'):
         """Print a success message."""
-        self.console.print(f"[success]{prefix}[/success] {message}")
-    
-    def info(self, message: str, prefix: str = "ℹ"):
+        self.console.print(f'[success]{prefix}[/success] {message}')
+
+    def info(self, message: str, prefix: str = 'ℹ'):
         """Print an info message."""
-        self.console.print(f"[info]{prefix}[/info] {message}")
-    
-    def warning(self, message: str, prefix: str = "⚠"):
+        self.console.print(f'[info]{prefix}[/info] {message}')
+
+    def warning(self, message: str, prefix: str = '⚠'):
         """Print a warning message."""
-        self.console.print(f"[warning]{prefix}[/warning] {message}")
-    
-    def error(self, message: str, prefix: str = "✗"):
+        self.console.print(f'[warning]{prefix}[/warning] {message}')
+
+    def error(self, message: str, prefix: str = '✗'):
         """Print an error message."""
-        self.console.print(f"[error]{prefix}[/error] {message}")
-    
+        self.console.print(f'[error]{prefix}[/error] {message}')
+
     def muted(self, message: str):
         """Print muted text."""
-        self.console.print(message, style="muted")
-    
+        self.console.print(message, style='muted')
+
     def faint(self, message: str):
         """Print faint text."""
-        self.console.print(message, style="faint")
-    
+        self.console.print(message, style='faint')
+
     def highlight(self, message: str):
         """Print highlighted text."""
-        self.console.print(message, style="highlight")
-    
+        self.console.print(message, style='highlight')
+
     def markdown(self, content: str):
         """Render markdown content."""
         md = Markdown(content)
         self.console.print(md)
-    
-    def panel(self, content: str, title: str = None, style: str = "default", border_style: str = None):
+
+    def panel(
+        self,
+        content: str,
+        title: str = None,
+        style: str = 'default',
+        border_style: str = None,
+    ):
         """Display content in a panel."""
         border_color = border_style or self.COLORS['ui_2']
-        panel = Panel(
-            content,
-            title=title,
-            border_style=border_color,
-            style=style
-        )
+        panel = Panel(content, title=title, border_style=border_color, style=style)
         self.console.print(panel)
-    
+
     def rule(self, title: str = None, style: str = None):
         """Print a horizontal rule."""
         rule_style = style or self.COLORS['ui_2']
         self.console.rule(title, style=rule_style)
-    
+
     @contextmanager
-    def progress(self, description: str = "Working..."):
+    def progress(self, description: str = 'Working...'):
         """
         Context manager for a progress bar.
-        
+
         Usage:
             with console.progress("Processing files") as progress:
                 task = progress.add_task("", total=100)
@@ -238,7 +243,7 @@ class Console:
         """
         progress = Progress(
             # SpinnerColumn(style=self.COLORS['cyan']),
-            TextColumn("[progress.description]{task.description}"),
+            TextColumn('[progress.description]{task.description}'),
             BarColumn(
                 complete_style=self.COLORS['cyan'],
                 finished_style=self.COLORS['green'],
@@ -246,31 +251,31 @@ class Console:
             ),
             TaskProgressColumn(),
             TimeRemainingColumn(),
-            console=self.console
+            console=self.console,
         )
-        
+
         with progress:
             yield progress
-    
+
     @contextmanager
-    def spinner(self, message: str = "Loading..."):
+    def spinner(self, message: str = 'Loading...'):
         """
         Context manager for a spinner.
-        
+
         Usage:
             with console.spinner("Fetching data..."):
                 # do work
                 time.sleep(2)
         """
         with self.console.status(
-            f"[{self.COLORS['cyan']}]{message}[/{self.COLORS['cyan']}]",
-            spinner="dots",
-            spinner_style="bar.pulse"
+            f'[{self.COLORS["cyan"]}]{message}[/{self.COLORS["cyan"]}]',
+            spinner='dots',
+            spinner_style='bar.pulse',
         ):
             yield
-    
+
     @contextmanager
-    def shimmer(self, message: str = "Loading..."):
+    def shimmer(self, message: str = 'Loading...'):
         """
         Context manager for a text shimmering effect.
         Creates a wave of dimming through individual characters.
@@ -333,7 +338,9 @@ class Console:
                 time_module.sleep(0.08)  # Animation speed
 
         # Create Live display
-        with Live(create_shimmer_text(0), console=self.console, refresh_per_second=20) as live:
+        with Live(
+            create_shimmer_text(0), console=self.console, refresh_per_second=20
+        ) as live:
             # Start animation thread
             thread = threading.Thread(target=animate, args=(live,), daemon=True)
             thread.start()
@@ -343,14 +350,14 @@ class Console:
             finally:
                 stop_event.set()
                 thread.join(timeout=0.5)
-    
+
     def clear(self):
         """Clear the console."""
         self.console.clear()
 
     def newline(self, count: int = 1):
         """Print newlines."""
-        self.console.print("\n" * (count - 1))
+        self.console.print('\n' * (count - 1))
 
     def get_theme_mode(self):
         """Get the current theme mode ('light' or 'dark')."""
@@ -358,13 +365,13 @@ class Console:
 
 
 # Example usage
-if __name__ == "__main__":
+if __name__ == '__main__':
     import time
 
     # Console automatically detects terminal background
     console = Console()
 
-    console.info(f"Using {console.get_theme_mode()} theme")
+    console.info(f'Using {console.get_theme_mode()} theme')
     console.newline()
 
     # You can also force a specific theme in code:
@@ -381,16 +388,16 @@ if __name__ == "__main__":
     # console_custom = Console(config=config)
 
     # Basic messages
-    console.success("Operation completed successfully!")
-    console.info("This is an informational message")
-    console.warning("This is a warning message")
-    console.error("This is an error message")
+    console.success('Operation completed successfully!')
+    console.info('This is an informational message')
+    console.warning('This is a warning message')
+    console.error('This is an error message')
     console.newline()
 
     # Different text styles
-    console.print("This is [highlight]highlighted[/highlight] text")
-    console.muted("This is muted text")
-    console.faint("This is faint text")
+    console.print('This is [highlight]highlighted[/highlight] text')
+    console.muted('This is muted text')
+    console.faint('This is faint text')
     console.newline()
 
     # Markdown
@@ -407,15 +414,15 @@ This console uses the **Flexoki** color scheme for a warm, inky feel.
 
     # Panel
     console.panel(
-        "This is content inside a panel with a nice border",
-        title="Panel Example",
-        style="info"
+        'This is content inside a panel with a nice border',
+        title='Panel Example',
+        style='info',
     )
     console.newline()
 
     # Progress bar
-    with console.progress("Processing items") as progress:
-        task = progress.add_task("", total=50)
+    with console.progress('Processing items') as progress:
+        task = progress.add_task('', total=50)
         for i in range(50):
             time.sleep(0.02)
             progress.update(task, advance=1)
@@ -423,13 +430,13 @@ This console uses the **Flexoki** color scheme for a warm, inky feel.
     console.newline()
 
     # Spinner
-    with console.spinner("Fetching data from API..."):
+    with console.spinner('Fetching data from API...'):
         time.sleep(2)
 
     console.newline()
 
     # Shimmer
-    with console.shimmer("Fetching data from API..."):
+    with console.shimmer('Fetching data from API...'):
         time.sleep(2)
 
-    console.success("All demonstrations complete!")
+    console.success('All demonstrations complete!')

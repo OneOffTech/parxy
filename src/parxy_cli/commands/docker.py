@@ -35,7 +35,9 @@ def docker():
         compose_file_path.write_text(example_content)
 
         console.success('Created compose.yaml file with default configuration')
-        console.muted('Execute `docker compose pull` and `docker compose up -d` to start the services.')
+        console.muted(
+            'Execute `docker compose pull` and `docker compose up -d` to start the services.'
+        )
     except Exception as e:
         console.error(f'Error creating compose.yaml file: {str(e)}')
         raise typer.Exit(1)

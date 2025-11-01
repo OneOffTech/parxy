@@ -37,7 +37,9 @@ def version_callback(value: bool):
         except Exception:
             parxy_version = 'Development version'
 
-        console.print(f'[{console.COLORS["blue"]}]▣ Parxy[/{console.COLORS["blue"]}]. Every document matters.')
+        console.print(
+            f'[{console.COLORS["blue"]}]▣ Parxy[/{console.COLORS["blue"]}]. Every document matters.'
+        )
         console.newline()
         console.info(f'Version: {parxy_version}')
         console.newline()
