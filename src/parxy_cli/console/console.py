@@ -151,6 +151,7 @@ class Shimmer:
     def __rich_measure__(self, console, options):
         """Return the width of the shimmer text."""
         from rich.measure import Measurement
+
         text_length = len(self.text)
         return Measurement(text_length, text_length)
 
