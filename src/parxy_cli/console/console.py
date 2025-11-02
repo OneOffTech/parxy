@@ -21,7 +21,9 @@ from rich.panel import Panel
 from rich.live import Live
 from rich.text import Text
 from rich.style import Style
+from rich.console import RenderableType
 from contextlib import contextmanager
+from typing import Optional
 
 from parxy_core.models.config import ParxyConfig
 
@@ -72,6 +74,85 @@ COLORS_LIGHT = {
     'purple': '#5E409D',
     'magenta': '#A02F6F',
 }
+
+
+class Shimmer:
+    """
+    A renderable that creates a shimmering text effect.
+    The shimmer is a wave that dims characters as it passes over them.
+
+    This is a stateful renderable that advances its animation on each render,
+    similar to Rich's Spinner class.
+    """
+
+    def __init__(
+        self,
+        text: str,
+        normal_color: str,
+        dim_color: str,
+        mid_color: str,
+        speed: float = 1.0,
+    ):
+        """
+        Initialize the Shimmer renderable.
+
+        Args:
+            text: The text to shimmer
+            normal_color: Color for normal (bright) characters
+            dim_color: Color for the dimmest characters (center of wave)
+            mid_color: Color for slightly dimmed characters (adjacent to center)
+            speed: Animation speed multiplier (higher = faster)
+        """
+        self.text = text
+        self.normal_color = normal_color
+        self.dim_color = dim_color
+        self.mid_color = mid_color
+        self.speed = speed
+
+        # Animation state
+        self.position = 0
+        self.direction = 1  # 1 for forward, -1 for backward
+        self._frame_count = 0
+
+    def __rich_console__(self, console, options):
+        """Render the shimmer effect for the current frame."""
+        # Advance animation based on speed
+        # Update position every N frames based on speed
+        frames_per_step = max(1, int(1.0 / self.speed))
+
+        if self._frame_count % frames_per_step == 0:
+            self.position += self.direction
+
+            # Bounce at edges
+            if self.position >= len(self.text) - 1:
+                self.direction = -1
+            elif self.position <= 0:
+                self.direction = 1
+
+        self._frame_count += 1
+
+        # Create the shimmered text
+        text = Text()
+        for i, char in enumerate(self.text):
+            distance = abs(i - self.position)
+
+            if distance == 0:
+                # Center of wave - most dimmed
+                text.append(char, style=self.dim_color)
+            elif distance == 1:
+                # Adjacent to center - slightly dimmed
+                text.append(char, style=self.mid_color)
+            else:
+                # Normal brightness
+                text.append(char, style=self.normal_color)
+
+        yield text
+
+    def __rich_measure__(self, console, options):
+        """Return the width of the shimmer text."""
+        from rich.measure import Measurement
+        text_length = len(self.text)
+        return Measurement(text_length, text_length)
 
 
 class Console:
@@ -327,81 +408,38 @@ class Console:
             yield
 
     @contextmanager
-    def shimmer(self, message: str = 'Loading...'):
+    def shimmer(self, message: str = 'Loading...', speed: float = 1.0):
         """
         Context manager for a text shimmering effect.
         Creates a wave of dimming through individual characters.
+        The shimmer is automatically cleared when the task completes.
+
+        Args:
+            message: The text to display with shimmer effect
+            speed: Animation speed multiplier (default 1.0, higher = faster)
 
         Usage:
             with console.shimmer("Processing data..."):
                 # do work
                 time.sleep(2)
         """
-        import threading
-        import time as time_module
+        # Create Shimmer renderable with theme colors
+        shimmer = Shimmer(
+            text=message,
+            normal_color=self.COLORS['tx'],
+            dim_color=self.COLORS['tx_3'],
+            mid_color=self.COLORS['tx_2'],
+            speed=speed,
+        )
 
-        # Use default text color and dimmed versions
-        normal_color = self.COLORS['tx']
-        dim_color = self.COLORS['tx_3']  # Dimmed/faded version
-        mid_color = self.COLORS['tx_2']  # Slightly dimmed
-
-        stop_event = threading.Event()
-
-        # Create a Text object that will be updated
-        display_text = Text()
-
-        def create_shimmer_text(position):
-            """Create a Text object with shimmer effect at given position."""
-            text = Text()
-
-            for i, char in enumerate(message):
-                # Calculate distance from wave position
-                distance = abs(i - position)
-
-                if distance == 0:
-                    # Center of wave - most dimmed
-                    text.append(char, style=dim_color)
-                elif distance == 1:
-                    # Adjacent to center - slightly dimmed
-                    text.append(char, style=mid_color)
-                else:
-                    # Normal brightness
-                    text.append(char, style=normal_color)
-
-            return text
-
-        def animate(live):
-            position = 0
-            direction = 1  # 1 for forward, -1 for backward
-
-            while not stop_event.is_set():
-                # Update the live display with new shimmer position
-                live.update(create_shimmer_text(position))
-
-                # Move the wave position
-                position += direction
-
-                # Bounce the wave at the edges
-                if position >= len(message) - 1:
-                    direction = -1
-                elif position <= 0:
-                    direction = 1
-
-                time_module.sleep(0.06)  # Animation speed
-
-        # Create Live display
+        # Use Live display with transient=True to clear the shimmer when done
         with Live(
-            create_shimmer_text(0), console=self.console, refresh_per_second=20
-        ) as live:
-            # Start animation thread
-            thread = threading.Thread(target=animate, args=(live,), daemon=True)
-            thread.start()
-
-            try:
-                yield
-            finally:
-                stop_event.set()
-                thread.join(timeout=0.5)
+            shimmer,
+            console=self.console,
+            refresh_per_second=20,
+            transient=True,
+        ):
+            yield
 
     def clear(self):
         """Clear the console."""
