@@ -7,6 +7,7 @@ https://stephango.com/flexoki
 import os
 import sys
 from rich.console import Console as RichConsole
+from rich.console import ConsoleOptions, RenderResult
 from rich.theme import Theme
 from rich.progress import (
     Progress,
@@ -16,14 +17,16 @@ from rich.progress import (
     TaskProgressColumn,
     TimeRemainingColumn,
 )
-from rich.markdown import Markdown
+from rich.markdown import Markdown, BlockQuote, Heading, TextElement, MarkdownContext
 from rich.panel import Panel
 from rich.live import Live
 from rich.text import Text
 from rich.style import Style
-from rich.console import RenderableType
+from rich.console import RenderableType, Console as RichConsole
+from rich.padding import Padding
 from contextlib import contextmanager
 from typing import Optional
+from markdown_it.token import Token
 
 from parxy_core.models.config import ParxyConfig
 
@@ -74,6 +77,35 @@ COLORS_LIGHT = {
     'purple': '#5E409D',
     'magenta': '#A02F6F',
 }
+
+
+class MarkdownHeading(TextElement):
+    """A heading."""
+
+    @classmethod
+    def create(cls, markdown: Markdown, token: Token) -> Heading:
+        return cls(token)
+
+    def on_enter(self, context: MarkdownContext) -> None:
+        self.text = Text()
+        context.enter_style(self.style_name)
+
+    def __init__(self, token: Token) -> None:
+        self.token = token
+        self.style_name = f'markdown.{token.tag}'
+        super().__init__()
+
+    def __rich_console__(
+        self, console: RichConsole, options: ConsoleOptions
+    ) -> RenderResult:
+        yield (
+            Text('#' * int(self.token.tag[1]), style=self.style_name)
+            .append(' ')
+            .append_text(self.text)
+        )
+
+
+Markdown.elements['heading_open'] = MarkdownHeading
 
 
 class Shimmer:
@@ -284,10 +316,27 @@ class Console:
                 'progress.spinner': f'{self.COLORS["tx_3"]}',
                 'status.spinner': f'{self.COLORS["tx_3"]}',
                 # Markdown styles
+                'markdown.h1': Style(bold=True, color=self.COLORS['magenta']),
+                'markdown.h2': Style(bold=True, color=self.COLORS['magenta']),
+                'markdown.h3': Style(bold=True, color=self.COLORS['magenta']),
+                'markdown.h4': Style(bold=True, color=self.COLORS['magenta'], dim=True),
+                'markdown.h5': Style(bold=True, color=self.COLORS['magenta'], dim=True),
+                'markdown.h6': Style(bold=True, color=self.COLORS['magenta'], dim=True),
+                'markdown.h7': Style(bold=True, color=self.COLORS['magenta'], dim=True),
                 'markdown.item.bullet': f'{self.COLORS["tx_3"]}',
                 'markdown.item.number': f'{self.COLORS["tx_3"]}',
                 'markdown.link': Style(color=self.COLORS['blue']),
                 'markdown.link_url': Style(color=self.COLORS['blue'], underline=True),
+                'markdown.block_quote': Style(
+                    color=self.COLORS['tx_2'],
+                    bgcolor=self.COLORS['ui'],
+                    bold=False,
+                ),
+                # The blockquote bar on the left
+                'markdown.blockquote.border': Style(
+                    color=self.COLORS['cyan'], bold=True
+                ),
+                'markdown.code_block': Style(bgcolor=self.COLORS['ui']),
                 # ISO 8601 styles
                 'iso8601.date': Style(bold=True),
                 'iso8601.time': Style(bold=True),
@@ -342,9 +391,21 @@ class Console:
         self.print(f'[{style}]▣[/{style}] {message}')
         self.newline()
 
-    def markdown(self, content: str):
-        """Render markdown content."""
-        md = Markdown(content, inline_code_theme='monokai')
+    def markdown(self, content: str, code_theme: str = 'monokai'):
+        """
+        Render markdown content with Flexoki theme styling.
+
+        Args:
+            content: Markdown content to render
+            code_theme: Syntax highlighting theme for code blocks (default: 'monokai')
+        """
+        md = Markdown(
+            content,
+            code_theme=code_theme,
+            hyperlinks=True,
+            inline_code_lexer=None,
+            inline_code_theme=code_theme,
+        )
         self.console.print(md)
 
     def panel(
@@ -358,6 +419,40 @@ class Console:
         border_color = border_style or self.COLORS['ui_2']
         panel = Panel(content, title=title, border_style=border_color, style=style)
         self.console.print(panel)
+
+    def quote(self, content: str, title: str = None):
+        """
+        Display a blockquote-style callout with cyan left border and background.
+        Similar to markdown blockquotes but with enhanced styling.
+
+        Args:
+            content: The quote content (can be markdown)
+            title: Optional title for the quote
+        """
+        from rich.table import Table
+
+        # Create a table with a cyan left border and background
+        table = Table.grid(padding=(0, 1), expand=False)
+        table.add_column(
+            style=Style(
+                color=self.COLORS['cyan'], bgcolor=self.COLORS['ui'], bold=True
+            ),
+            width=1,
+        )
+        table.add_column(
+            style=Style(
+                color=self.COLORS['tx_2'],
+                bgcolor=self.COLORS['ui'],
+            )
+        )
+
+        # Split content into lines for proper rendering
+        lines = content.strip().split('\n')
+        for line in lines:
+            table.add_row('▌', line if line else ' ')
+
+        # Add padding around the quote
+        self.console.print(Padding(table, (1, 0)))
 
     def rule(self, title: str = None, style: str = None):
         """Print a horizontal rule."""
@@ -529,6 +624,15 @@ def hello_world():
         'This is content inside a panel with a nice border',
         title='Panel Example',
         style='info',
+    )
+    console.newline()
+
+    # Quote / Callout
+    console.print('# Enhanced Blockquote')
+    console.quote(
+        'This is a beautifully styled blockquote with a cyan left border\n'
+        'and a subtle background, perfect for highlighting important information.\n\n'
+        'It supports multiple lines and looks great!'
     )
     console.newline()
 
