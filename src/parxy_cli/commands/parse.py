@@ -94,7 +94,8 @@ def parse(
                         driver_name=driver,
                     )
 
-                console.info(f'{file_path} (pages={len(doc.pages)})')
+                console.action(file_path)
+                console.faint(f'{len(doc.pages)} pages extracted.')
 
                 text_content = doc.text() if preview is None else doc.text()[:preview]
 

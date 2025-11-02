@@ -20,19 +20,24 @@ def env():
 
         env_file_path: Path = Path.cwd() / '.env'
 
+        console.action('Create env file')
+
         # Check if .env already exists
         if env_file_path.exists():
-            console.warning('.env file already exists')
+            console.highlight('.env file already exists')
+            console.newline()
             overwrite = typer.confirm('Do you want to overwrite it?', default=False)
             if not overwrite:
-                console.muted('Aborted.')
-                raise typer.Exit()
+                console.faint('Leaving your file as is.')
+                return
 
         # Write the content to .env
         env_file_path.write_text(example_content)
 
-        console.success('Created .env file with default configuration')
-        console.muted('Edit the file to configure your settings')
+        console.success(
+            '[success]Created .env file[/success] with default configuration.'
+        )
+        console.faint('Edit the file to configure your settings.')
     except Exception as e:
         console.error(f'Error creating .env file: {str(e)}')
         raise typer.Exit(1)

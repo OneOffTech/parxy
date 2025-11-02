@@ -21,10 +21,11 @@ def version():
     except Exception:
         parxy_version = 'Development version'
 
-    console.highlight('Parxy. Every document matters.')
-    console.newline()
+    console.parxy()
 
-    console.info(f'Version: {parxy_version}')
+    console.print(f'Version: {parxy_version}')
+
+    console.newline()
     console.muted(
         f'Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}'
     )

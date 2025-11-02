@@ -1,6 +1,7 @@
 """
 Flexoki-themed Console class for Rich library
 Uses the warm, inky Flexoki color scheme by Steph Ango
+https://stephango.com/flexoki
 """
 
 import os
@@ -19,9 +20,58 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.live import Live
 from rich.text import Text
+from rich.style import Style
 from contextlib import contextmanager
 
 from parxy_core.models.config import ParxyConfig
+
+# Flexoki color palette (dark theme - 400 series)
+COLORS_DARK = {
+    # Base colors
+    'bg': '#1C1B1A',
+    'bg_2': '#282726',
+    'ui': '#343331',
+    'ui_2': '#403E3C',
+    'ui_3': '#575653',
+    'tx_3': '#B7B5AC',
+    'tx_2': '#CECDC3',
+    'tx': '#E6E4D9',
+    # Accent colors (400 series for dark theme)
+    'black': '#100F0F',
+    'white': '#FFFCF0',
+    'red': '#D14D41',
+    'orange': '#DA702C',
+    'yellow': '#D0A215',
+    'green': '#879A39',
+    'cyan': '#3AA99F',
+    'blue': '#4385BE',
+    'purple': '#8B7EC8',
+    'magenta': '#CE5D97',
+}
+
+# Flexoki color palette (light theme - 600 series)
+COLORS_LIGHT = {
+    # Base colors
+    'bg': '#FFFCF0',
+    'bg_2': '#F2F0E5',
+    'ui': '#E6E4D9',
+    'ui_2': '#DAD8CE',
+    'ui_3': '#B7B5AC',
+    'tx_3': '#6F6E69',
+    'tx_2': '#403E3C',
+    'tx': '#100F0F',
+    # Accent colors (600 series for light theme)
+    'black': '#100F0F',
+    'white': '#FFFCF0',
+    'red': '#AF3029',
+    'orange': '#BC5215',
+    'yellow': '#AD8301',
+    'green': '#66800B',
+    'cyan': '#24837B',
+    'blue': '#205EA6',
+    'purple': '#5E409D',
+    'magenta': '#A02F6F',
+}
 
 
 class Console:
@@ -30,50 +80,6 @@ class Console:
     Provides methods for styled output, progress bars, and spinners.
     Automatically detects terminal background and uses appropriate theme.
     """
-
-    # Flexoki color palette (dark theme - 400 series)
-    COLORS_DARK = {
-        # Base colors
-        'bg': '#1C1B1A',
-        'bg_2': '#282726',
-        'ui': '#343331',
-        'ui_2': '#403E3C',
-        'ui_3': '#575653',
-        'tx_3': '#B7B5AC',
-        'tx_2': '#CECDC3',
-        'tx': '#E6E4D9',
-        # Accent colors (400 series for dark theme)
-        'red': '#D14D41',
-        'orange': '#DA702C',
-        'yellow': '#D0A215',
-        'green': '#879A39',
-        'cyan': '#3AA99F',
-        'blue': '#4385BE',
-        'purple': '#8B7EC8',
-        'magenta': '#CE5D97',
-    }
-
-    # Flexoki color palette (light theme - 600 series)
-    COLORS_LIGHT = {
-        # Base colors
-        'bg': '#FFFCF0',
-        'bg_2': '#F2F0E5',
-        'ui': '#E6E4D9',
-        'ui_2': '#DAD8CE',
-        'ui_3': '#B7B5AC',
-        'tx_3': '#6F6E69',
-        'tx_2': '#403E3C',
-        'tx': '#100F0F',
-        # Accent colors (600 series for light theme)
-        'red': '#AF3029',
-        'orange': '#BC5215',
-        'yellow': '#AD8301',
-        'green': '#66800B',
-        'cyan': '#24837B',
-        'blue': '#205EA6',
-        'purple': '#5E409D',
-        'magenta': '#A02F6F',
-    }
 
     @staticmethod
     def detect_terminal_background(config: ParxyConfig = None):
@@ -147,15 +153,26 @@ class Console:
 
         # Select appropriate color palette
         self.theme_mode = theme_mode
-        self.COLORS = self.COLORS_LIGHT if theme_mode == 'light' else self.COLORS_DARK
+        self.COLORS = COLORS_LIGHT if theme_mode == 'light' else COLORS_DARK
 
         # Build theme with selected colors
+        # Extend https://github.com/Textualize/rich/blob/master/rich/default_styles.py
         self.theme = Theme(
             {
                 # Base text styles
                 'default': f'{self.COLORS["tx"]}',
                 'muted': f'{self.COLORS["tx_2"]}',
                 'faint': f'{self.COLORS["tx_3"]}',
+                'black': f'{self.COLORS["black"]}',
+                'red': f'{self.COLORS["red"]}',
+                'orange': f'{self.COLORS["orange"]}',
+                'yellow': f'{self.COLORS["yellow"]}',
+                'green': f'{self.COLORS["green"]}',
+                'cyan': f'{self.COLORS["cyan"]}',
+                'blue': f'{self.COLORS["blue"]}',
+                'purple': f'{self.COLORS["purple"]}',
+                'magenta': f'{self.COLORS["magenta"]}',
+                'white': f'{self.COLORS["white"]}',
                 # Message types
                 'success': f'bold {self.COLORS["green"]}',
                 'info': f'{self.COLORS["cyan"]}',
@@ -164,13 +181,35 @@ class Console:
                 # Semantic colors
                 'highlight': f'bold {self.COLORS["yellow"]}',
                 'link': f'underline {self.COLORS["blue"]}',
-                'code': f'{self.COLORS["purple"]}',
+                'repr.number': Style(
+                    color=self.COLORS['blue'], bold=True, italic=False
+                ),
+                'repr.number_complex': Style(
+                    color=self.COLORS['blue'], bold=True, italic=False
+                ),  # same
                 # Progress/spinner colors
-                'progress.description': f'{self.COLORS["tx_2"]}',
-                'progress.percentage': f'{self.COLORS["tx_2"]}',
                 'bar.complete': f'{self.COLORS["green"]}',
                 'bar.finished': f'{self.COLORS["cyan"]}',
                 'bar.pulse': f'{self.COLORS["blue"]}',
+                'progress.description': f'{self.COLORS["tx_2"]}',
+                'progress.percentage': f'{self.COLORS["tx_2"]}',
+                'progress.filesize': f'{self.COLORS["tx_2"]}',
+                'progress.filesize.total': f'{self.COLORS["tx_2"]}',
+                'progress.download': f'{self.COLORS["tx_2"]}',
+                'progress.elapsed': f'{self.COLORS["tx_2"]}',
+                'progress.remaining': f'{self.COLORS["tx_2"]}',
+                'progress.data.speed': f'{self.COLORS["tx_2"]}',
+                'progress.spinner': f'{self.COLORS["tx_3"]}',
+                'status.spinner': f'{self.COLORS["tx_3"]}',
+                # Markdown styles
+                'markdown.item.bullet': f'{self.COLORS["tx_3"]}',
+                'markdown.item.number': f'{self.COLORS["tx_3"]}',
+                'markdown.link': Style(color=self.COLORS['blue']),
+                'markdown.link_url': Style(color=self.COLORS['blue'], underline=True),
+                # ISO 8601 styles
+                'iso8601.date': Style(bold=True),
+                'iso8601.time': Style(bold=True),
+                'iso8601.timezone': Style(bold=True),
             }
         )
 
@@ -208,9 +247,22 @@ class Console:
         """Print highlighted text."""
         self.console.print(message, style='highlight')
 
+    def parxy(self):
+        """Print Parxy and its tagline."""
+        self.action(f'[bold]Parxy[/bold]', style='blue')
+        self.print(f'[faint][italic]Every document matters.[/italic][/faint]')
+        self.newline()
+
+    def action(self, message: str, style: str = 'faint', space_before: bool = False):
+        """Print a highlighted action."""
+        if space_before:
+            self.newline()
+        self.print(f'[{style}]▣[/{style}] {message}')
+        self.newline()
+
     def markdown(self, content: str):
         """Render markdown content."""
-        md = Markdown(content)
+        md = Markdown(content, inline_code_theme='monokai')
         self.console.print(md)
 
     def panel(
@@ -335,7 +387,7 @@ class Console:
                 elif position <= 0:
                     direction = 1
 
-                time_module.sleep(0.08)  # Animation speed
+                time_module.sleep(0.06)  # Animation speed
 
         # Create Live display
         with Live(
@@ -371,23 +423,14 @@ if __name__ == '__main__':
     # Console automatically detects terminal background
     console = Console()
 
+    console.print('# Parxy Cli Theme Demo')
+
     console.info(f'Using {console.get_theme_mode()} theme')
     console.newline()
 
-    # You can also force a specific theme in code:
-    # console_light = Console(theme_mode='light')
-    # console_dark = Console(theme_mode='dark')
-
-    # Or set PARXY_THEME environment variable in .env file or shell:
-    # PARXY_THEME=light
-    # PARXY_THEME=dark
-
-    # Or pass a custom config:
-    # from parxy_core.models.config import ParxyConfig
-    # config = ParxyConfig(theme='light')
-    # console_custom = Console(config=config)
-
     # Basic messages
+    console.print('# Message Types')
+
     console.success('Operation completed successfully!')
     console.info('This is an informational message')
     console.warning('This is a warning message')
@@ -396,19 +439,49 @@ if __name__ == '__main__':
 
     # Different text styles
     console.print('This is [highlight]highlighted[/highlight] text')
+    console.print('This has [code]inline code[/code] text')
     console.muted('This is muted text')
     console.faint('This is faint text')
+    console.newline()
+
+    console.print(
+        '[link="https://github.com/OneOffTech/parxy"]This is a clickable link[/link]'
+    )
     console.newline()
 
     # Markdown
     console.markdown("""
 # Flexoki Console
+
 This console uses the **Flexoki** color scheme for a warm, inky feel.
 
 - Feature 1: Auto-detects light/dark terminal background
 - Feature 2: Themed messages (success, info, warning, error)
 - Feature 3: Progress bars and spinners
 - Feature 4: Shimmer effect for long operations
+                     
+## Formatting Examples
+                     
+**bold** and *italic* text
+                     
+[Markdown Link](https://github.com/OneOffTech/parxy)
+                     
+## Example Code
+
+```python
+def hello_world():
+    print("Hello, Flexoki!")
+```
+
+```
+def hello_world():
+    print("Hello, Flexoki!")
+```
+                     
+`Single line code block example`
+                     
+
+> Block quote
     """)
     console.newline()
 

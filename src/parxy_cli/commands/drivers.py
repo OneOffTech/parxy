@@ -14,8 +14,9 @@ def drivers():
 
     drivers = Parxy.drivers()
 
-    console.info('Available drivers:')
-    console.newline()
+    console.action('Parxy available drivers')
 
-    for driver_name in drivers:
-        console.print(f'  • {driver_name}', style='muted')
+    console.print(f'{len(drivers)} drivers supported:')
+
+    driver_list = '\n'.join(f'- {driver}' for driver in drivers)
+    console.markdown(driver_list)

@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Optional, List, Annotated
 
 import typer
@@ -83,13 +84,16 @@ def markdown(
         # Process each file
         for file_path in files:
             try:
-                with console.shimmer('Processing document...'):
+                with console.shimmer(f'Processing {file_path}...'):
                     # Parse the document
                     doc = Parxy.parse(
                         file=file_path,
                         level=level.value,
                         driver_name=driver,
                     )
+
+                console.action(file_path)
+                console.faint(f'{len(doc.pages)} pages extracted.')
 
                 # Prepare markdown content
                 file_info = f"""```yaml
@@ -109,11 +113,11 @@ pages: {len(doc.pages)}
                     # Save to file
                     with open(output_path, 'w', encoding='utf-8') as f:
                         f.write(markdown_content)
-                    console.success(f'Saved to: {output_path}')
+                    console.success(f'Saved to: {output_path}.')
 
                 elif not output_dir:
                     # Print to console
-                    console.print(markdown_content)
+                    console.markdown(markdown_content)
                     console.rule()
                     console.newline()
 

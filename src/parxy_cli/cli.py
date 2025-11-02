@@ -37,13 +37,12 @@ def version_callback(value: bool):
         except Exception:
             parxy_version = 'Development version'
 
-        console.print(
-            f'[{console.COLORS["blue"]}]▣ Parxy[/{console.COLORS["blue"]}]. Every document matters.'
-        )
+        console.print(f'[blue]▣[/blue] [bold]Parxy[/bold]')
+        console.print(f'[faint][italic]Every document matters.[/italic][/faint]')
         console.newline()
-        console.info(f'Version: {parxy_version}')
+        console.print(f'Version: {parxy_version}')
         console.newline()
-        console.muted('For more information on Parxy run `parxy version`.')
+        console.markdown('For more information on Parxy run `parxy version`.')
         raise typer.Exit()
 
 
@@ -61,7 +60,7 @@ def main(
 ):
     """Define the common command options"""
 
-    console.print(f'[{console.COLORS["blue"]}]📄 Parxy[/{console.COLORS["blue"]}]')
+    pass
 
 
 app.add_typer(docker_command)
