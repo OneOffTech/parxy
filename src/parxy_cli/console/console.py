@@ -7,7 +7,13 @@ https://stephango.com/flexoki
 import os
 import sys
 from rich.console import Console as RichConsole
-from rich.console import ConsoleOptions, RenderResult
+from rich.console import (
+    ConsoleOptions,
+    RenderResult,
+    RenderableType,
+    Console as RichConsole,
+    Group,
+)
 from rich.theme import Theme
 from rich.progress import (
     Progress,
@@ -17,12 +23,11 @@ from rich.progress import (
     TaskProgressColumn,
     TimeRemainingColumn,
 )
-from rich.markdown import Markdown, BlockQuote, Heading, TextElement, MarkdownContext
+from rich.markdown import Markdown, Heading, TextElement, MarkdownContext
 from rich.panel import Panel
 from rich.live import Live
 from rich.text import Text
 from rich.style import Style
-from rich.console import RenderableType, Console as RichConsole
 from rich.padding import Padding
 from contextlib import contextmanager
 from typing import Optional
@@ -300,7 +305,7 @@ class Console:
                 ),
                 'repr.number_complex': Style(
                     color=self.COLORS['blue'], bold=True, italic=False
-                ),  # same
+                ),
                 # Progress/spinner colors
                 'bar.complete': f'{self.COLORS["blue"]}',
                 'bar.finished': f'{self.COLORS["blue"]}',
@@ -337,7 +342,13 @@ class Console:
                 'markdown.blockquote.border': Style(
                     color=self.COLORS['cyan'], bold=True
                 ),
-                'markdown.code_block': Style(bgcolor=self.COLORS['ui']),
+                'markdown.code_block': Style(
+                    bgcolor=self.COLORS['ui'], color=self.COLORS['tx']
+                ),
+                'code': Style(bgcolor=self.COLORS['ui'], color=self.COLORS['tx']),
+                'markdown.code': Style(
+                    bgcolor=self.COLORS['ui'], color=self.COLORS['tx']
+                ),
                 # ISO 8601 styles
                 'iso8601.date': Style(bold=True),
                 'iso8601.time': Style(bold=True),
@@ -351,21 +362,60 @@ class Console:
         """Print with optional style."""
         self.console.print(*args, style=style, **kwargs)
 
+    def _icon_and_text(
+        self,
+        message: str,
+        icon: str = '✓',
+        icon_style: str = 'default',
+        padding: int = 1,
+    ):
+        from rich.table import Table
+
+        grid = Table.grid(padding=(0, padding), expand=False)
+        grid.add_column(
+            width=1,
+        )
+        grid.add_column()
+
+        grid.add_row(Text(icon, style=icon_style), Text(message))
+
+        return grid
+
     def success(self, message: str, prefix: str = '✓', panel: bool = False):
         """Print a success message."""
-        self.print(f'[success]{prefix}[/success] {message}') if not panel else self.panel(f'[success]{prefix}[/success] {message}', border_style='success')
+        # prefix_text = Text(prefix, style='success')
+        # padded_prefix = Padding(prefix_text, (0, 1))
+        formatted = self._icon_and_text(
+            message=message, icon=prefix, icon_style='success'
+        )
+        self.print(formatted) if not panel else self.panel(
+            formatted, border_style='success'
+        )
 
     def info(self, message: str, prefix: str = 'ℹ', panel: bool = False):
         """Print an info message."""
-        self.print(f'[info]{prefix}[/info] {message}') if not panel else self.panel(f'[info]{prefix}[/info] {message}', border_style='info')
+        formatted = self._icon_and_text(message=message, icon=prefix, icon_style='info')
+        self.print(formatted) if not panel else self.panel(
+            formatted, border_style='info'
+        )
 
     def warning(self, message: str, prefix: str = '⚠', panel: bool = False):
         """Print a warning message."""
-        self.print(f'[warning]{prefix}[/warning] {message}') if not panel else self.panel(f'[warning]{prefix}[/warning] {message}', border_style='warning')
+        formatted = self._icon_and_text(
+            message=message, icon=prefix, icon_style='warning'
+        )
+        self.print(formatted) if not panel else self.panel(
+            formatted, border_style='warning'
+        )
 
     def error(self, message: str, prefix: str = '✗', panel: bool = False):
         """Print an error message."""
-        self.print(f'[error]{prefix}[/error] {message}') if not panel else self.panel(f'[error]{prefix}[/error] {message}', border_style='error')
+        formatted = self._icon_and_text(
+            message=message, icon=prefix, icon_style='error'
+        )
+        self.print(formatted) if not panel else self.panel(
+            formatted, border_style='error'
+        )
 
     def muted(self, message: str):
         """Print muted text."""
@@ -418,7 +468,13 @@ class Console:
     ):
         """Display content in a panel."""
         border_color = border_style or self.COLORS['ui_2']
-        panel = Panel(content, title=title, border_style=border_color, title_align="left", style=style)
+        panel = Panel(
+            content,
+            title=title,
+            border_style=border_color,
+            title_align='left',
+            style=style,
+        )
         self.console.print(panel)
 
     def quote(self, content: str, expand: bool = False):
@@ -579,7 +635,9 @@ if __name__ == '__main__':
     console.print('This has [code]inline code[/code] text')
     console.muted('This is muted text')
     console.faint('This is faint text')
-    console.print('[bold]bold[/bold], [em]italic[/em] and [underline]underline[/underline]')
+    console.print(
+        '[bold]bold[/bold], [em]italic[/em] and [underline]underline[/underline]'
+    )
     console.newline()
 
     console.markdown('# Link')
@@ -636,7 +694,7 @@ def hello_world():
         title='Panel Example',
     )
     console.newline()
-    
+
     console.panel(
         'Panel without a title',
     )
