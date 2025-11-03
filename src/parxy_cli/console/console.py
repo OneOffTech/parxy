@@ -1,23 +1,21 @@
 """
-Flexoki-themed Console class for Rich library
-Uses the warm, inky Flexoki color scheme by Steph Ango
-https://stephango.com/flexoki
+Parxy Console class
+
+Provides methods for styled output, progress bars, and spinners.
+
+The theme uses the warm, inky Flexoki color scheme by Steph Ango https://stephango.com/flexoki
 """
 
 import os
 import sys
-from rich.console import Console as RichConsole
 from rich.console import (
     ConsoleOptions,
     RenderResult,
-    RenderableType,
     Console as RichConsole,
-    Group,
 )
 from rich.theme import Theme
 from rich.progress import (
     Progress,
-    SpinnerColumn,
     TextColumn,
     BarColumn,
     TaskProgressColumn,
@@ -30,7 +28,6 @@ from rich.text import Text
 from rich.style import Style
 from rich.padding import Padding
 from contextlib import contextmanager
-from typing import Optional
 from markdown_it.token import Token
 
 from parxy_core.models.config import ParxyConfig
@@ -195,9 +192,9 @@ class Shimmer:
 
 class Console:
     """
-    A themed console wrapper using the Flexoki color scheme.
+    A themed console wrapper.
     Provides methods for styled output, progress bars, and spinners.
-    Automatically detects terminal background and uses appropriate theme.
+    Tries to automatically detects terminal background and uses appropriate theme.
     """
 
     @staticmethod
@@ -238,7 +235,7 @@ class Console:
 
         # Method 3: Check for Windows Terminal light theme
         if sys.platform == 'win32':
-            wt_profile = os.environ.get('WT_PROFILE_ID', '')
+            os.environ.get('WT_PROFILE_ID', '')
             # Windows Terminal doesn't expose theme directly, but we can check registry
             # For now, we'll default based on common settings
             pass
@@ -255,7 +252,7 @@ class Console:
 
     def __init__(self, theme_mode=None, config: ParxyConfig = None):
         """
-        Initialize the console with Flexoki theme.
+        Initialize the console.
 
         Args:
             theme_mode: Optional theme mode ('light' or 'dark').
@@ -431,8 +428,8 @@ class Console:
 
     def parxy(self):
         """Print Parxy and its tagline."""
-        self.action(f'[bold]Parxy[/bold]', style='blue')
-        self.print(f'[faint][italic]Every document matters.[/italic][/faint]')
+        self.action('[bold]Parxy[/bold]', style='blue')
+        self.print('[faint][italic]Every document matters.[/italic][/faint]')
         self.newline()
 
     def action(self, message: str, style: str = 'faint', space_before: bool = False):
@@ -444,7 +441,7 @@ class Console:
 
     def markdown(self, content: str, code_theme: str = 'monokai'):
         """
-        Render markdown content with Flexoki theme styling.
+        Render markdown content.
 
         Args:
             content: Markdown content to render
@@ -672,12 +669,12 @@ This console uses the [**Flexoki**](https://stephango.com/flexoki) color scheme 
 
 ```python
 def hello_world():
-    print("Hello, Flexoki!")
+    print("Hello, Parxy!")
 ```
 
 ```
 def hello_world():
-    print("Hello, Flexoki!")
+    print("Hello, Parxy!")
 ```
                      
 `Single line code block example`

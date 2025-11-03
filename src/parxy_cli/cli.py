@@ -26,7 +26,7 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
-# Create Flexoki-themed console
+# Create themed console
 console = Console()
 
 
