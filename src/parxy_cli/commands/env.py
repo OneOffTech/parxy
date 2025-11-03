@@ -1,6 +1,7 @@
 import typer
-from rich.console import Console
 from pathlib import Path
+
+from parxy_cli.console.console import Console
 
 
 app = typer.Typer()
@@ -19,19 +20,24 @@ def env():
 
         env_file_path: Path = Path.cwd() / '.env'
 
+        console.action('Create env file')
+
         # Check if .env already exists
         if env_file_path.exists():
-            console.print('[bold yellow]Warning: .env file already exists[/]')
+            console.highlight('.env file already exists')
+            console.newline()
             overwrite = typer.confirm('Do you want to overwrite it?', default=False)
             if not overwrite:
-                console.print('Aborted.')
-                raise typer.Exit()
+                console.faint('Leaving your file as is.')
+                return
 
         # Write the content to .env
         env_file_path.write_text(example_content)
 
-        console.print('[green]Created .env file with default configuration[/]')
-        console.print('Edit the file to configure your settings')
+        console.success(
+            '[success]Created .env file[/success] with default configuration.'
+        )
+        console.faint('Edit the file to configure your settings.')
     except Exception as e:
-        console.print(f'[bold red]Error creating .env file:[/] {str(e)}')
+        console.error(f'Error creating .env file: {str(e)}')
         raise typer.Exit(1)

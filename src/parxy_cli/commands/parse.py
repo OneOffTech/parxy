@@ -6,11 +6,11 @@ from typing import Optional, List, Annotated
 
 
 import typer
-from rich.console import Console
 
 from parxy_core.facade import Parxy
 
 from parxy_cli.models import Level
+from parxy_cli.console.console import Console
 
 app = typer.Typer()
 
@@ -83,21 +83,19 @@ def parse(
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
 
-        console.print('Processing documents...')
-
         # Process each file
         for file_path in files:
             try:
-                console.print('----')
+                with console.shimmer('Processing document...'):
+                    # Parse the document
+                    doc = Parxy.parse(
+                        file=file_path,
+                        level=level.value,
+                        driver_name=driver,
+                    )
 
-                # Parse the document
-                doc = Parxy.parse(
-                    file=file_path,
-                    level=level.value,
-                    driver_name=driver,
-                )
-
-                console.print(f'[bold blue]{file_path} (pages={len(doc.pages)})[/]')
+                console.action(file_path)
+                console.faint(f'{len(doc.pages)} pages extracted.')
 
                 text_content = doc.text() if preview is None else doc.text()[:preview]
 
@@ -109,16 +107,16 @@ def parse(
                     # Save to file
                     with open(output_path, 'w', encoding='utf-8') as f:
                         f.write(text_content)
-                    console.print(f'[green]Saved to: {output_path}[/]\n')
+                    console.success(f'Saved to: {output_path}')
                 else:
                     # Print to console
-                    console.print('\n' + text_content + '\n')
+                    console.print(text_content)
+                    console.newline()
 
             except Exception as e:
-                console.print(f'[bold red]Error processing {file_path}:[/] {str(e)}')
-                console.print_exception(e)
+                console.error(f'Error processing {file_path}: {str(e)}')
+                raise typer.Exit(1)
 
     except Exception as e:
-        console.print(f'[bold red]Error:[/] {str(e)}')
-        console.print_exception(e)
-        raise typer.Exit()
+        console.error(f'Error: {str(e)}')
+        raise typer.Exit(1)

@@ -47,7 +47,8 @@ def test_env_command_creates_env_file(runner, mock_env_content, mock_resources):
 
         cleaned_output = strip_ansi(result.stdout)
 
-        assert 'Created .env file with default configuration' in cleaned_output
+        assert 'Created .env file' in cleaned_output
+        assert 'with default configuration' in cleaned_output
 
         env_file: Path = Path.cwd() / '.env'
         assert env_file.exists()
@@ -74,9 +75,9 @@ def test_env_command_asks_for_confirmation_when_env_exists(
 
         # Clean ANSI codes and verify warning and abort messages
         cleaned_output = strip_ansi(result.stdout)
-        assert 'Warning: .env file already exists' in cleaned_output
+        assert '.env file already exists' in cleaned_output
         assert 'Do you want to overwrite it?' in cleaned_output
-        assert 'Aborted' in cleaned_output
+        assert 'Leaving your file as is' in cleaned_output
 
         # Verify original file was not modified
         assert env_file.read_text() == 'EXISTING=true'

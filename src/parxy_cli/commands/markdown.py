@@ -1,11 +1,12 @@
 import os
+import time
 from typing import Optional, List, Annotated
 
 import typer
-from rich.console import Console
 
 from parxy_core.facade import Parxy
 from parxy_cli.models import Level
+from parxy_cli.console.console import Console
 
 app = typer.Typer()
 
@@ -77,20 +78,22 @@ def markdown(
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
 
-        console.print('Processing documents...')
-
         # For combined output
         combined_content = []
 
         # Process each file
         for file_path in files:
             try:
-                # Parse the document
-                doc = Parxy.parse(
-                    file=file_path,
-                    level=level.value,
-                    driver_name=driver,
-                )
+                with console.shimmer(f'Processing {file_path}...'):
+                    # Parse the document
+                    doc = Parxy.parse(
+                        file=file_path,
+                        level=level.value,
+                        driver_name=driver,
+                    )
+
+                console.action(file_path)
+                console.faint(f'{len(doc.pages)} pages extracted.')
 
                 # Prepare markdown content
                 file_info = f"""```yaml
@@ -110,27 +113,27 @@ pages: {len(doc.pages)}
                     # Save to file
                     with open(output_path, 'w', encoding='utf-8') as f:
                         f.write(markdown_content)
-                    console.print(f'[green]Saved to: {output_path}[/]')
+                    console.success(f'Saved to: {output_path}.')
 
                 elif not output_dir:
                     # Print to console
-                    console.print(markdown_content)
-                    console.print('\n\n---\n\n')
+                    console.markdown(markdown_content)
+                    console.rule()
+                    console.newline()
 
                 if combine:
                     combined_content.append(markdown_content)
 
             except Exception as e:
-                console.print(f'[bold red]Error processing {file_path}:[/] {str(e)}')
+                console.error(f'Error processing {file_path}: {str(e)}')
 
         # Save combined content if requested
         if combine and output_dir and combined_content:
             output_path = os.path.join(output_dir, 'combined_output.md')
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write('\n\n---\n\n'.join(combined_content))
-            console.print(f'[green]Combined output saved to: {output_path}[/]')
+            console.success(f'Combined output saved to: {output_path}')
 
     except Exception as e:
-        console.print(f'[bold red]Error:[/] {str(e)}')
-        console.print_exception(e)
+        console.error(f'Error: {str(e)}')
         raise typer.Exit()

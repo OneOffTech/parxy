@@ -1,8 +1,7 @@
 import typer
-from rich import print
-from rich.console import Console
 
 from parxy_core.facade import Parxy
+from parxy_cli.console.console import Console
 
 app = typer.Typer()
 
@@ -15,5 +14,9 @@ def drivers():
 
     drivers = Parxy.drivers()
 
-    for driver_name in drivers:
-        print(driver_name)
+    console.action('Parxy available drivers')
+
+    console.print(f'{len(drivers)} drivers supported:')
+
+    driver_list = '\n'.join(f'- {driver}' for driver in drivers)
+    console.markdown(driver_list)

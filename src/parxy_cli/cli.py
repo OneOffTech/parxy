@@ -8,9 +8,7 @@ import typer
 from typing_extensions import Annotated
 from importlib.metadata import version as metadata_version
 
-from rich import print
-from rich.console import Console
-
+from parxy_cli.console.console import Console
 from parxy_cli.commands.docker import app as docker_command
 from parxy_cli.commands.parse import app as parse_command
 from parxy_cli.commands.drivers import app as drivers_command
@@ -28,21 +26,24 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
-# Create rich console
+# Create themed console
 console = Console()
 
 
 def version_callback(value: bool):
-    try:
-        parxy_version = metadata_version('parxy')
-    except Exception:
-        parxy_version = 'Development version'
+    if value:
+        try:
+            parxy_version = metadata_version('parxy')
+        except Exception:
+            parxy_version = 'Development version'
 
-    print('Parxy. Every document matters.\n')
-    print(f'Version: {parxy_version}')
-
-    print('For more information on Parxy run `parxy version`.')
-    raise typer.Exit()
+        console.print(f'[blue]▣[/blue] [bold]Parxy[/bold]')
+        console.print(f'[faint][italic]Every document matters.[/italic][/faint]')
+        console.newline()
+        console.print(f'Version: {parxy_version}')
+        console.newline()
+        console.markdown('For more information on Parxy run `parxy version`.')
+        raise typer.Exit()
 
 
 @app.callback()
@@ -59,7 +60,7 @@ def main(
 ):
     """Define the common command options"""
 
-    print(' Parxy')
+    pass
 
 
 app.add_typer(docker_command)

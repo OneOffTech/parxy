@@ -43,7 +43,7 @@ def test_docker_command_creates_compose_file(runner, mock_compose_content):
         # Clean ANSI codes and verify success message
         cleaned_output = strip_ansi(result.stdout)
         assert 'Created compose.yaml file with default configuration' in cleaned_output
-        assert 'Execute `docker compose pull`' in cleaned_output
+        assert 'Execute docker compose pull' in cleaned_output
 
         # Verify file was created with correct content
         compose_file = Path.cwd() / 'compose.yaml'
@@ -70,8 +70,8 @@ def test_docker_command_asks_for_confirmation_when_compose_exists(
 
         # Clean ANSI codes and verify warning and abort messages
         cleaned_output = strip_ansi(result.stdout)
-        assert 'Warning: compose.yaml file already exists' in cleaned_output
-        assert 'Aborted' in cleaned_output
+        assert 'compose.yaml file already exists' in cleaned_output
+        assert 'Leaving your file as is' in cleaned_output
 
         # Verify original file was not modified
         assert compose_file.read_text() == "version: '3'\nservices: {}"
