@@ -302,8 +302,8 @@ class Console:
                     color=self.COLORS['blue'], bold=True, italic=False
                 ),  # same
                 # Progress/spinner colors
-                'bar.complete': f'{self.COLORS["green"]}',
-                'bar.finished': f'{self.COLORS["cyan"]}',
+                'bar.complete': f'{self.COLORS["blue"]}',
+                'bar.finished': f'{self.COLORS["blue"]}',
                 'bar.pulse': f'{self.COLORS["blue"]}',
                 'progress.description': f'{self.COLORS["tx_2"]}',
                 'progress.percentage': f'{self.COLORS["tx_2"]}',
@@ -319,14 +319,15 @@ class Console:
                 'markdown.h1': Style(bold=True, color=self.COLORS['magenta']),
                 'markdown.h2': Style(bold=True, color=self.COLORS['magenta']),
                 'markdown.h3': Style(bold=True, color=self.COLORS['magenta']),
-                'markdown.h4': Style(bold=True, color=self.COLORS['magenta'], dim=True),
-                'markdown.h5': Style(bold=True, color=self.COLORS['magenta'], dim=True),
-                'markdown.h6': Style(bold=True, color=self.COLORS['magenta'], dim=True),
-                'markdown.h7': Style(bold=True, color=self.COLORS['magenta'], dim=True),
+                'markdown.h4': Style(bold=True, color=self.COLORS['magenta']),
+                'markdown.h5': Style(bold=True, color=self.COLORS['magenta']),
+                'markdown.h6': Style(bold=True, color=self.COLORS['magenta']),
+                'markdown.h7': Style(bold=True, color=self.COLORS['magenta']),
                 'markdown.item.bullet': f'{self.COLORS["tx_3"]}',
                 'markdown.item.number': f'{self.COLORS["tx_3"]}',
                 'markdown.link': Style(color=self.COLORS['blue']),
                 'markdown.link_url': Style(color=self.COLORS['blue'], underline=True),
+                'markdown.hr': Style(color=self.COLORS['ui_2']),
                 'markdown.block_quote': Style(
                     color=self.COLORS['tx_2'],
                     bgcolor=self.COLORS['ui'],
@@ -350,33 +351,33 @@ class Console:
         """Print with optional style."""
         self.console.print(*args, style=style, **kwargs)
 
-    def success(self, message: str, prefix: str = '✓'):
+    def success(self, message: str, prefix: str = '✓', panel: bool = False):
         """Print a success message."""
-        self.console.print(f'[success]{prefix}[/success] {message}')
+        self.print(f'[success]{prefix}[/success] {message}') if not panel else self.panel(f'[success]{prefix}[/success] {message}', border_style='success')
 
-    def info(self, message: str, prefix: str = 'ℹ'):
+    def info(self, message: str, prefix: str = 'ℹ', panel: bool = False):
         """Print an info message."""
-        self.console.print(f'[info]{prefix}[/info] {message}')
+        self.print(f'[info]{prefix}[/info] {message}') if not panel else self.panel(f'[info]{prefix}[/info] {message}', border_style='info')
 
-    def warning(self, message: str, prefix: str = '⚠'):
+    def warning(self, message: str, prefix: str = '⚠', panel: bool = False):
         """Print a warning message."""
-        self.console.print(f'[warning]{prefix}[/warning] {message}')
+        self.print(f'[warning]{prefix}[/warning] {message}') if not panel else self.panel(f'[warning]{prefix}[/warning] {message}', border_style='warning')
 
-    def error(self, message: str, prefix: str = '✗'):
+    def error(self, message: str, prefix: str = '✗', panel: bool = False):
         """Print an error message."""
-        self.console.print(f'[error]{prefix}[/error] {message}')
+        self.print(f'[error]{prefix}[/error] {message}') if not panel else self.panel(f'[error]{prefix}[/error] {message}', border_style='error')
 
     def muted(self, message: str):
         """Print muted text."""
-        self.console.print(message, style='muted')
+        self.print(message, style='muted')
 
     def faint(self, message: str):
         """Print faint text."""
-        self.console.print(message, style='faint')
+        self.print(message, style='faint')
 
     def highlight(self, message: str):
         """Print highlighted text."""
-        self.console.print(message, style='highlight')
+        self.print(message, style='highlight')
 
     def parxy(self):
         """Print Parxy and its tagline."""
@@ -417,10 +418,10 @@ class Console:
     ):
         """Display content in a panel."""
         border_color = border_style or self.COLORS['ui_2']
-        panel = Panel(content, title=title, border_style=border_color, style=style)
+        panel = Panel(content, title=title, border_style=border_color, title_align="left", style=style)
         self.console.print(panel)
 
-    def quote(self, content: str, title: str = None):
+    def quote(self, content: str, expand: bool = False):
         """
         Display a blockquote-style callout with cyan left border and background.
         Similar to markdown blockquotes but with enhanced styling.
@@ -432,7 +433,7 @@ class Console:
         from rich.table import Table
 
         # Create a table with a cyan left border and background
-        table = Table.grid(padding=(0, 1), expand=False)
+        table = Table.grid(padding=(0, 1), expand=expand)
         table.add_column(
             style=Style(
                 color=self.COLORS['cyan'], bgcolor=self.COLORS['ui'], bold=True
@@ -454,10 +455,10 @@ class Console:
         # Add padding around the quote
         self.console.print(Padding(table, (1, 0)))
 
-    def rule(self, title: str = None, style: str = None):
-        """Print a horizontal rule."""
+    def separator(self, title: str = None, style: str = None):
+        """Print a horizontal separator."""
         rule_style = style or self.COLORS['ui_2']
-        self.console.rule(title, style=rule_style)
+        self.console.rule(title, style=rule_style, align='left')
 
     @contextmanager
     def progress(self, description: str = 'Working...'):
@@ -471,13 +472,8 @@ class Console:
                     progress.update(task, advance=1)
         """
         progress = Progress(
-            # SpinnerColumn(style=self.COLORS['cyan']),
             TextColumn('[progress.description]{task.description}'),
-            BarColumn(
-                complete_style=self.COLORS['cyan'],
-                finished_style=self.COLORS['green'],
-                pulse_style=self.COLORS['blue'],
-            ),
+            BarColumn(),
             TaskProgressColumn(),
             TimeRemainingColumn(),
             console=self.console,
@@ -557,13 +553,13 @@ if __name__ == '__main__':
     # Console automatically detects terminal background
     console = Console()
 
-    console.print('# Parxy Cli Theme Demo')
+    console.markdown('# Parxy Cli Theme Demo')
 
     console.info(f'Using {console.get_theme_mode()} theme')
     console.newline()
 
     # Basic messages
-    console.print('# Message Types')
+    console.markdown('# Message Types')
 
     console.success('Operation completed successfully!')
     console.info('This is an informational message')
@@ -571,35 +567,49 @@ if __name__ == '__main__':
     console.error('This is an error message')
     console.newline()
 
+    console.success('Operation completed successfully!', panel=True)
+    console.info('This is an informational message', panel=True)
+    console.warning('This is a warning message', panel=True)
+    console.error('This is an error message', panel=True)
+    console.newline()
+
     # Different text styles
+    console.markdown('# Text styles')
     console.print('This is [highlight]highlighted[/highlight] text')
     console.print('This has [code]inline code[/code] text')
     console.muted('This is muted text')
     console.faint('This is faint text')
+    console.print('[bold]bold[/bold], [em]italic[/em] and [underline]underline[/underline]')
     console.newline()
 
+    console.markdown('# Link')
     console.print(
-        '[link="https://github.com/OneOffTech/parxy"]This is a clickable link[/link]'
+        '[link=https://github.com/OneOffTech/parxy]This is a clickable link[/link]'
     )
     console.newline()
 
     # Markdown
     console.markdown("""
-# Flexoki Console
+# Parxy Console
 
-This console uses the **Flexoki** color scheme for a warm, inky feel.
+This console uses the [**Flexoki**](https://stephango.com/flexoki) color scheme for a warm, inky feel.
 
-- Feature 1: Auto-detects light/dark terminal background
-- Feature 2: Themed messages (success, info, warning, error)
-- Feature 3: Progress bars and spinners
-- Feature 4: Shimmer effect for long operations
+1. Auto-detects light/dark terminal background
+2. Themed messages (success, info, warning, error)
+3. Progress bars and spinners
+4. Shimmer effect for long operations
+
+- a bullet
+- in a bullet list
+
+## All headings
                      
-## Formatting Examples
-                     
-**bold** and *italic* text
-                     
-[Markdown Link](https://github.com/OneOffTech/parxy)
-                     
+### heading 3
+#### heading 4
+##### heading 5
+###### heading 6
+
+   
 ## Example Code
 
 ```python
@@ -619,16 +629,20 @@ def hello_world():
     """)
     console.newline()
 
+    console.markdown('# Panels')
     # Panel
     console.panel(
         'This is content inside a panel with a nice border',
         title='Panel Example',
-        style='info',
+    )
+    console.newline()
+    
+    console.panel(
+        'Panel without a title',
     )
     console.newline()
 
     # Quote / Callout
-    console.print('# Enhanced Blockquote')
     console.quote(
         'This is a beautifully styled blockquote with a cyan left border\n'
         'and a subtle background, perfect for highlighting important information.\n\n'
@@ -636,6 +650,16 @@ def hello_world():
     )
     console.newline()
 
+    console.markdown('# Dividers')
+
+    console.markdown('----')
+
+    console.separator()
+
+    console.separator('Separator with title')
+
+    console.newline()
+    console.markdown('# Progress')
     # Progress bar
     with console.progress('Processing items') as progress:
         task = progress.add_task('', total=50)
@@ -653,6 +677,6 @@ def hello_world():
 
     # Shimmer
     with console.shimmer('Fetching data from API...'):
-        time.sleep(2)
+        time.sleep(3)
 
     console.success('All demonstrations complete!')
