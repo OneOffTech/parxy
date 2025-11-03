@@ -115,7 +115,8 @@ def parse(
 
             except Exception as e:
                 console.error(f'Error processing {file_path}: {str(e)}')
+                raise typer.Exit(1)
 
     except Exception as e:
         console.error(f'Error: {str(e)}')
-        raise typer.Exit()
+        raise typer.Exit(1)

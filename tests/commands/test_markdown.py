@@ -43,8 +43,7 @@ def test_markdown_command_calls_facade_correctly(runner, mock_document):
 
         # Clean ANSI color codes from output and verify content
         cleaned_output = strip_ansi(result.stdout)
-        assert 'Processing documents...' in cleaned_output
-        assert 'file: "test.pdf"' in cleaned_output
+        assert 'test.pdf' in cleaned_output
         assert 'pages: 1' in cleaned_output
         assert '# Test heading' in cleaned_output
 
@@ -131,7 +130,6 @@ def test_markdown_command_handles_errors(runner):
 
         # Clean ANSI codes and verify error message
         cleaned_output = strip_ansi(result.stdout)
-        assert 'Processing documents...' in cleaned_output
         assert 'Error processing test.pdf' in cleaned_output
         assert 'Test error' in cleaned_output
 

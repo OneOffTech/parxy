@@ -43,7 +43,8 @@ def test_parse_command_calls_facade_correctly(runner, mock_document):
 
         # Clean ANSI color codes from output and verify content
         cleaned_output = strip_ansi(result.stdout)
-        assert 'test.pdf (pages=1)' in cleaned_output
+        assert 'test.pdf' in cleaned_output
+        assert '1 pages extracted' in cleaned_output
 
 
 def test_parse_command_with_custom_options(runner, mock_document):
