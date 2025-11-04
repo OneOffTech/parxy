@@ -17,12 +17,49 @@ app = typer.Typer()
 console = Console()
 
 
-def collect_files(inputs: List[str]) -> List[Path]:
+def collect_files_with_depth(
+    directory: Path, pattern: str, max_depth: int, current_depth: int = 0
+) -> List[Path]:
+    """
+    Recursively collect files matching pattern up to max_depth.
+
+    Args:
+        directory: Directory to search in
+        pattern: File pattern to match (e.g., '*.pdf')
+        max_depth: Maximum depth to recurse (0 = no recursion)
+        current_depth: Current recursion depth (used internally)
+
+    Returns:
+        List of Path objects matching the pattern
+    """
+    files = []
+
+    # Collect files in current directory
+    files.extend(directory.glob(pattern))
+
+    # Recurse into subdirectories if we haven't reached max depth
+    if current_depth < max_depth:
+        for subdir in directory.iterdir():
+            if subdir.is_dir():
+                files.extend(
+                    collect_files_with_depth(
+                        subdir, pattern, max_depth, current_depth + 1
+                    )
+                )
+
+    return files
+
+
+def collect_files(
+    inputs: List[str], recursive: bool = False, max_depth: Optional[int] = None
+) -> List[Path]:
     """
     Collect all files from the input list (files and/or folders).
 
     Args:
         inputs: List of file paths and/or folder paths
+        recursive: Whether to search subdirectories
+        max_depth: Maximum depth to recurse (only applies if recursive=True, None=unlimited)
 
     Returns:
         List of Path objects for all PDF files found
@@ -35,8 +72,16 @@ def collect_files(inputs: List[str]) -> List[Path]:
         if path.is_file():
             files.append(path)
         elif path.is_dir():
-            # Recursively find all PDF files in directory
-            files.extend(path.rglob('*.pdf'))
+            if recursive:
+                if max_depth is not None:
+                    # Use depth-limited recursion
+                    files.extend(collect_files_with_depth(path, '*.pdf', max_depth))
+                else:
+                    # Use unlimited recursion
+                    files.extend(path.rglob('*.pdf'))
+            else:
+                # Non-recursive: only files in the given directory
+                files.extend(path.glob('*.pdf'))
         else:
             console.warning(f'Path not found: {input_path}')
 
@@ -149,7 +194,7 @@ def parse(
     inputs: Annotated[
         List[str],
         typer.Argument(
-            help='One or more files or folders to parse. Folders will be searched recursively for PDF files.',
+            help='One or more files or folders to parse. Use --recursive to search subdirectories.',
         ),
     ],
     drivers: Annotated[
@@ -192,6 +237,22 @@ def parse(
             help='Show document content in console in addition to saving to files',
         ),
     ] = False,
+    recursive: Annotated[
+        bool,
+        typer.Option(
+            '--recursive',
+            '-r',
+            help='Recursively search subdirectories when processing folders',
+        ),
+    ] = False,
+    max_depth: Annotated[
+        Optional[int],
+        typer.Option(
+            '--max-depth',
+            help='Maximum depth to recurse into subdirectories (only applies with --recursive). 0 = current directory only, 1 = one level down, etc.',
+            min=0,
+        ),
+    ] = None,
 ):
     """
     Parse documents using one or more drivers.
@@ -207,8 +268,14 @@ def parse(
         # Parse multiple files with specific driver
         parxy parse doc1.pdf doc2.pdf -d pymupdf
 
-        # Parse all PDFs in a folder
+        # Parse all PDFs in a folder (non-recursive by default)
         parxy parse /path/to/folder
+
+        # Parse all PDFs in a folder and subdirectories (recursive)
+        parxy parse /path/to/folder --recursive
+
+        # Parse with limited recursion depth (max 2 levels deep)
+        parxy parse /path/to/folder --recursive --max-depth 2
 
         # Use multiple drivers
         parxy parse document.pdf -d pymupdf -d llamaparse
@@ -216,11 +283,9 @@ def parse(
         # Output as JSON and show in console
         parxy parse document.pdf -m json --show
     """
-
     console.action('Parse files', space_after=False)
-
     # Collect all files
-    files = collect_files(inputs)
+    files = collect_files(inputs, recursive=recursive, max_depth=max_depth)
 
     if not files:
         console.warning('No suitable files found to process.', panel=True)
