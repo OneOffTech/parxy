@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Annotated
 # from typer import Context, Option
 
+
 class Level(str, Enum):
     """Valid extraction levels."""
 
@@ -17,4 +18,4 @@ class OutputMode(str, Enum):
 
     JSON = 'json'
     PLAIN = 'plain'
-    VIEWER = 'viewer'
+    MARKDOWN = 'markdown'
