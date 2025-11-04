@@ -432,12 +432,13 @@ class Console:
         self.print('[faint][italic]Every document matters.[/italic][/faint]')
         self.newline()
 
-    def action(self, message: str, style: str = 'faint', space_before: bool = False):
+    def action(self, message: str, style: str = 'faint', space_before: bool = False, space_after: bool = True):
         """Print a highlighted action."""
         if space_before:
             self.newline()
         self.print(f'[{style}]▣[/{style}] {message}')
-        self.newline()
+        if space_after:
+            self.newline()
 
     def markdown(self, content: str, code_theme: str = 'monokai'):
         """
@@ -572,8 +573,8 @@ class Console:
         shimmer = Shimmer(
             text=message,
             normal_color=self.COLORS['tx'],
-            dim_color=self.COLORS['tx_3'],
-            mid_color=self.COLORS['tx_2'],
+            dim_color=self.COLORS['tx_3'] if self.theme_mode == 'dark' else self.COLORS['ui_3'],
+            mid_color=self.COLORS['tx_2'] if self.theme_mode == 'dark' else self.COLORS['ui_2'],
             speed=speed,
         )
 
