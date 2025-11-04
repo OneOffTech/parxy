@@ -64,7 +64,8 @@ uvx parxy[all]  # All drivers included
 
 Once installed, you can use the `parxy` command to:
 
-- `parxy parse`: Extract text content from documents with customizable granularity levels (page, block, line, span, or character)
+- `parxy parse`: Extract text content from documents with customizable granularity levels and output formats. Process individual files or entire folders, use multiple drivers, and control output with progress bars.
+- `parxy preview`: Interactive document viewer showing metadata, table of contents, and content preview in a scrollable interface
 - `parxy markdown`: Convert documents into Markdown format, with optional combining of multiple documents
 - `parxy drivers`: List available document processing drivers
 - `parxy env`: Create a configuration file with default settings
@@ -73,17 +74,23 @@ Once installed, you can use the `parxy` command to:
 Example usage:
 
 ```bash
-# Extract text from a PDF using the default driver
-parxy parse document.pdf
+# Parse a PDF to markdown
+parxy parse --mode markdown document.pdf
+
+# Parse entire folder with JSON output
+parxy parse /path/to/pdfs -m json -o output/
+
+# Parse with multiple drivers for comparison
+parxy parse document.pdf -d pymupdf -d llamaparse
+
+# Preview document interactively
+parxy preview document.pdf
 
 # Convert multiple PDFs to markdown and combine them
 parxy markdown --combine -o output/ doc1.pdf doc2.pdf
 
 # List available drivers
 parxy drivers
-
-# Create default configuration
-parxy env
 ```
 
 See [Using the Parxy Command Line Interface](./docs/tutorials/using_cli.md) or run `parxy --help` for more information about available commands and options.
