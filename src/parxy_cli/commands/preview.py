@@ -38,11 +38,13 @@ def extract_toc(doc: Document) -> List[dict]:
                     'title',
                     'header',
                 ]:
-                    toc.append({
-                        'text': block.text.strip(),
-                        'level': block.level or 1,
-                        'page': page.number,
-                    })
+                    toc.append(
+                        {
+                            'text': block.text.strip(),
+                            'level': block.level or 1,
+                            'page': page.number,
+                        }
+                    )
     return toc
 
 
@@ -103,7 +105,7 @@ def render_viewer_mode(doc: Document) -> Layout:
         toc_lines = []
         for item in toc:
             indent = '  ' * (item['level'] - 1)
-            toc_lines.append(f"{indent}• {item['text']} [dim](p.{item['page']})[/dim]")
+            toc_lines.append(f'{indent}• {item["text"]} [dim](p.{item["page"]})[/dim]')
         toc_text = '\n'.join(toc_lines)
     else:
         toc_text = '[dim]No headings found[/dim]'
@@ -136,11 +138,11 @@ def render_viewer_mode(doc: Document) -> Layout:
     layout = Layout()
 
     layout.split_column(
-        Layout(metadata_panel, name="header", minimum_size=3),
-        Layout(name="body", ratio=2)
+        Layout(metadata_panel, name='header', minimum_size=3),
+        Layout(name='body', ratio=2),
     )
 
-    layout["body"].split_row(
+    layout['body'].split_row(
         Layout(toc_panel, name='toc', ratio=1),
         Layout(content_panel, name='content', ratio=2),
     )

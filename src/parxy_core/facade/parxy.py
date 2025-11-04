@@ -103,7 +103,7 @@ class Parxy:
             The requested driver instance
         """
         return cls._get_factory().get_supported_drivers()
-    
+
     @classmethod
     def default_driver(cls) -> str:
         """Get the configured default driver's name.
