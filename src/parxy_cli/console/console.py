@@ -19,7 +19,8 @@ from rich.progress import (
     TextColumn,
     BarColumn,
     TaskProgressColumn,
-    TimeRemainingColumn,
+    MofNCompleteColumn,
+    TimeElapsedColumn,
 )
 from rich.markdown import Markdown, Heading, TextElement, MarkdownContext
 from rich.panel import Panel
@@ -529,8 +530,10 @@ class Console:
             TextColumn('[progress.description]{task.description}'),
             BarColumn(),
             TaskProgressColumn(),
-            TimeRemainingColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
             console=self.console,
+            transient=True,
         )
 
         with progress:
@@ -598,6 +601,21 @@ class Console:
     def get_theme_mode(self):
         """Get the current theme mode ('light' or 'dark')."""
         return self.theme_mode
+
+    @contextmanager
+    def pager(self, styles: bool = False):
+        """
+        Context manager for paginated output.
+
+        Usage:
+            with console.pager():
+                console.print(large_content)
+
+        Args:
+            styles: If True, ANSI styles will be preserved in the pager (default: False)
+        """
+        with self.console.pager(styles=styles):
+            yield
 
 
 # Example usage
