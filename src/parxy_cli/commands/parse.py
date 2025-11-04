@@ -1,9 +1,7 @@
 """Command line interface for Parxy document processing."""
 
 from datetime import timedelta
-import os
 from pathlib import Path
-import time
 from typing import Optional, List, Annotated
 
 import typer
@@ -289,7 +287,7 @@ def parse(
 
     console.newline()
     if error_count == len(files):
-        console.error(f'All files were not processed due to errors')
+        console.error('All files were not processed due to errors')
         return
 
     if error_count > 0:
