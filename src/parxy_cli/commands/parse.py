@@ -253,6 +253,13 @@ def parse(
             min=0,
         ),
     ] = None,
+    stop_on_failure: Annotated[
+        bool,
+        typer.Option(
+            '--stop-on-failure',
+            help='Stop processing files immediately if an error occurs with any file',
+        ),
+    ] = False,
 ):
     """
     Parse documents using one or more drivers.
@@ -344,6 +351,14 @@ def parse(
                         )
                         progress.update(task, advance=1)
                         error_count += 1
+
+                        if stop_on_failure:
+                            console.newline()
+                            console.info(
+                                'Stopping due to error (--stop-on-failure flag is set)'
+                            )
+                            raise typer.Exit(1)
+
                         continue
 
             elapsed_time = format_timedelta(

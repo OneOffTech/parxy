@@ -309,3 +309,56 @@ def test_parse_command_with_show_flag(runner, mock_document, tmp_path):
 
         assert result.exit_code == 0
         # Output should be shown in the console (the content would be empty in this case)
+
+
+def test_parse_command_with_stop_on_failure(runner, mock_document, tmp_path):
+    """Test that --stop-on-failure stops processing on first error."""
+
+    # Create two test PDF files
+    test_file1 = tmp_path / 'test1.pdf'
+    test_file2 = tmp_path / 'test2.pdf'
+    test_file1.write_text('dummy pdf content')
+    test_file2.write_text('dummy pdf content')
+
+    with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
+        # First call fails, second would succeed
+        mock_parxy.parse.side_effect = [Exception('Test error'), mock_document]
+        mock_parxy.default_driver.return_value = 'pymupdf'
+
+        # Run command with --stop-on-failure
+        result = runner.invoke(
+            app, [str(test_file1), str(test_file2), '--stop-on-failure']
+        )
+
+        # Should exit with error code
+        assert result.exit_code == 1
+        # Should contain error message
+        assert 'error' in result.stdout.lower()
+        assert 'stopping due to error' in result.stdout.lower()
+        # Parxy.parse should only be called once (processing stopped after first error)
+        assert mock_parxy.parse.call_count == 1
+
+
+def test_parse_command_without_stop_on_failure_continues(
+    runner, mock_document, tmp_path
+):
+    """Test that without --stop-on-failure, processing continues after errors."""
+
+    # Create two test PDF files
+    test_file1 = tmp_path / 'test1.pdf'
+    test_file2 = tmp_path / 'test2.pdf'
+    test_file1.write_text('dummy pdf content')
+    test_file2.write_text('dummy pdf content')
+
+    with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
+        # First call fails, second succeeds
+        mock_parxy.parse.side_effect = [Exception('Test error'), mock_document]
+        mock_parxy.default_driver.return_value = 'pymupdf'
+
+        # Run command without --stop-on-failure
+        result = runner.invoke(app, [str(test_file1), str(test_file2)])
+
+        # Should complete processing both files
+        assert 'error' in result.stdout.lower()
+        # Parxy.parse should be called twice (both files processed)
+        assert mock_parxy.parse.call_count == 2
