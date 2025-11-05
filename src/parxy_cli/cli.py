@@ -11,6 +11,7 @@ from importlib.metadata import version as metadata_version
 from parxy_cli.console.console import Console
 from parxy_cli.commands.docker import app as docker_command
 from parxy_cli.commands.parse import app as parse_command
+from parxy_cli.commands.preview import app as preview_command
 from parxy_cli.commands.drivers import app as drivers_command
 from parxy_cli.commands.env import app as env_command
 from parxy_cli.commands.version import app as version_command
@@ -65,6 +66,7 @@ def main(
 
 app.add_typer(docker_command)
 app.add_typer(parse_command)
+app.add_typer(preview_command)
 app.add_typer(drivers_command)
 app.add_typer(env_command)
 app.add_typer(version_command)

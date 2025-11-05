@@ -19,7 +19,8 @@ from rich.progress import (
     TextColumn,
     BarColumn,
     TaskProgressColumn,
-    TimeRemainingColumn,
+    MofNCompleteColumn,
+    TimeElapsedColumn,
 )
 from rich.markdown import Markdown, Heading, TextElement, MarkdownContext
 from rich.panel import Panel
@@ -432,12 +433,19 @@ class Console:
         self.print('[faint][italic]Every document matters.[/italic][/faint]')
         self.newline()
 
-    def action(self, message: str, style: str = 'faint', space_before: bool = False):
+    def action(
+        self,
+        message: str,
+        style: str = 'faint',
+        space_before: bool = False,
+        space_after: bool = True,
+    ):
         """Print a highlighted action."""
         if space_before:
             self.newline()
         self.print(f'[{style}]▣[/{style}] {message}')
-        self.newline()
+        if space_after:
+            self.newline()
 
     def markdown(self, content: str, code_theme: str = 'monokai'):
         """
@@ -528,8 +536,10 @@ class Console:
             TextColumn('[progress.description]{task.description}'),
             BarColumn(),
             TaskProgressColumn(),
-            TimeRemainingColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
             console=self.console,
+            transient=True,
         )
 
         with progress:
@@ -572,8 +582,12 @@ class Console:
         shimmer = Shimmer(
             text=message,
             normal_color=self.COLORS['tx'],
-            dim_color=self.COLORS['tx_3'],
-            mid_color=self.COLORS['tx_2'],
+            dim_color=self.COLORS['tx_3']
+            if self.theme_mode == 'dark'
+            else self.COLORS['ui_3'],
+            mid_color=self.COLORS['tx_2']
+            if self.theme_mode == 'dark'
+            else self.COLORS['ui_2'],
             speed=speed,
         )
 
@@ -597,6 +611,21 @@ class Console:
     def get_theme_mode(self):
         """Get the current theme mode ('light' or 'dark')."""
         return self.theme_mode
+
+    @contextmanager
+    def pager(self, styles: bool = False):
+        """
+        Context manager for paginated output.
+
+        Usage:
+            with console.pager():
+                console.print(large_content)
+
+        Args:
+            styles: If True, ANSI styles will be preserved in the pager (default: False)
+        """
+        with self.console.pager(styles=styles):
+            yield
 
 
 # Example usage

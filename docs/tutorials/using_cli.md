@@ -10,7 +10,8 @@ The Parxy CLI lets you:
 
 | Command          | Description                                                                                                 |
 |------------------|-------------------------------------------------------------------------------------------------------------|
-| `parxy parse`    | Extract text content from documents with customizable detail levels (page, block, line, span, or character) |
+| `parxy parse`    | Extract text content from documents with customizable detail levels and output formats. Process files or folders with multiple drivers. |
+| `parxy preview`  | Interactive document viewer with metadata, table of contents, and scrollable content preview                |
 | `parxy markdown` | Convert parsed documents into Markdown format (optionally combine multiple files)                           |
 | `parxy drivers`  | List available document processing drivers                                                                  |
 | `parxy env`      | Generate a default `.env` configuration file                                                                |
@@ -19,15 +20,68 @@ The Parxy CLI lets you:
 
 ## Parsing Documents
 
-The `parse` command extracts text from one or more documents.
+The `parse` command is a powerful tool for extracting text from documents with extensive customization options. It supports processing individual files or entire folders, multiple output formats, and can use multiple drivers for comparison.
+
+### Basic Usage
+
+Parse a single document using the default settings (PyMuPDF driver, markdown output):
 
 ```bash
 parxy parse document.pdf
 ```
 
-By default, Parxy uses the **PyMuPDF** driver and extracts text at the **block** level of granularity.
+This creates a `document.md` file in the same directory as the source file.
 
-You can adjust the extraction level with the `--level` (`-l`) option:
+### Processing Multiple Files and Folders
+
+Parse multiple files at once:
+
+```bash
+parxy parse doc1.pdf doc2.pdf doc3.pdf
+```
+
+Process all PDFs in a folder (recursively):
+
+```bash
+parxy parse /path/to/folder
+```
+
+Mix files and folders:
+
+```bash
+parxy parse document.pdf /path/to/folder
+```
+
+### Output Formats
+
+Control the output format with the `--mode` (`-m`) option:
+
+```bash
+# Markdown format (default)
+parxy parse document.pdf -m markdown
+
+# Plain text
+parxy parse document.pdf -m plain
+
+# JSON (full document structure)
+parxy parse document.pdf -m json
+```
+
+The file extension is automatically set based on the output mode (`.md`, `.txt`, or `.json`).
+
+### Output Directory
+
+Specify where to save the output files with `--output` (`-o`):
+
+```bash
+parxy parse document.pdf -o output/
+```
+
+If not specified, files are saved in the same directory as the source files.
+
+### Extraction Levels
+
+Adjust the extraction level with the `--level` (`-l`) option:
 
 ```bash
 parxy parse --level line document.pdf
@@ -41,25 +95,91 @@ Supported levels are (depending on the driver):
 * `span`
 * `character`
 
-You can also specify a different driver:
+### Using Different Drivers
+
+Specify a driver with the `--driver` (`-d`) option:
 
 ```bash
 parxy parse --driver llamaparse document.pdf
 ```
 
-To save the output instead of printing it, specify an output directory:
+### Using Multiple Drivers for Comparison
+
+Parse the same document(s) with multiple drivers by specifying `--driver` multiple times:
 
 ```bash
-parxy parse -o output/ document.pdf
+parxy parse document.pdf -d pymupdf -d llamaparse
 ```
 
-Each file will be saved as a `.txt` file with the same base name as the input.
+When using multiple drivers, Parxy automatically appends the driver name to the output filenames:
+- `document_pymupdf.md`
+- `document_llamaparse.md`
 
-To quickly preview only part of the extracted text, use the `--preview` option (e.g. first 500 characters):
+This is particularly useful for comparing extraction quality across different parsers.
+
+### Showing Output in Console
+
+By default, output is only saved to files. To also display content in the console, use the `--show` (`-s`) flag:
 
 ```bash
-parxy parse --preview 500 document.pdf
+parxy parse document.pdf --show
 ```
+
+### Progress Tracking
+
+When processing multiple files, Parxy displays a progress bar showing:
+- Files being processed
+- Driver being used
+- Output file location
+- Number of pages extracted
+
+### Complete Example
+
+Process all PDFs in a folder with two drivers, output as JSON, and save to a specific directory:
+
+```bash
+parxy parse /path/to/pdfs -d pymupdf -d llamaparse -m json -o output/
+```
+
+## Previewing Documents
+
+The `preview` command provides an interactive document viewer that displays:
+- Document metadata (title, author, creation date, etc.)
+- Table of contents extracted from headings
+- Document content rendered as markdown
+
+This is useful for quickly inspecting a document's structure and content without creating output files.
+
+### Basic Usage
+
+```bash
+parxy preview document.pdf
+```
+
+The preview is displayed in a scrollable three-panel layout.
+
+### Options
+
+Specify a driver:
+
+```bash
+parxy preview document.pdf --driver llamaparse
+```
+
+Adjust extraction level:
+
+```bash
+parxy preview document.pdf --level line
+```
+
+### Navigation
+
+The preview uses your system's default pager (similar to `less` on Unix systems), allowing you to:
+- Scroll up and down
+- Search for text
+- Exit the preview
+
+This is ideal for quick document inspection before running a full parsing operation.
 
 
 ## Converting to Markdown
@@ -146,10 +266,11 @@ parxy parse --help
 
 With the CLI, you can use Parxy as a **standalone document parsing tool** — ideal for quick experiments, batch conversions, or integrations in shell-based pipelines.
 
-| Command          | Purpose                           |
-|------------------|-----------------------------------|
-| `parxy parse`    | Extract text from documents       |
-| `parxy markdown` | Generate Markdown output          |
-| `parxy drivers`  | List supported drivers            |
-| `parxy env`      | Create default configuration file |
-| `parxy docker`   | Generate Docker Compose setup     |
+| Command          | Purpose                                                      |
+|------------------|--------------------------------------------------------------|
+| `parxy parse`    | Extract text from documents with multiple formats & drivers  |
+| `parxy preview`  | Interactive document viewer with metadata and TOC            |
+| `parxy markdown` | Generate Markdown output                                     |
+| `parxy drivers`  | List supported drivers                                       |
+| `parxy env`      | Create default configuration file                            |
+| `parxy docker`   | Generate Docker Compose setup                                |
