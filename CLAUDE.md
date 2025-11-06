@@ -235,6 +235,8 @@ Driver-specific (see config.py for each driver):
 
 6. **Hierarchy Levels**: Use `HierarchyLevel` enum to conditionally populate model fields based on requested level (see pymupdf.py:200-206)
 
+7. **Use Pathlib**: Use Pathlib instead of os.path for filesystem interaction
+
 ## Build System
 
 - Uses `uv` as build backend (uv_build)

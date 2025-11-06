@@ -73,6 +73,10 @@ Parxy is a document processing gateway that provides:
            env_prefix="parxy_newdriver_"
        )
    ```
+### Common Code Guidelines
+
+- Prefer Pathlib over os.path
+
 
 ### Error Handling
 
