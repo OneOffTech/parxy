@@ -11,15 +11,16 @@ permissions:
 
 jobs:
   lint:
-    name: Lint Shell scripts
+    name: Lint Python files
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 1
 
-    - uses: astral-sh/setup-uv@v6.7.0
+    - uses: astral-sh/setup-uv@v7.1.5
 
     - name: Ruff lint
       run: uv run ruff check --exit-zero .
@@ -28,7 +29,7 @@ jobs:
       run: uv run ruff format .
 
     - name: Commit changes
-      uses: stefanzweifel/git-auto-commit-action@v5
+      uses: stefanzweifel/git-auto-commit-action@v7
       with:
         commit_message: Fix styling
 

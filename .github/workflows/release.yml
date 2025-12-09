@@ -15,12 +15,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 1
 
     - name: Install the latest version of uv and set the python version
-      uses: astral-sh/setup-uv@v6.7.0
+      uses: astral-sh/setup-uv@v7.1.5
       with:
         python-version: "3.12"
 
@@ -35,7 +35,7 @@ jobs:
       run: uv run --isolated --no-project --with dist/*.tar.gz tests/smoke_test.py
 
     - name: Upload build for publishing
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: parxy_release
         if-no-files-found: error
@@ -52,7 +52,7 @@ jobs:
       id-token: write
     steps:
       - name: Install the latest version of uv and set the python version
-        uses: astral-sh/setup-uv@v6.7.0
+        uses: astral-sh/setup-uv@v7.1.5
         if: github.event_name == 'release'
         with:
           enable-cache: false
@@ -60,7 +60,7 @@ jobs:
           python-version: "3.12"
 
       - name: Download build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: parxy_release
           path: dist
