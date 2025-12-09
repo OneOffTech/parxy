@@ -1,4 +1,5 @@
 import io
+import json
 
 import validators
 
@@ -6,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from parxy_core.models.config import LlmWhispererConfig
 
+from parxy_core.tracing.utils import trace_with_output
 
 # Type hints that will be available at runtime when llm whisperer is installed
 if TYPE_CHECKING:
@@ -92,31 +94,18 @@ class LlmWhispererDriver(Driver):
 
         self._validate_level(level)
 
-        stream = None
-        if isinstance(file, str):
-            if validators.url(file) is True:
-                stream = Driver.get_stream_from_url(filename=file)
-                file = ''
-        elif isinstance(file, io.BytesIO):
-            stream = file
-            file = ''
-        elif isinstance(file, bytes):
-            stream = io.BytesIO(file)
-            file = ''
-        else:
-            raise ValueError(
-                'The given file is not supported. Expected `str` or bytes-like.'
-            )
-
         try:
-            res = self.__client.whisper(
-                file_path=file,
-                stream=stream,
-                wait_for_completion=True,
-                wait_timeout=200,  # TODO: Handle configuration of args
-                # wait_timeout=kwargs.get("wait_timeout", 200),
-                # **kwargs,
-            )
+            filename, stream = self.handle_file_input(file)
+            with self._trace_parse(filename, stream, **kwargs) as span:
+                res = self.__client.whisper(
+                    file_path=filename,
+                    stream=io.BytesIO(stream),
+                    wait_for_completion=True,
+                    wait_timeout=200,  # TODO: Handle configuration of args
+                    # wait_timeout=kwargs.get("wait_timeout", 200),
+                    # **kwargs,
+                )
+                span.set_attribute('output.document', json.dumps(res))
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.SERVICE_NAME) from fex
         except LLMWhispererClientException as wex:
@@ -134,10 +123,11 @@ class LlmWhispererDriver(Driver):
                 ) from wex
 
         doc = llmwhisperer_to_parxy(res)
-        doc.filename = file
+        doc.filename = filename
         return doc
 
 
+@trace_with_output('converting')
 def llmwhisperer_to_parxy(
     doc: dict,
 ) -> Document:

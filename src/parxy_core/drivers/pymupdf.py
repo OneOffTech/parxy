@@ -1,11 +1,11 @@
 import io
+from datetime import datetime
+import json
+from typing import List, Dict, Any
 
 import pymupdf
-import validators
 
 from parxy_core.drivers import Driver
-from datetime import datetime
-
 from parxy_core.exceptions import FileNotFoundException
 from parxy_core.models import (
     BoundingBox,
@@ -19,6 +19,7 @@ from parxy_core.models import (
     Document,
     HierarchyLevel,
 )
+from parxy_core.tracing import tracer
 
 
 class PyMuPdfDriver(Driver):
@@ -36,29 +37,25 @@ class PyMuPdfDriver(Driver):
     supported_levels: list[str] = ['page', 'block', 'line', 'span', 'character']
 
     def _handle(
-        self,
-        file: str | io.BytesIO | bytes,
-        level: str = 'block',
+        self, file: str | io.BytesIO | bytes, level: str = 'block', **kwargs
     ) -> Document | dict:
-        stream = None
-        if isinstance(file, str):
-            if validators.url(file) is True:
-                stream = Driver.get_stream_from_url(filename=file)
-                file = None
-        elif isinstance(file, (io.BytesIO, bytes)):
-            stream = file
-            file = None
-        else:
-            raise ValueError(
-                'The given file is not supported. Expected `str` or bytes-like.'
-            )
-
         try:
             pymupdf.TOOLS.mupdf_display_errors(False)
             pymupdf.TOOLS.mupdf_display_warnings(False)
 
-            doc = pymupdf.open(filename=file, stream=stream)
-            res = pymupdf_to_parxy(doc=doc, level=level)
+            filename, stream = self.handle_file_input(file)
+            page_key_to_extract = (
+                'rawdict'
+                if HierarchyLevel[level.upper()] == HierarchyLevel.CHARACTER
+                else 'dict'
+            )
+            with self._trace_parse(filename, stream, **kwargs) as span:
+                doc = pymupdf.open(stream=stream)
+                doc_pages = [page.get_text(page_key_to_extract) for page in doc.pages()]
+                span.set_attribute('output.document', json.dumps(doc_pages))
+                span.set_attribute('output.pages', len(doc_pages))
+
+            res = pymupdf_to_parxy(doc=doc, pages=doc_pages, level=level)
             doc.close()
 
             res.parsing_metadata = {'warnings': pymupdf.TOOLS.mupdf_warnings()}
@@ -87,13 +84,18 @@ def _parse_pdf_date(pdf_date: str) -> str | None:
         return None
 
 
-def pymupdf_to_parxy(doc: pymupdf.Document, level: str) -> Document:
+@tracer.instrument('converting', capture_return=True)
+def pymupdf_to_parxy(
+    doc: pymupdf.Document, pages: List[Dict[str, Any]], level: str
+) -> Document:
     """Convert a PyMuPDF Document to a `Document`.
 
     Parameters
     ----
     doc : pymupdf.Document
         The PyMuPDF document.
+    pages: List[Dict[str, Any]]
+        The serialized PyMuPDF pages.
     level : str
         Desired extraction level.
 
@@ -103,7 +105,7 @@ def pymupdf_to_parxy(doc: pymupdf.Document, level: str) -> Document:
         The converted document.
     """
     page_list = []
-    for i, page in enumerate(doc.pages()):
+    for i, page in enumerate(pages):
         parxy_page = _convert_page(page=page, page_number=i + 1, level=level.upper())
         page_list.append(parxy_page)
 
@@ -287,7 +289,7 @@ def _convert_text_block(
 
 
 def _convert_page(
-    page: pymupdf.Page,
+    page: Dict[str, Any],
     page_number: int,
     level: str,
 ) -> Page:
@@ -295,8 +297,8 @@ def _convert_page(
 
     Parameters
     ----
-    page : pymupdf.Page
-        The PyMuPDF Page object.
+    page : Dict[str, Any]
+        The PyMuPDF Page object serialized as dictionary.
     page_number : int
         Page index (0-based).
     level : str
@@ -307,21 +309,16 @@ def _convert_page(
     Page
         The converted page.
     """
-    if HierarchyLevel[level] == HierarchyLevel.CHARACTER:
-        text_page = page.get_text('rawdict')
-    else:
-        text_page = page.get_text('dict')
     blocks = [
         _convert_text_block(block, page_number, level)
-        for block in text_page.get('blocks', [])
+        for block in page.get('blocks', [])
         if block.get('type') == 0
     ]
     page_text = '\n'.join(block.text for block in blocks)
     return Page(
         number=page_number,
-        width=text_page.get('width'),
-        height=text_page.get('height'),
+        width=page.get('width'),
+        height=page.get('height'),
         blocks=blocks if HierarchyLevel[level] >= HierarchyLevel.BLOCK else None,
         text=page_text,
-        source_data={'fonts': page.get_fonts()},
     )

@@ -8,6 +8,18 @@ services:
         networks:
             - parxy
 
+    ## Open Telemetry collector
+    ## To enable traces collection set PARXY_TRACING_ENABLE=True
+    ## To enable metrics collection set PARXY_TRACING_ENABLE_METRICS=True (require PARXY_TRACING_ENABLE=True)
+    # otel-collector:
+    #     image: otel/opentelemetry-collector-contrib:0.141.0
+    #     volumes:
+    #         - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    #     ports:
+    #         - 4317:4317 # OTLP gRPC receiver
+    #         - 4318:4318 # OTLP http receiver
+    #     command: ["--config=/etc/otelcol-contrib/config.yaml"]
+
 networks:
     parxy:
         driver: bridge

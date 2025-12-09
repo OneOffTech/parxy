@@ -1,8 +1,8 @@
 import io
+import json
+from typing import TYPE_CHECKING
 
 import validators
-
-from typing import TYPE_CHECKING
 
 # Type hints that will be available at runtime when unstructured is installed
 if TYPE_CHECKING:
@@ -13,11 +13,11 @@ else:
     UnstructuredElement = object
     UnstructuredText = object
 
-
 from parxy_core.drivers import Driver
 from parxy_core.exceptions import FileNotFoundException, ParsingException
 from parxy_core.models import Document, TextBlock, BoundingBox, Page, HierarchyLevel
 from parxy_core.models.config import UnstructuredLocalConfig
+from parxy_core.tracing.utils import trace_with_output
 
 
 class UnstructuredLocalDriver(Driver):
@@ -77,23 +77,16 @@ class UnstructuredLocalDriver(Driver):
         if level == 'block':
             level = 'paragraph'
 
-        url, stream = None, None
-        if isinstance(file, str):
-            if validators.url(file) is True:
-                url = file
-                file = None
-        elif isinstance(file, io.BytesIO):
-            stream = file
-            file = ''
-        elif isinstance(file, bytes):
-            stream = io.BytesIO(file)
-            file = ''
-
         try:
-            res = self.__client(
-                filename=file, url=url, file=stream, languages=['eng'], **kwargs
-            )
-            # languages=["eng"] is added to suppress the warning about no language detected that is printed to stdout https://github.com/Unstructured-IO/unstructured/blob/8fd07fd9f6702d0b3536ca52db8fb017def252b4/unstructured/partition/pdf.py#L332
+            filename, stream = self.handle_file_input(file)
+            with self._trace_parse(filename, stream, **kwargs) as span:
+                # languages=["eng"] is added to suppress the warning about no language detected that is printed to stdout https://github.com/Unstructured-IO/unstructured/blob/8fd07fd9f6702d0b3536ca52db8fb017def252b4/unstructured/partition/pdf.py#L332
+                res = self.__client(
+                    file=io.BytesIO(stream), languages=['eng'], **kwargs
+                )
+                span.set_attribute(
+                    'output.document', json.dumps([el.to_dict() for el in res])
+                )
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.__class__) from fex
         except Exception as wex:
@@ -108,6 +101,7 @@ class UnstructuredLocalDriver(Driver):
         return unstructured_to_parxy(doc=res, level=level)
 
 
+@trace_with_output('converting')
 def unstructured_to_parxy(
     doc: list[UnstructuredElement],
     level: str,

@@ -154,6 +154,7 @@ You're now ready to try more advanced use cases, such as:
 * [Using Parxy from the command line](using_cli.md)
 * Comparing different parsers on the same document
 * [Extending Parxy with a custom driver](../howto/add_new_parser.md)
+* [Monitoring document processing with OpenTelemetry](../howto/configure_observability.md)
 
 
 > [!TIP]

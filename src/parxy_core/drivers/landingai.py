@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from parxy_core.exceptions.authentication_exception import AuthenticationException
+from parxy_core.tracing.utils import trace_with_output
 
 # Type hints that will be available at runtime when unstructured is installed
 if TYPE_CHECKING:
@@ -43,7 +44,10 @@ class LandingAIADEDriver(Driver):
         from landingai_ade import AuthenticationError
 
         try:
-            parse_response = self.__client.parse(document=Path(file), **kwargs)
+            filename, stream = self.handle_file_input(file)
+            with self._trace_parse(filename, stream, **kwargs) as span:
+                parse_response = self.__client.parse(document=Path(file), **kwargs)
+                span.set_attribute('output.document', parse_response.model_dump_json())
 
         except AuthenticationError as aex:
             raise AuthenticationException(
@@ -54,6 +58,7 @@ class LandingAIADEDriver(Driver):
         return landingaiade_to_parxy(parse_response)
 
 
+@trace_with_output('converting')
 def landingaiade_to_parxy(parsed_data: ParseResponse) -> Document:
     # Group chunks by page
     page_chunks = {}

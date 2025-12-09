@@ -2,6 +2,7 @@ import io
 from typing import TYPE_CHECKING
 
 from parxy_core.models.config import LlamaParseConfig
+from parxy_core.tracing.utils import trace_with_output
 
 # Type hints that will be available at runtime when llama_cloud_services is installed
 if TYPE_CHECKING:
@@ -97,13 +98,12 @@ class LlamaParseDriver(Driver):
         ParsingException
             If any other parsing error occurs
         """
-
-        extra_info = None
-        if isinstance(file, (io.BytesIO, bytes)):
-            extra_info = {'file_name': 'file-name'}
-
         try:
-            res = self.__client.parse(file, extra_info=extra_info)
+            filename, stream = self.handle_file_input(file)
+            extra_info = {'file_name': filename if len(filename) > 0 else 'default'}
+            with self._trace_parse(filename, stream, **kwargs) as span:
+                res = self.__client.parse(stream, extra_info=extra_info)
+                span.set_attribute('output.document', res.model_dump_json())
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.__class__) from fex
         except Exception as ex:
@@ -139,6 +139,7 @@ class LlamaParseDriver(Driver):
         return llamaparse_to_parxy(doc=res, level=level)
 
 
+@trace_with_output('converting')
 def llamaparse_to_parxy(
     doc: JobResult,
     level: str,

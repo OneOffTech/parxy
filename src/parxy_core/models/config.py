@@ -4,13 +4,55 @@ import logging
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, BaseModel
 
 
 class BaseConfig(BaseSettings):
     """Base class for configuration values."""
 
     pass
+
+
+class ParxyTracingConfig(BaseSettings):
+    """Configuration values for Parxy Observability based on Open Telemetry. All env variables must start with parxy_tracing_"""
+
+    enable: bool = False
+    """Enable sending traces to the observability service. Default False."""
+
+    api_key: Optional[SecretStr] = Field(exclude=True, default=None)
+    """The authentication key (used for both traces and metrics unless overridden)."""
+
+    endpoint: str = 'http://localhost:4318/'
+    """The base url of the Open Telemetry collector endpoint."""
+
+    enable_metrics: bool = False
+    """Enable sending metrics to the telemetry service. Default False."""
+
+    traces_endpoint: str = Field(
+        default_factory=lambda data: f'{data["endpoint"].rstrip("/")}/v1/traces'
+    )
+    """The endpoint for the traces exporter. Default 'http://localhost:4318/v1/traces'."""
+
+    metrics_endpoint: str = Field(
+        default_factory=lambda data: f'{data["endpoint"].rstrip("/")}/v1/metrics'
+    )
+    """The endpoint for the metrics exporter. Default 'http://localhost:4318/v1/metrics'."""
+
+    # metrics_export_interval_millis : Optional[int] = None,  # Export every 60 seconds
+    # """The interval at which exporting metrics."""
+
+    verbose: bool = True
+    """Log when traces are sent. Useful for CLI to show telemetry activity. Default True."""
+
+    authentication_header: str = 'Authorization'
+    """The header in which the api key needs to be included for authentication purposes."""
+
+    model_config = SettingsConfigDict(
+        env_prefix='parxy_tracing_',
+        env_file='.env',
+        extra='ignore',
+        nested_model_default_partial_update=True,
+    )
 
 
 class ParxyConfig(BaseConfig):
@@ -28,8 +70,14 @@ class ParxyConfig(BaseConfig):
     theme: Optional[Literal['light', 'dark']] = None
     """The console theme to use. Set to 'light' for light terminals or 'dark' for dark terminals. Default None (auto-detect)."""
 
+    tracing: ParxyTracingConfig = ParxyTracingConfig()
+    """Tracing configuration"""
+
     model_config = SettingsConfigDict(
-        env_prefix='parxy_', env_file='.env', extra='ignore'
+        env_prefix='parxy_',
+        env_file='.env',
+        extra='ignore',
+        nested_model_default_partial_update=True,
     )
 
 
