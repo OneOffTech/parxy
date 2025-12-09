@@ -13,6 +13,8 @@ The Parxy CLI lets you:
 | `parxy parse`    | Extract text content from documents with customizable detail levels and output formats. Process files or folders with multiple drivers. |
 | `parxy preview`  | Interactive document viewer with metadata, table of contents, and scrollable content preview                |
 | `parxy markdown` | Convert parsed documents into Markdown format (optionally combine multiple files)                           |
+| `parxy pdf:merge`| Merge multiple PDF files into one, with support for page ranges                                            |
+| `parxy pdf:split`| Split a PDF file into individual pages                                                                      |
 | `parxy drivers`  | List available document processing drivers                                                                  |
 | `parxy env`      | Generate a default `.env` configuration file                                                                |
 | `parxy docker`   | Create a Docker Compose configuration for running Parxy-related services                                    |
@@ -207,6 +209,61 @@ parxy markdown --combine -o output/ doc1.pdf doc2.pdf doc3.pdf
 This will generate a file named `combined_output.md` in the output directory.
 
 
+## Manipulating PDFs
+
+Parxy provides two powerful commands for PDF manipulation: merging multiple PDFs into one and splitting a single PDF into multiple files.
+
+### Merging PDFs
+
+The `pdf:merge` command combines multiple PDF files into a single output file. You can merge entire files, specific page ranges, or folders of PDFs.
+
+**Basic merge:**
+```bash
+parxy pdf:merge file1.pdf file2.pdf -o merged.pdf
+```
+
+**Merge with page ranges:**
+```bash
+parxy pdf:merge doc1.pdf[1:5] doc2.pdf[3:7] -o combined.pdf
+```
+
+Page range syntax (1-based indexing):
+- `file.pdf[1]` - Single page (page 1)
+- `file.pdf[1:5]` - Pages 1 through 5
+- `file.pdf[:3]` - First 3 pages
+- `file.pdf[5:]` - From page 5 to the end
+
+**Merge entire folders:**
+```bash
+parxy pdf:merge /path/to/pdfs -o combined.pdf
+```
+
+**Mix files, folders, and page ranges:**
+```bash
+parxy pdf:merge cover.pdf /chapters doc.pdf[10:20] appendix.pdf -o book.pdf
+```
+
+### Splitting PDFs
+
+The `pdf:split` command divides a PDF file into individual pages, with each page becoming a separate PDF file.
+
+**Split into individual pages:**
+```bash
+parxy pdf:split document.pdf
+```
+
+This creates a `document_split/` folder containing `document_page_1.pdf`, `document_page_2.pdf`, etc.
+
+**Specify output directory and prefix:**
+```bash
+parxy pdf:split report.pdf -o ./pages -p page
+```
+
+Creates `page_1.pdf`, `page_2.pdf`, etc. in the `./pages` directory.
+
+For more detailed examples and use cases, see the [PDF Manipulation How-to Guide](../howto/pdf_manipulation.md).
+
+
 ## Managing Drivers
 
 To view the list of supported document parsing drivers:
@@ -271,6 +328,8 @@ With the CLI, you can use Parxy as a **standalone document parsing tool** — id
 | `parxy parse`    | Extract text from documents with multiple formats & drivers  |
 | `parxy preview`  | Interactive document viewer with metadata and TOC            |
 | `parxy markdown` | Generate Markdown output                                     |
+| `parxy pdf:merge`| Merge multiple PDF files with page range support             |
+| `parxy pdf:split`| Split PDF files into individual pages                        |
 | `parxy drivers`  | List supported drivers                                       |
 | `parxy env`      | Create default configuration file                            |
 | `parxy docker`   | Generate Docker Compose setup                                |
