@@ -2,8 +2,6 @@ name: Lint
 
 on:
   push:
-    tags-ignore:
-      - '**'
     paths:
       - '**.py'
       - '.github/workflows/lint.yml'
@@ -13,7 +11,8 @@ permissions:
 
 jobs:
   lint:
-    name: Lint Shell scripts
+    name: Lint Python files
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     
     steps:
@@ -33,6 +32,6 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v7
       with:
         commit_message: Fix styling
-        file_pattern: 'src/**/.py tests/**/*.py'
+        file_pattern: 'src/**/*.py tests/**/*.py'
 
     
