@@ -10,8 +10,7 @@ import os
 import sys
 from rich.console import (
     ConsoleOptions,
-    RenderResult,
-    Console as RichConsole,
+    RenderResult,    Console as RichConsole,
 )
 from rich.theme import Theme
 from rich.progress import (
