@@ -16,6 +16,7 @@ from parxy_cli.commands.drivers import app as drivers_command
 from parxy_cli.commands.env import app as env_command
 from parxy_cli.commands.version import app as version_command
 from parxy_cli.commands.markdown import app as markdown_command
+from parxy_cli.commands.pdf import app as pdf_command
 
 
 # Create typer app
@@ -71,6 +72,7 @@ app.add_typer(drivers_command)
 app.add_typer(env_command)
 app.add_typer(version_command)
 app.add_typer(markdown_command)
+app.add_typer(pdf_command)
 
 
 def main():
