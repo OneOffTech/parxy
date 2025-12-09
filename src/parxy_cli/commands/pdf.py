@@ -279,3 +279,119 @@ def merge(
     except Exception as e:
         console.error(f'Error during merge: {str(e)}')
         raise typer.Exit(1)
+
+
+@app.command(name='pdf:split', help='Split a PDF file into individual pages')
+def split(
+    input_file: Annotated[
+        str,
+        typer.Argument(
+            help='PDF file to split',
+        ),
+    ],
+    output_dir: Annotated[
+        Optional[str],
+        typer.Option(
+            '--output',
+            '-o',
+            help='Output directory for split files. If not specified, creates a folder next to the input file.',
+        ),
+    ] = None,
+    prefix: Annotated[
+        Optional[str],
+        typer.Option(
+            '--prefix',
+            '-p',
+            help='Prefix for output filenames. If not specified, uses the input filename.',
+        ),
+    ] = None,
+):
+    """
+    Split a PDF file into individual pages.
+
+    Each page becomes a separate PDF file in the output directory.
+
+    Output files are named: {prefix}_page_{number}.pdf
+
+    Examples:
+
+        # Split into individual pages (default behavior)
+        parxy pdf:split document.pdf
+
+        # Split with custom output directory
+        parxy pdf:split document.pdf -o /path/to/output
+
+        # Split with custom prefix
+        parxy pdf:split document.pdf --prefix chapter
+
+        # Split with custom output and prefix
+        parxy pdf:split report.pdf -o ./pages -p page
+    """
+    console.action('Split PDF file', space_after=False)
+
+    # Validate input file
+    input_path = Path(input_file)
+    if not input_path.is_file():
+        console.error(f'Input file not found: {input_file}', panel=True)
+        raise typer.Exit(1)
+
+    if input_path.suffix.lower() != '.pdf':
+        console.error(f'Input file must be a PDF: {input_file}', panel=True)
+        raise typer.Exit(1)
+
+    # Determine output directory
+    if output_dir is None:
+        # Create a folder next to the input file
+        output_path = input_path.parent / f'{input_path.stem}_split'
+    else:
+        output_path = Path(output_dir)
+
+    # Create output directory
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Determine filename prefix
+    if prefix is None:
+        prefix = input_path.stem
+
+    # Open and process the PDF
+    try:
+        pdf = pymupdf.open(input_path)
+        total_pages = len(pdf)
+
+        if total_pages == 0:
+            console.error('PDF file is empty (no pages)', panel=True)
+            pdf.close()
+            raise typer.Exit(1)
+
+        console.info(
+            f'Processing PDF with {total_pages} page{"s" if total_pages > 1 else ""}'
+        )
+        console.info(
+            f'Splitting into {total_pages} file{"s" if total_pages > 1 else ""}'
+        )
+
+        with console.shimmer(f'Splitting PDF...'):
+            output_files = []
+
+            # Split into individual pages
+            for page_num in range(total_pages):
+                output_file = output_path / f'{prefix}_page_{page_num + 1}.pdf'
+                output_pdf = pymupdf.open()
+                output_pdf.insert_pdf(pdf, from_page=page_num, to_page=page_num)
+                output_pdf.save(str(output_file))
+                output_pdf.close()
+                output_files.append(output_file)
+                console.print(
+                    f'[faint]⎿ [/faint] Created {output_file.name} (page {page_num + 1})'
+                )
+
+        pdf.close()
+
+        console.newline()
+        console.success(
+            f'Successfully split PDF into {len(output_files)} file{"s" if len(output_files) > 1 else ""} in {output_path}'
+        )
+
+    except Exception as e:
+        console.error(f'Error during split: {str(e)}')
+        raise typer.Exit(1)

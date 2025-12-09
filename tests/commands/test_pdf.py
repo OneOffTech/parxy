@@ -437,3 +437,137 @@ class TestMergeCommand:
         # Output should be in same directory as first input file
         expected_output = sample_pdfs['pdf1'].parent / 'merged.pdf'
         assert expected_output.exists()
+
+
+# Tests for the split command
+class TestSplitCommand:
+    """Tests for the pdf:split command."""
+
+    def test_split_into_individual_pages(self, runner, sample_pdfs):
+        """Test splitting a PDF into individual pages."""
+        output_dir = sample_pdfs['tmp_path'] / 'split_output'
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),
+                '--output',
+                str(output_dir),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert output_dir.exists()
+
+        # Should create 3 files (pdf1 has 3 pages)
+        output_files = sorted(output_dir.glob('*.pdf'))
+        assert len(output_files) == 3
+
+        # Check filenames
+        assert output_files[0].name == 'doc1_page_1.pdf'
+        assert output_files[1].name == 'doc1_page_2.pdf'
+        assert output_files[2].name == 'doc1_page_3.pdf'
+
+        # Verify each file has exactly 1 page
+        for output_file in output_files:
+            pdf = pymupdf.open(str(output_file))
+            assert len(pdf) == 1
+            pdf.close()
+
+    def test_split_with_custom_prefix(self, runner, sample_pdfs):
+        """Test splitting with a custom filename prefix."""
+        output_dir = sample_pdfs['tmp_path'] / 'split_prefix'
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf2']),  # 2 pages
+                '--output',
+                str(output_dir),
+                '--prefix',
+                'chapter',
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert output_dir.exists()
+
+        output_files = sorted(output_dir.glob('*.pdf'))
+        assert len(output_files) == 2
+        assert output_files[0].name == 'chapter_page_1.pdf'
+        assert output_files[1].name == 'chapter_page_2.pdf'
+
+    def test_split_default_output_directory(self, runner, sample_pdfs):
+        """Test that default output directory is created next to input file."""
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf2']),
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        # Default output should be {filename}_split next to the input
+        expected_output_dir = sample_pdfs['pdf2'].parent / 'doc2_split'
+        assert expected_output_dir.exists()
+
+        output_files = list(expected_output_dir.glob('*.pdf'))
+        assert len(output_files) == 2
+
+    def test_split_nonexistent_file(self, runner, tmp_path):
+        """Test splitting a nonexistent file."""
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(tmp_path / 'nonexistent.pdf'),
+            ],
+        )
+
+        assert result.exit_code == 1
+        assert 'not found' in result.stdout.lower()
+
+    def test_split_non_pdf_file(self, runner, tmp_path):
+        """Test splitting a non-PDF file."""
+        txt_file = tmp_path / 'file.txt'
+        txt_file.write_text('not a pdf')
+
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(txt_file),
+            ],
+        )
+
+        assert result.exit_code == 1
+        assert 'must be a pdf' in result.stdout.lower()
+
+    def test_split_single_page_pdf(self, runner, tmp_path):
+        """Test splitting a single-page PDF."""
+        # Create a single-page PDF
+        pdf_path = tmp_path / 'single.pdf'
+        pdf = pymupdf.open()
+        page = pdf.new_page(width=612, height=792)
+        page.insert_text((100, 100), 'Single page')
+        pdf.save(str(pdf_path))
+        pdf.close()
+
+        output_dir = tmp_path / 'split_single'
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(pdf_path),
+                '--output',
+                str(output_dir),
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        output_files = list(output_dir.glob('*.pdf'))
+        assert len(output_files) == 1
+        assert output_files[0].name == 'single_page_1.pdf'
