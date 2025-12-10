@@ -287,6 +287,16 @@ class DriverFactory:
 
         return supported_drivers
 
+    def get_custom_drivers(self) -> List[str]:
+        """Get the list of custom registered drivers.
+
+        Returns
+        -------
+        List[str]
+            The custom driver names
+        """
+        return list(self.__custom_creators.keys())
+
     def forget_drivers(self) -> 'DriverFactory':
         """Forget all instantiated and custom "drivers".
 
