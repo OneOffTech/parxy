@@ -449,6 +449,13 @@ def parse(
                             progress.update(task, advance=1)
                             error_count += 1
 
+                            if stop_on_failure:
+                                console.newline()
+                                console.info(
+                                    'Stopping due to error (--stop-on-failure flag is set)'
+                                )
+                                raise typer.Exit(1)
+
                             continue
 
             elapsed_time = format_timedelta(
