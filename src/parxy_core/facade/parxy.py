@@ -103,7 +103,10 @@ class Parxy:
         Driver
             The requested driver instance
         """
-        return cls._get_factory().get_supported_drivers()
+        return (
+            cls._get_factory().get_supported_drivers()
+            + cls._get_factory().get_custom_drivers()
+        )
 
     @classmethod
     def config(cls) -> ParxyConfig:
