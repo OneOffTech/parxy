@@ -67,6 +67,8 @@ Once installed, you can use the `parxy` command to:
 - `parxy parse`: Extract text content from documents with customizable granularity levels and output formats. Process individual files or entire folders, use multiple drivers, and control output with progress bars.
 - `parxy preview`: Interactive document viewer showing metadata, table of contents, and content preview in a scrollable interface
 - `parxy markdown`: Convert documents into Markdown format, with optional combining of multiple documents
+- `parxy pdf:merge`: Merge multiple PDF files into one, with support for selecting specific page ranges
+- `parxy pdf:split`: Split a PDF file into individual pages
 - `parxy drivers`: List available document processing drivers
 - `parxy env`: Create a configuration file with default settings
 - `parxy docker`: Generate a Docker Compose configuration for self-hosted services
@@ -88,6 +90,12 @@ parxy preview document.pdf
 
 # Convert multiple PDFs to markdown and combine them
 parxy markdown --combine -o output/ doc1.pdf doc2.pdf
+
+# Merge multiple PDFs with page ranges
+parxy pdf:merge cover.pdf doc1.pdf[1:10] doc2.pdf -o merged.pdf
+
+# Split a PDF into individual pages
+parxy pdf:split document.pdf -o ./pages
 
 # List available drivers
 parxy drivers
