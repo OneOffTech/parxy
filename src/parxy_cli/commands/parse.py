@@ -1,8 +1,11 @@
 """Command line interface for Parxy document processing."""
 
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import timedelta
 from pathlib import Path
 from typing import Optional, List, Annotated
+from threading import Lock
 
 import typer
 
@@ -260,6 +263,23 @@ def parse(
             help='Stop processing files immediately if an error occurs with any file',
         ),
     ] = False,
+    parallel: Annotated[
+        bool,
+        typer.Option(
+            '--parallel',
+            '-p',
+            help='Process files in parallel using multiple workers',
+        ),
+    ] = False,
+    workers: Annotated[
+        Optional[int],
+        typer.Option(
+            '--workers',
+            '-w',
+            help='Number of parallel workers to use (only applies with --parallel). Defaults to CPU count.',
+            min=1,
+        ),
+    ] = None,
 ):
     """
     Parse documents using one or more drivers.
@@ -289,6 +309,9 @@ def parse(
 
         # Output as JSON and show in console
         parxy parse document.pdf -m json --show
+
+        # Process files in parallel with 4 workers
+        parxy parse /path/to/folder --parallel --workers 4
     """
     console.action('Parse files', space_after=False)
     # Collect all files
@@ -318,6 +341,15 @@ def parse(
 
     error_count = 0
 
+    # Determine number of workers for parallel processing
+    if parallel:
+        max_workers = workers if workers else (os.cpu_count() or 2)
+        console.info(f'Using parallel processing with {max_workers} workers')
+
+        # Initialize the factory once before parallel execution to avoid
+        # concurrent initialization of tracing/telemetry providers
+        Parxy._get_factory()
+
     # Show info
     with console.shimmer(
         f'Processing {len(files)} file{"s" if len(files) > 1 else ""} with {len(drivers)} driver{"s" if len(drivers) > 1 else ""}...'
@@ -326,8 +358,17 @@ def parse(
         with console.progress('Processing documents') as progress:
             task = progress.add_task('', total=total_tasks)
 
-            for file_path in files:
-                for driver in drivers:
+            if parallel:
+                # Parallel processing
+                progress_lock = Lock()
+                should_stop = False
+
+                def process_task(file_path, driver):
+                    nonlocal error_count, should_stop
+
+                    if should_stop:
+                        return None
+
                     try:
                         output_file, page_count = process_file_with_driver(
                             file_path=file_path,
@@ -339,27 +380,76 @@ def parse(
                             use_driver_suffix=use_driver_suffix,
                         )
 
-                        # Update progress
-                        console.print(
-                            f'[faint]⎿ [/faint] {file_path.name} via {driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
-                        )
-                        progress.update(task, advance=1)
+                        # Thread-safe progress update
+                        with progress_lock:
+                            console.print(
+                                f'[faint]⎿ [/faint] {file_path.name} via {driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
+                            )
+                            progress.update(task, advance=1)
+
+                        return ('success', file_path, driver, output_file, page_count)
 
                     except Exception as e:
-                        console.print(
-                            f'[faint]⎿ [/faint] {file_path.name} via {driver} error. [error]{str(e)}[/error]'
-                        )
-                        progress.update(task, advance=1)
-                        error_count += 1
-
-                        if stop_on_failure:
-                            console.newline()
-                            console.info(
-                                'Stopping due to error (--stop-on-failure flag is set)'
+                        with progress_lock:
+                            console.print(
+                                f'[faint]⎿ [/faint] {file_path.name} via {driver} error. [error]{str(e)}[/error]'
                             )
-                            raise typer.Exit(1)
+                            progress.update(task, advance=1)
+                            error_count += 1
 
-                        continue
+                            if stop_on_failure:
+                                should_stop = True
+
+                        return ('error', file_path, driver, str(e))
+
+                # Submit all tasks
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = []
+                    for file_path in files:
+                        for driver in drivers:
+                            future = executor.submit(process_task, file_path, driver)
+                            futures.append(future)
+
+                    # Wait for all tasks to complete
+                    for future in as_completed(futures):
+                        result = future.result()
+
+                        if should_stop:
+                            # Cancel remaining futures
+                            for f in futures:
+                                f.cancel()
+                            console.newline()
+                            console.info('Stopping')
+                            raise typer.Exit(1)
+            else:
+                # Sequential processing
+                for file_path in files:
+                    for driver in drivers:
+                        try:
+                            output_file, page_count = process_file_with_driver(
+                                file_path=file_path,
+                                driver=driver,
+                                level=level,
+                                mode=mode,
+                                output_dir=output_path,
+                                show=show,
+                                use_driver_suffix=use_driver_suffix,
+                            )
+
+                            # Update progress
+                            console.print(
+                                f'[faint]⎿ [/faint] {file_path.name} via {driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
+                            )
+                            progress.update(task, advance=1)
+
+                        except Exception as e:
+                            console.print(
+                                f'[faint]⎿ [/faint] {file_path.name} via {driver} error. [error]{str(e)}[/error]'
+                            )
+                            progress.update(task, advance=1)
+                            error_count += 1
+
+                            continue
 
             elapsed_time = format_timedelta(
                 timedelta(seconds=max(0, progress.tasks[0].elapsed))
