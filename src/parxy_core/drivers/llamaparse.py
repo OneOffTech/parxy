@@ -23,6 +23,17 @@ from parxy_core.exceptions import (
     FileNotFoundException,
 )
 
+_credits_per_parsing_mode = {
+    # Minimum credits per parsing mode as deduced from https://developers.llamaindex.ai/python/cloud/general/pricing/
+    'accurate': 3,  # equivalent to Parse page with LLM as observed in their dashboard
+    'parse_page_without_llm': 1,
+    'parse_page_with_llm': 3,
+    'parse_page_with_lvm': 6,
+    'parse_page_with_agent': 10,
+    'parse_document_with_llm': 30,
+    'parse_document_with_agent': 30,
+}
+
 
 class LlamaParseDriver(Driver):
     """Llama Cloud Services document processing via LlamaParse API.
@@ -136,7 +147,51 @@ class LlamaParseDriver(Driver):
                 res.error, self.__class__, res.model_dump(exclude={'file_name'})
             )
 
-        return llamaparse_to_parxy(doc=res, level=level)
+        converted_document = llamaparse_to_parxy(doc=res, level=level)
+
+        if converted_document.parsing_metadata is None:
+            converted_document.parsing_metadata = {}
+
+        converted_document.parsing_metadata['job_id'] = res.job_id
+        converted_document.parsing_metadata['job_metadata'] = (
+            res.job_metadata.model_dump_json()
+        )
+        converted_document.parsing_metadata['job_error'] = res.error
+        converted_document.parsing_metadata['job_error_code'] = res.error_code
+        converted_document.parsing_metadata['job_status'] = res.status
+
+        # Extract parsing modes from each page's source_data
+        parsing_modes = {}
+        parsing_mode_counts = {}
+
+        for page in converted_document.pages:
+            if page.source_data and 'parsingMode' in page.source_data:
+                mode = page.source_data['parsingMode']
+                parsing_modes[page.number] = mode
+
+                # Count pages per parsing mode
+                if mode in parsing_mode_counts:
+                    parsing_mode_counts[mode] += 1
+                else:
+                    parsing_mode_counts[mode] = 1
+
+        if parsing_modes:
+            converted_document.parsing_metadata['page_parsing_modes'] = parsing_modes
+            converted_document.parsing_metadata['parsing_mode_counts'] = (
+                parsing_mode_counts
+            )
+
+            # Calculate cost estimation based on parsing modes
+            total_cost = 0
+            for mode, count in parsing_mode_counts.items():
+                # Use the credit cost from the dictionary, or default to 3 if not recognized
+                credits_per_page = _credits_per_parsing_mode.get(mode, 3)
+                total_cost += credits_per_page * count
+
+            converted_document.parsing_metadata['cost_estimation'] = total_cost
+            converted_document.parsing_metadata['cost_estimation_unit'] = 'credits'
+
+        return converted_document
 
 
 @trace_with_output('converting')

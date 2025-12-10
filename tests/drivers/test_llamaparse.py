@@ -161,3 +161,45 @@ class TestLlamaParseDriver:
         count_call = mock_tracer.count.call_args
         assert count_call[0][0] == 'documents.failures'
         assert count_call[1]['driver'] == 'LlamaParseDriver'
+
+    def test_llamaparse_driver_extracts_parsing_modes(self):
+        driver = LlamaParseDriver(LlamaParseConfig())
+
+        path = self.__fixture_path('test-doc.pdf')
+        document = driver.parse(path, level='block')
+
+        # Verify parsing_metadata exists and contains parsing modes
+        assert document.parsing_metadata is not None
+
+        # Check if page_parsing_modes is in parsing_metadata (it may not be if LlamaParse doesn't provide it)
+        # This is conditional because the actual LlamaParse response may or may not include parsingMode
+        if 'page_parsing_modes' in document.parsing_metadata:
+            parsing_modes = document.parsing_metadata['page_parsing_modes']
+            assert isinstance(parsing_modes, dict)
+            # Verify it's a mapping of page numbers to parsing modes
+            for page_num, mode in parsing_modes.items():
+                assert isinstance(page_num, int)
+                assert isinstance(mode, str)
+
+            # Verify parsing_mode_counts exists
+            assert 'parsing_mode_counts' in document.parsing_metadata
+            parsing_mode_counts = document.parsing_metadata['parsing_mode_counts']
+            assert isinstance(parsing_mode_counts, dict)
+
+            # Verify counts are correct
+            for mode, count in parsing_mode_counts.items():
+                assert isinstance(mode, str)
+                assert isinstance(count, int)
+                assert count > 0
+
+            # Verify total count matches number of pages with parsing modes
+            assert sum(parsing_mode_counts.values()) == len(parsing_modes)
+
+            # Verify cost_estimation exists
+            assert 'cost_estimation' in document.parsing_metadata
+            cost_estimation = document.parsing_metadata['cost_estimation']
+            assert isinstance(cost_estimation, int)
+            assert cost_estimation > 0
+
+            # Verify cost estimation is reasonable (at least 1 credit per page minimum)
+            assert cost_estimation >= len(parsing_modes)
