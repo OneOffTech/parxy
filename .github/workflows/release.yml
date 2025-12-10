@@ -60,7 +60,7 @@ jobs:
           python-version: "3.12"
 
       - name: Download build
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: parxy_release
           path: dist
