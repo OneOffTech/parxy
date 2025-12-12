@@ -9,6 +9,7 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Button, Header, Static
 from textual.binding import Binding
 
+from parxy_cli.tui.widgets.logo import Logo
 from parxy_core.facade import Parxy
 from parxy_cli.tui.widgets import (
     FileTreeSelector,
@@ -16,192 +17,15 @@ from parxy_cli.tui.widgets import (
     ParserSelector,
     ParserResults,
     ResultsViewer,
+    Footer,
     WelcomeScreen,
 )
 
 
 class ParxyTUI(App):
-    """A Textual app for comparing Parxy parsers."""
+    """Exploring document parsers."""
 
-    CSS = """
-    Screen {
-        layout: grid;
-        grid-size: 2 1;
-        grid-columns: 2fr 1fr;
-        padding: 1 2;
-    }
-
-    Header {
-        column-span: 2;
-    }
-
-    /* Main area - left side, 2/3 width */
-    #main-area {
-        width: 100%;
-        height: 100%;
-        layout: vertical;
-        padding: 0 2 0 0;
-    }
-
-    #main-content-container {
-        height: 1fr;
-        width: 100%;
-    }
-
-    #results-viewer {
-        height: 1fr;
-        width: 100%;
-        display: none;
-    }
-
-    #status-container {
-        height: auto;
-        width: 100%;
-        padding: 1 0;
-        dock: bottom;
-        layout: horizontal;
-    }
-
-    #status-bar {
-        width: 1fr;
-        height: auto;
-        color: $text-muted;
-        content-align: left middle;
-    }
-
-    #new-parse-button {
-        width: auto;
-        min-width: 16;
-        display: none;
-    }
-
-    #command-hint {
-        width: auto;
-        height: auto;
-        color: $text-muted;
-        text-style: italic;
-        content-align: right middle;
-        padding: 0 1;
-    }
-
-    /* Sidebar - right side, 1/3 width */
-    #sidebar {
-        width: 100%;
-        height: 100%;
-        layout: vertical;
-        padding: 0 0 0 2;
-        border-left: solid $primary;
-    }
-
-    #file-tree-selector {
-        height: 1fr;
-    }
-
-    #file-tree-selector-container {
-        height: 100%;
-        layout: vertical;
-    }
-
-    #file-search-input {
-        margin: 0 0 1 0;
-    }
-
-    #file-tree {
-        height: 1fr;
-    }
-
-    #workspace-footer {
-        height: auto;
-        padding: 1 0;
-        color: $text-muted;
-        text-style: italic;
-        dock: bottom;
-    }
-
-    /* Welcome screen */
-    #welcome-container {
-        height: 100%;
-        width: 100%;
-        align: center middle;
-    }
-
-    #welcome-title {
-        text-align: center;
-        text-style: bold;
-        color: $accent;
-        padding: 2;
-    }
-
-    #welcome-message {
-        text-align: center;
-        color: $text-muted;
-        padding: 1 4;
-    }
-
-    /* Parser selector */
-    #parser-selector {
-        height: auto;
-        padding: 2 0;
-    }
-
-    #parser-selector-container {
-        height: auto;
-        layout: vertical;
-    }
-
-    .section-title {
-        text-style: bold;
-        padding: 0 0 1 0;
-    }
-
-    #parser-checkboxes-scroll {
-        max-height: 12;
-        width: 100%;
-    }
-
-    #parse-button {
-        margin: 2 0 0 0;
-        width: auto;
-    }
-
-    Checkbox {
-        margin: 0 0 0 2;
-    }
-
-    /* Results viewer */
-    #diff-container {
-        width: 100%;
-        height: 100%;
-    }
-
-    #diff-content {
-        padding: 1;
-    }
-
-    #side-by-side-container {
-        width: 100%;
-        height: 100%;
-    }
-
-    .parser-column {
-        width: 1fr;
-        height: 100%;
-        margin: 0 1;
-    }
-
-    .parser-title {
-        background: $boost;
-        text-align: center;
-        padding: 1;
-        text-style: bold;
-    }
-
-    .parser-content {
-        width: 100%;
-        height: 100%;
-        padding: 1;
-    }
-    """
+    CSS_PATH = "app.tcss"
 
     BINDINGS = [
         Binding("ctrl+q", "quit", "Quit", key_display="Ctrl+Q"),
@@ -212,40 +36,38 @@ class ParxyTUI(App):
     ]
 
     def __init__(self, workspace: Path):
+        super().__init__()
         self.workspace = workspace
         self.results = ParserResults()
         self.current_file: Optional[Path] = None
         self._last_ctrl_c_time: float = 0
         self._ctrl_c_window: float = 2.0  # seconds
-        super().__init__()
+        self.theme = "flexoki"
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
-        yield Header()
-        
+
         # Main area (left side, 2/3 width)
-        with Vertical(id="main-area"):
-            # Welcome/Parser selector section
-            with Container(id="main-content-container"):
+        with Vertical(id="main-area", classes="p-1"):
+
+            with Vertical(id="main-content-container"):
+                yield Logo(classes="mb-1")
                 yield WelcomeScreen(id="welcome-screen")
+                yield Static("Test")
                 yield ParserSelector(id="parser-selector")
             
-            # Results viewer (initially hidden)
             yield ResultsViewer(self.results, id="results-viewer")
             
-            # Status footer at bottom of main area
-            with Horizontal(id="status-container"):
-                yield Static("Ready", id="status-bar")
-                yield Button("New Parse", id="new-parse-button", variant="default")
-                yield Static("Ctrl+P: Commands", id="command-hint")
+            yield Footer()
         
-        # Sidebar (right side, 1/3 width)
-        with Vertical(id="sidebar"):
+        # # Sidebar (right side, 1/3 width)
+        with Vertical(id="sidebar", classes="sidebar"):
             # File tree at top
             yield FileTreeSelector(self.workspace, id="file-tree-selector")
             
             # Workspace path footer at bottom
-            yield Static(f"Workspace: {self.workspace}", id="workspace-footer")
+            yield Static(f"{self.workspace}", classes="doc-bottom pt-1") # id="workspace-footer", 
+            yield Static(f"[$primary]▣[/$primary] parxy", classes="doc-bottom pt-1")
 
     def on_file_tree_selector_file_selected(self, event: FileTreeSelector.FileSelected) -> None:
         """Handle file selection from the tree selector widget."""
@@ -321,8 +143,6 @@ class ParxyTUI(App):
         
         # Re-enable parse button and show new parse button
         parse_button.disabled = False
-        new_parse_button = self.query_one("#new-parse-button", Button)
-        new_parse_button.styles.display = "block"
         
         # Update final status
         if errors and success_count == 0:
@@ -373,9 +193,6 @@ class ParxyTUI(App):
         # Reset button states
         parse_button = self.query_one("#parse-button", Button)
         parse_button.disabled = False
-        
-        new_parse_button = self.query_one("#new-parse-button", Button)
-        new_parse_button.styles.display = "none"
         
         # Update status
         status_bar = self.query_one("#status-bar", Static)

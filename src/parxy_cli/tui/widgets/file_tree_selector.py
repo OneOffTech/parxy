@@ -58,10 +58,11 @@ class FileTreeSelector(Container):
     def compose(self) -> ComposeResult:
         """Compose the file tree selector."""
         with Vertical(id="file-tree-selector-container"):
-            yield Label("Workspace Files:", classes="section-title")
+            yield Label("Files", classes="section-title")
             yield Input(
                 placeholder="Search files...",
-                id="file-search-input"
+                id="file-search-input",
+                compact=True
             )
             yield FilteredDirectoryTree(
                 str(self.workspace),

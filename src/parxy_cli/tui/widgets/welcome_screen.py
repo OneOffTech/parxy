@@ -8,6 +8,13 @@ from textual.widgets import Button, Label, Static
 class WelcomeScreen(Container):
     """Welcome screen displayed before parsing begins."""
 
+    DEFAULT_CSS = """
+    WelcomeScreen {
+        width: 30;
+        height: auto;
+    }
+    """
+
     def compose(self) -> ComposeResult:
         """Compose the welcome screen."""
         with Vertical(id="welcome-container"):
