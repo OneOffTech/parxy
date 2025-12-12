@@ -47,10 +47,10 @@ class ParserResults:
 class DiffViewer(Container):
     """Widget for displaying diffs between parser results."""
 
-    def __init__(self, results: ParserResults, diff_type: str = "json"):
+    def __init__(self, results: ParserResults, diff_type: str = "json", *args, **kwargs):
         self.results = results
         self.diff_type = diff_type
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
         """Compose the diff viewer."""
@@ -109,10 +109,10 @@ class DiffViewer(Container):
 class SideBySideViewer(Container):
     """Widget for displaying parser results side-by-side."""
 
-    def __init__(self, results: ParserResults, content_type: str = "json"):
+    def __init__(self, results: ParserResults, content_type: str = "json", *args, **kwargs):
         self.results = results
         self.content_type = content_type
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
         """Compose the side-by-side viewer."""
@@ -136,9 +136,9 @@ class SideBySideViewer(Container):
 class ResultsViewer(Container):
     """Widget for displaying parser results."""
 
-    def __init__(self, results: ParserResults):
+    def __init__(self, results: ParserResults, *args, **kwargs):
         self.results = results
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
         """Compose the results viewer."""

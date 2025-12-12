@@ -8,6 +8,7 @@ from parxy_cli.tui.widgets.results_viewer import (
     SideBySideViewer,
     ParserResults,
 )
+from parxy_cli.tui.widgets.welcome_screen import WelcomeScreen
 
 __all__ = [
     'FileTreeSelector',
@@ -17,4 +18,5 @@ __all__ = [
     'DiffViewer',
     'SideBySideViewer',
     'ParserResults',
+    'WelcomeScreen',
 ]
