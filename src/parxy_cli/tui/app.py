@@ -1,235 +1,22 @@
 """Main TUI application for Parxy parser comparison."""
 
-import difflib
-import json
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical, VerticalScroll
-from textual.widgets import (
-    Button,
-    Checkbox,
-    DirectoryTree,
-    Footer,
-    Header,
-    Label,
-    Static,
-    TabbedContent,
-    TabPane,
-)
+from textual.containers import Container, Vertical
+from textual.widgets import Button, Header, Static
 from textual.binding import Binding
-from textual.message import Message
 
 from parxy_core.facade import Parxy
-from parxy_core.models import Document
-
-
-class ParserResults:
-    """Store parsing results from different drivers."""
-
-    def __init__(self):
-        self.results: Dict[str, Document] = {}
-        self.file_path: Optional[Path] = None
-
-    def add_result(self, driver_name: str, document: Document):
-        """Add a parsing result."""
-        self.results[driver_name] = document
-
-    def clear(self):
-        """Clear all results."""
-        self.results.clear()
-        self.file_path = None
-
-    def get_drivers(self) -> List[str]:
-        """Get list of drivers that have results."""
-        return list(self.results.keys())
-
-    def get_json(self, driver_name: str) -> str:
-        """Get JSON representation of a driver's result."""
-        if driver_name in self.results:
-            return self.results[driver_name].model_dump_json(indent=2)
-        return ""
-
-    def get_markdown(self, driver_name: str) -> str:
-        """Get Markdown representation of a driver's result."""
-        if driver_name in self.results:
-            return self.results[driver_name].markdown()
-        return ""
-
-
-class ParserSelector(Container):
-    """Widget for selecting parsers."""
-
-    class ParsersSelected(Message):
-        """Message sent when parsers are selected and parse is requested."""
-
-        def __init__(self, selected_parsers: List[str]) -> None:
-            self.selected_parsers = selected_parsers
-            super().__init__()
-
-    def compose(self) -> ComposeResult:
-        """Compose the parser selector."""
-        with Vertical(id="parser-selector-container"):
-            yield Label("Select Parsers (2+ for comparison):", classes="section-title")
-            
-            # Scrollable area for checkboxes
-            with VerticalScroll(id="parser-checkboxes-scroll"):
-                # Get available drivers
-                drivers = Parxy._get_factory().get_supported_drivers()
-                
-                for driver in drivers:
-                    yield Checkbox(driver, id=f"parser-{driver}")
-            
-            # Button outside scroll area - always visible
-            yield Button("Parse Selected File", id="parse-button", variant="primary")
-
-    def get_selected_parsers(self) -> List[str]:
-        """Get list of selected parser names."""
-        selected = []
-        for checkbox in self.query(Checkbox):
-            if checkbox.value:
-                parser_name = str(checkbox.id).replace("parser-", "")
-                selected.append(parser_name)
-        return selected
-
-
-class DiffViewer(Container):
-    """Widget for displaying diffs between parser results."""
-
-    def __init__(self, results: ParserResults, diff_type: str = "json"):
-        self.results = results
-        self.diff_type = diff_type
-        super().__init__()
-
-    def compose(self) -> ComposeResult:
-        """Compose the diff viewer."""
-        with VerticalScroll(id="diff-container"):
-            yield Static(self.generate_diff(), id="diff-content")
-
-    def generate_diff(self) -> str:
-        """Generate diff between parser results."""
-        drivers = self.results.get_drivers()
-        
-        if len(drivers) < 2:
-            return "Select at least 2 parsers to see differences."
-        
-        # Generate pairwise comparisons for all parsers
-        all_diffs = []
-        
-        for i in range(len(drivers)):
-            for j in range(i + 1, len(drivers)):
-                driver1, driver2 = drivers[i], drivers[j]
-                
-                all_diffs.append(f"\n{'='*80}")
-                all_diffs.append(f"Comparing: {driver1} vs {driver2}")
-                all_diffs.append(f"{'='*80}\n")
-                
-                if self.diff_type == "json":
-                    content1 = self.results.get_json(driver1).splitlines(keepends=True)
-                    content2 = self.results.get_json(driver2).splitlines(keepends=True)
-                else:  # markdown
-                    content1 = self.results.get_markdown(driver1).splitlines(keepends=True)
-                    content2 = self.results.get_markdown(driver2).splitlines(keepends=True)
-                
-                diff = difflib.unified_diff(
-                    content1,
-                    content2,
-                    fromfile=f"{driver1}",
-                    tofile=f"{driver2}",
-                    lineterm="",
-                )
-                
-                diff_result = "".join(diff)
-                if diff_result:
-                    all_diffs.append(diff_result)
-                else:
-                    all_diffs.append("No differences found.")
-                
-                all_diffs.append("\n")
-        
-        return "".join(all_diffs) if all_diffs else "No comparisons available."
-
-    def update_diff(self):
-        """Update the diff content."""
-        diff_static = self.query_one("#diff-content", Static)
-        diff_static.update(self.generate_diff())
-
-
-class SideBySideViewer(Container):
-    """Widget for displaying parser results side-by-side."""
-
-    def __init__(self, results: ParserResults, content_type: str = "json"):
-        self.results = results
-        self.content_type = content_type
-        super().__init__()
-
-    def compose(self) -> ComposeResult:
-        """Compose the side-by-side viewer."""
-        drivers = self.results.get_drivers()
-        
-        if not drivers:
-            yield Static("No results to display. Parse a file first.")
-            return
-        
-        with Horizontal(id="side-by-side-container"):
-            for driver in drivers:
-                with Vertical(classes="parser-column"):
-                    yield Label(f"[bold]{driver}[/bold]", classes="parser-title")
-                    with VerticalScroll(classes="parser-content"):
-                        if self.content_type == "json":
-                            yield Static(self.results.get_json(driver))
-                        else:  # markdown
-                            yield Static(self.results.get_markdown(driver))
-
-
-class ResultsViewer(Container):
-    """Widget for displaying parser results."""
-
-    def __init__(self, results: ParserResults):
-        self.results = results
-        super().__init__()
-
-    def compose(self) -> ComposeResult:
-        """Compose the results viewer."""
-        with TabbedContent(id="results-tabs"):
-            # Side-by-side comparison views
-            with TabPane("JSON Side-by-Side", id="json-sidebyside-tab"):
-                yield SideBySideViewer(self.results, content_type="json")
-            
-            with TabPane("Markdown Side-by-Side", id="markdown-sidebyside-tab"):
-                yield SideBySideViewer(self.results, content_type="markdown")
-            
-            # Diff views
-            with TabPane("JSON Diff", id="json-diff-tab"):
-                yield DiffViewer(self.results, diff_type="json")
-            
-            with TabPane("Markdown Diff", id="markdown-diff-tab"):
-                yield DiffViewer(self.results, diff_type="markdown")
-            
-            # Individual parser results
-            for driver in self.results.get_drivers():
-                with TabPane(f"{driver} (JSON)", id=f"tab-{driver}-json"):
-                    with VerticalScroll():
-                        yield Static(self.results.get_json(driver))
-                
-                with TabPane(f"{driver} (MD)", id=f"tab-{driver}-md"):
-                    with VerticalScroll():
-                        yield Static(self.results.get_markdown(driver))
-
-
-class FileTreeWithFilter(DirectoryTree):
-    """Directory tree that filters for document files."""
-
-    SUPPORTED_EXTENSIONS = {'.pdf', '.txt', '.docx', '.doc', '.html', '.htm', '.xml'}
-
-    def filter_paths(self, paths):
-        """Filter to show only directories and supported document files."""
-        return [
-            path for path in paths
-            if path.is_dir() or path.suffix.lower() in self.SUPPORTED_EXTENSIONS
-        ]
+from parxy_cli.tui.widgets import (
+    FileTreeSelector,
+    FilteredDirectoryTree,
+    ParserSelector,
+    ParserResults,
+    ResultsViewer,
+)
 
 
 class ParxyTUI(App):
@@ -261,8 +48,21 @@ class ParxyTUI(App):
         overflow-y: auto;
     }
 
+    #file-tree-selector {
+        height: 100%;
+    }
+
+    #file-tree-selector-container {
+        height: 100%;
+        layout: vertical;
+    }
+
+    #file-search-input {
+        margin: 0 2 1 2;
+    }
+
     #file-tree {
-        height: auto;
+        height: 1fr;
     }
 
     #parser-selector {
@@ -371,8 +171,7 @@ class ParxyTUI(App):
         with Vertical(id="sidebar"):
             # File tree section (scrollable)
             with Container(id="file-tree-section"):
-                yield Label("Workspace Files:", classes="section-title")
-                yield FileTreeWithFilter(str(self.workspace), id="file-tree")
+                yield FileTreeSelector(self.workspace, id="file-tree-selector")
             
             # Parser selector section (fixed at bottom)
             yield ParserSelector(id="parser-selector")
@@ -381,8 +180,8 @@ class ParxyTUI(App):
             yield Static("Select a file and parsers to begin", id="status-bar")
             yield ResultsViewer(self.results)
 
-    def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
-        """Handle file selection from the tree."""
+    def on_file_tree_selector_file_selected(self, event: FileTreeSelector.FileSelected) -> None:
+        """Handle file selection from the tree selector widget."""
         self.current_file = event.path
         status_bar = self.query_one("#status-bar", Static)
         status_bar.update(f"Selected: {self.current_file.name}")
@@ -462,7 +261,7 @@ class ParxyTUI(App):
 
     def action_refresh(self) -> None:
         """Refresh the file tree."""
-        file_tree = self.query_one("#file-tree", FileTreeWithFilter)
+        file_tree = self.query_one("#file-tree", FilteredDirectoryTree)
         file_tree.reload()
 
     def action_request_quit(self) -> None:
