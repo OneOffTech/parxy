@@ -2,13 +2,14 @@
 
 import time
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional, cast
 
 from textual.app import App, ComposeResult
-from textual.command import Provider
+from textual.command import DiscoveryHit, Hit, Hits, Provider
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Button, Header, Static
 from textual.binding import Binding
+from textual.types import IgnoreReturnCallbackType
 
 from parxy_core.facade import Parxy
 from parxy_cli.tui.widgets import (
@@ -20,6 +21,87 @@ from parxy_cli.tui.widgets import (
     Footer,
     WelcomeContainer,
 )
+
+if TYPE_CHECKING:
+    from parxy_cli.tui.app import ParxyTUI
+
+
+CommandType = tuple[str, IgnoreReturnCallbackType, str]
+
+
+class ParxyCommandProvider(Provider):
+    """Command provider for Parxy TUI commands."""
+
+    @property
+    def commands(self) -> tuple[CommandType, ...]:
+        """Get all available commands for the current state.
+        
+        Returns:
+            Tuple of (command_name, callback, help_text) tuples.
+        """
+        app = self.parxy_app
+        
+        commands_to_show: list[CommandType] = [
+            (
+                "parse: Start parsing",
+                app.action_start_parse,
+                "Parse the selected file with chosen parsers",
+            ),
+            (
+                "parse: New parse",
+                app.action_new_parse,
+                "Start a new parse (return to parser selection)",
+            ),
+            (
+                "view: Toggle sidebar",
+                app.action_toggle_sidebar,
+                "Toggle sidebar visibility to expand main area",
+            ),
+            (
+                "file: Refresh file tree",
+                app.action_refresh,
+                "Refresh the file tree from workspace",
+            ),
+        ]
+        
+        return tuple(commands_to_show)
+
+    async def discover(self) -> Hits:
+        """Handle a request for the discovery commands for this provider.
+
+        Yields:
+            Commands that can be discovered.
+        """
+        for name, runnable, help_text in self.commands:
+            yield DiscoveryHit(
+                name,
+                runnable,
+                help=help_text,
+            )
+
+    async def search(self, query: str) -> Hits:
+        """Handle a request to search for commands that match the query.
+
+        Args:
+            query: The user input to be matched.
+
+        Yields:
+            Command hits for use in the command palette.
+        """
+        matcher = self.matcher(query)
+        for name, runnable, help_text in self.commands:
+            if (match := matcher.match(name)) > 0:
+                yield Hit(
+                    match,
+                    matcher.highlight(name),
+                    runnable,
+                    help=help_text,
+                )
+
+    @property
+    def parxy_app(self) -> "ParxyTUI":
+        """Get the Parxy TUI app instance."""
+        return cast("ParxyTUI", self.app)
 
 
 class ParxyTUI(App):
@@ -35,6 +117,8 @@ class ParxyTUI(App):
         Binding("ctrl+b", "toggle_sidebar", "Toggle sidebar", key_display="Ctrl+B"),
         Binding("ctrl+c", "request_quit", "Quit (press twice)", key_display="Ctrl+C", show=False),
     ]
+    
+    COMMANDS = App.COMMANDS | {ParxyCommandProvider}
 
     def __init__(self, workspace: Path):
         super().__init__()
