@@ -175,3 +175,32 @@ class UnstructuredLocalConfig(BaseConfig):
     model_config = SettingsConfigDict(
         env_prefix='parxy_unstructured_local_', env_file='.env', extra='ignore'
     )
+
+
+class DoclingConfig(BaseConfig):
+    """Configuration values for Docling. All env variables must start with `parxy_docling_`"""
+
+    do_ocr: Optional[bool] = False
+    """Enable OCR for scanned documents. Default False."""
+
+    do_table_structure: Optional[bool] = True
+    """Enable table structure extraction. Default True."""
+
+    num_threads: Optional[int] = 2
+    """Number of CPU threads. Lower value recommended to limit memory. Default 2."""
+
+    device: Optional[str] = "auto"
+    """Device selection: auto, cpu, cuda, mps. Default auto."""
+
+    generate_page_images: Optional[bool] = False
+    """Generate page images. Default False."""
+
+    generate_picture_images: Optional[bool] = False
+    """Generate picture images. Default False."""
+
+    images_scale: Optional[float] = None
+    """Image scaling factor. Default None."""
+
+    model_config = SettingsConfigDict(
+        env_prefix='parxy_docling_', env_file='.env', extra='ignore'
+    )
