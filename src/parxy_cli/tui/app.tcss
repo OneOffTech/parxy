@@ -27,6 +27,12 @@ Screen {
     grid-columns: 2fr 1fr;
 }
 
+/* When sidebar is hidden, use single column layout */
+Screen.sidebar-hidden {
+    grid-size: 1 1;
+    grid-columns: 1fr;
+}
+
 
 
 Footer {

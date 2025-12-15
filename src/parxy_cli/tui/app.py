@@ -31,6 +31,7 @@ class ParxyTUI(App):
         Binding("ctrl+r", "refresh", "Refresh file tree", key_display="Ctrl+R"),
         Binding("ctrl+n", "new_parse", "New parse", key_display="Ctrl+N"),
         Binding("ctrl+s", "start_parse", "Start parsing", key_display="Ctrl+S"),
+        Binding("ctrl+b", "toggle_sidebar", "Toggle sidebar", key_display="Ctrl+B"),
         Binding("ctrl+c", "request_quit", "Quit (press twice)", key_display="Ctrl+C", show=False),
     ]
 
@@ -41,6 +42,7 @@ class ParxyTUI(App):
         self.current_file: Optional[Path] = None
         self._last_ctrl_c_time: float = 0
         self._ctrl_c_window: float = 2.0  # seconds
+        self._sidebar_visible: bool = True  # Track sidebar visibility
         self.theme = "flexoki"
 
     def compose(self) -> ComposeResult:
@@ -196,6 +198,27 @@ class ParxyTUI(App):
             status_bar.update(f"Ready for new parse. File selected: {self.current_file.name}")
         else:
             status_bar.update("Ready for new parse. Select a file to begin.")
+
+    def action_toggle_sidebar(self) -> None:
+        """Toggle sidebar visibility - Show/hide file tree and expand main area."""
+        sidebar = self.query_one("#sidebar")
+        
+        # Toggle visibility
+        self._sidebar_visible = not self._sidebar_visible
+        sidebar.display = self._sidebar_visible
+        
+        # Toggle screen layout class
+        if self._sidebar_visible:
+            self.screen.remove_class("sidebar-hidden")
+        else:
+            self.screen.add_class("sidebar-hidden")
+        
+        # Update status
+        status_bar = self.query_one("#status-bar", Static)
+        if self._sidebar_visible:
+            status_bar.update("Sidebar shown")
+        else:
+            status_bar.update("Sidebar hidden - Main area expanded")
 
     def action_request_quit(self) -> None:
         """Handle Ctrl+C - require pressing twice within time window to quit."""
