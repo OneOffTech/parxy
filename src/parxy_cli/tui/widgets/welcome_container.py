@@ -13,5 +13,5 @@ class WelcomeContainer(Vertical):
 
     def compose(self) -> ComposeResult:
         """Compose the welcome container."""
-        yield Logo(classes="mb-1", id="logo")
-        yield ParserSelector(id="parser-selector")
+        yield Logo(classes='mb-1', id='logo')
+        yield ParserSelector(id='parser-selector')

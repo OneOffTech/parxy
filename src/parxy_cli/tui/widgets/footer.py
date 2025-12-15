@@ -15,5 +15,7 @@ class Footer(Horizontal):
 
     def compose(self) -> ComposeResult:
         """Compose the parser selector."""
-        yield Static("Ready", id="status-bar")
-        yield Static("[$foreground]ctrl+p[/$foreground] commands", classes="command-palette")
+        yield Static('Ready', id='status-bar')
+        yield Static(
+            '[$foreground]ctrl+p[/$foreground] commands', classes='command-palette'
+        )

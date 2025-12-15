@@ -8,7 +8,9 @@ import typer
 from parxy_cli.console.console import Console
 from parxy_cli.tui.app import run_tui
 
-app = typer.Typer(name='tui', help='Launch the Parxy TUI for interactive parser comparison')
+app = typer.Typer(
+    name='tui', help='Launch the Parxy TUI for interactive parser comparison'
+)
 
 console = Console()
 
@@ -50,7 +52,7 @@ def tui(
         raise typer.Exit(1)
 
     console.info(f'Starting Parxy TUI with workspace: {workspace_path}')
-    
+
     try:
         run_tui(workspace_path)
     except Exception as e:

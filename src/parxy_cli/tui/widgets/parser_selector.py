@@ -22,25 +22,25 @@ class ParserSelector(Container):
 
     def compose(self) -> ComposeResult:
         """Compose the parser selector."""
-        with Vertical(id="parser-selector-container"):
-            yield Label("Select Parsers (2+ for comparison):", classes="section-title")
-            
+        with Vertical(id='parser-selector-container'):
+            yield Label('Select Parsers (2+ for comparison):', classes='section-title')
+
             # Scrollable area for checkboxes
-            with VerticalScroll(id="parser-checkboxes-scroll"):
+            with VerticalScroll(id='parser-checkboxes-scroll'):
                 # Get available drivers
                 drivers = Parxy._get_factory().get_supported_drivers()
-                
+
                 for driver in drivers:
-                    yield Checkbox(driver, id=f"parser-{driver}")
-            
+                    yield Checkbox(driver, id=f'parser-{driver}')
+
             # Button outside scroll area - always visible
-            yield Button("Parse Selected File", id="parse-button", variant="primary")
+            yield Button('Parse Selected File', id='parse-button', variant='primary')
 
     def get_selected_parsers(self) -> List[str]:
         """Get list of selected parser names."""
         selected = []
         for checkbox in self.query(Checkbox):
             if checkbox.value:
-                parser_name = str(checkbox.id).replace("parser-", "")
+                parser_name = str(checkbox.id).replace('parser-', '')
                 selected.append(parser_name)
         return selected

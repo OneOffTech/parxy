@@ -17,23 +17,16 @@ class WelcomeScreen(Container):
 
     def compose(self) -> ComposeResult:
         """Compose the welcome screen."""
-        with Vertical(id="welcome-container"):
-            yield Static("")  # Spacer
+        with Vertical(id='welcome-container'):
+            yield Static('')  # Spacer
             with Center():
-                yield Label(
-                    "[bold]Welcome to Parxy TUI[/bold]",
-                    id="welcome-title"
-                )
+                yield Label('[bold]Welcome to Parxy TUI[/bold]', id='welcome-title')
             with Center():
                 yield Static(
-                    "Select one or more files from the sidebar and choose parsers to compare",
-                    id="welcome-message"
+                    'Select one or more files from the sidebar and choose parsers to compare',
+                    id='welcome-message',
                 )
-            yield Static("")  # Spacer
+            yield Static('')  # Spacer
             with Center():
-                yield Button(
-                    "Start Parsing",
-                    id="parse-button",
-                    variant="primary"
-                )
-            yield Static("")  # Spacer
+                yield Button('Start Parsing', id='parse-button', variant='primary')
+            yield Static('')  # Spacer

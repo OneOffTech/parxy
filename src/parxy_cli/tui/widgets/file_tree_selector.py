@@ -15,24 +15,26 @@ class FilteredDirectoryTree(DirectoryTree):
     SUPPORTED_EXTENSIONS = {'.pdf', '.txt', '.docx', '.doc', '.html', '.htm', '.xml'}
 
     def __init__(self, path: str, *args, **kwargs):
-        self._search_query: str = ""
+        self._search_query: str = ''
         super().__init__(path, *args, **kwargs)
 
     def filter_paths(self, paths):
         """Filter to show only directories and supported document files."""
         filtered = [
-            path for path in paths
+            path
+            for path in paths
             if path.is_dir() or path.suffix.lower() in self.SUPPORTED_EXTENSIONS
         ]
-        
+
         # Apply search filter if query exists
         if self._search_query:
             query_lower = self._search_query.lower()
             filtered = [
-                path for path in filtered
+                path
+                for path in filtered
                 if path.is_dir() or query_lower in path.name.lower()
             ]
-        
+
         return filtered
 
     def set_search_query(self, query: str) -> None:
@@ -57,25 +59,22 @@ class FileTreeSelector(Container):
 
     def compose(self) -> ComposeResult:
         """Compose the file tree selector."""
-        with Vertical(id="file-tree-selector-container"):
-            yield Label("Files", classes="section-title")
+        with Vertical(id='file-tree-selector-container'):
+            yield Label('Files', classes='section-title')
             yield Input(
-                placeholder="Search files...",
-                id="file-search-input",
-                compact=True
+                placeholder='Search files...', id='file-search-input', compact=True
             )
-            yield FilteredDirectoryTree(
-                str(self.workspace),
-                id="file-tree"
-            )
+            yield FilteredDirectoryTree(str(self.workspace), id='file-tree')
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Handle search input changes."""
-        if event.input.id == "file-search-input":
-            tree = self.query_one("#file-tree", FilteredDirectoryTree)
+        if event.input.id == 'file-search-input':
+            tree = self.query_one('#file-tree', FilteredDirectoryTree)
             tree.set_search_query(event.value)
 
-    def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
+    def on_directory_tree_file_selected(
+        self, event: DirectoryTree.FileSelected
+    ) -> None:
         """Handle file selection and bubble up a custom message."""
         # Post a custom message that can be caught by parent containers
         self.post_message(self.FileSelected(event.path))
