@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
-from textual.widgets import Label, Static, TabbedContent, TabPane
+from textual.widgets import Label, Static, TabbedContent, TabPane, MarkdownViewer
 
 from parxy_core.models import Document
 
@@ -138,7 +138,10 @@ class SideBySideViewer(Container):
                         if self.content_type == 'json':
                             yield Static(self.results.get_json(driver))
                         else:  # markdown
-                            yield Static(self.results.get_markdown(driver))
+                            yield MarkdownViewer(
+                                self.results.get_markdown(driver),
+                                show_table_of_contents=False,
+                            )
 
 
 class ResultsViewer(Container):
@@ -173,4 +176,7 @@ class ResultsViewer(Container):
 
                 with TabPane(f'{driver} (MD)', id=f'tab-{driver}-md'):
                     with VerticalScroll():
-                        yield Static(self.results.get_markdown(driver))
+                        yield MarkdownViewer(
+                            self.results.get_markdown(driver),
+                            show_table_of_contents=False,
+                        )
