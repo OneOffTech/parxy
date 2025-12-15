@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from textual.app import App, ComposeResult
+from textual.command import Provider
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Button, Header, Static
 from textual.binding import Binding
@@ -101,6 +102,9 @@ class ParxyTUI(App):
         
         # Show initial processing message
         status_bar.update(f"Processing... Preparing to parse {self.current_file.name}")
+        
+        # Force UI refresh to show status immediately
+        self.refresh()
 
         # Hide welcome container and show results viewer
         self.query_one("#welcome-container").display = False
@@ -119,6 +123,8 @@ class ParxyTUI(App):
             try:
                 # Show progress status
                 status_bar.update(f"Processing... [{idx}/{total_parsers}] Parsing with {parser_name}")
+                self.refresh()  # Force UI update to show progress
+                
                 doc = Parxy.parse(
                     file=str(self.current_file),
                     driver_name=parser_name,
@@ -135,6 +141,7 @@ class ParxyTUI(App):
 
         # Show refreshing message
         status_bar.update("Processing... Refreshing results view")
+        self.refresh()  # Force UI update
         
         # Refresh the results viewer
         await self.refresh_results_viewer()
@@ -153,7 +160,7 @@ class ParxyTUI(App):
             )
         else:
             status_bar.update(
-                f"Complete: Successfully parsed {self.current_file.name} with {total_parsers} parser(s)"
+                f"Parsed {self.current_file.name} with {total_parsers} parser{"s" if total_parsers > 1 else ""}"
             )
 
     async def refresh_results_viewer(self) -> None:
@@ -169,18 +176,18 @@ class ParxyTUI(App):
         await main_area.mount(new_viewer, before="Footer")
 
     def action_refresh(self) -> None:
-        """Refresh file tree - Reload the file list from the workspace."""
+        """Refresh file tree."""
         file_tree = self.query_one("#file-tree", FilteredDirectoryTree)
         file_tree.reload()
         status_bar = self.query_one("#status-bar", Static)
         status_bar.update("File tree refreshed")
 
     def action_start_parse(self) -> None:
-        """Start parsing - Parse the selected file with chosen parsers."""
+        """Start parsing the selected file."""
         self.run_worker(self.parse_file())
 
     def action_new_parse(self) -> None:
-        """New parse - Return to welcome screen while keeping file selection."""
+        """Start a new parse (return to parser selection)."""
         # Show welcome container and hide results viewer
         self.query_one("#welcome-container").display = True
         self.query_one("#results-viewer").display = False
@@ -200,7 +207,7 @@ class ParxyTUI(App):
             status_bar.update("Ready for new parse. Select a file to begin.")
 
     def action_toggle_sidebar(self) -> None:
-        """Toggle sidebar visibility - Show/hide file tree and expand main area."""
+        """Toggle sidebar visibility."""
         sidebar = self.query_one("#sidebar")
         
         # Toggle visibility
