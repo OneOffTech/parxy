@@ -9,6 +9,7 @@ from parxy_cli.tui.widgets.results_viewer import (
     ParserResults,
 )
 from parxy_cli.tui.widgets.welcome_screen import WelcomeScreen
+from parxy_cli.tui.widgets.welcome_container import WelcomeContainer
 from parxy_cli.tui.widgets.footer import Footer
 from parxy_cli.tui.widgets.logo import Logo
 
@@ -21,5 +22,7 @@ __all__ = [
     'SideBySideViewer',
     'ParserResults',
     'WelcomeScreen',
+    'WelcomeContainer',
+    'Footer',
     'Logo'
 ]

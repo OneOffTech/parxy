@@ -9,7 +9,6 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Button, Header, Static
 from textual.binding import Binding
 
-from parxy_cli.tui.widgets.logo import Logo
 from parxy_core.facade import Parxy
 from parxy_cli.tui.widgets import (
     FileTreeSelector,
@@ -18,7 +17,7 @@ from parxy_cli.tui.widgets import (
     ParserResults,
     ResultsViewer,
     Footer,
-    WelcomeScreen,
+    WelcomeContainer,
 )
 
 
@@ -49,13 +48,10 @@ class ParxyTUI(App):
 
         # Main area (left side, 2/3 width)
         with Vertical(id="main-area", classes="p-1"):
-
-            with Vertical(id="main-content-container"):
-                yield Logo(classes="mb-1")
-                yield WelcomeScreen(id="welcome-screen")
-                yield Static("Test")
-                yield ParserSelector(id="parser-selector")
+            # Welcome container (logo, welcome message, parser selector)
+            yield WelcomeContainer(id="welcome-container")
             
+            # Results viewer (initially hidden)
             yield ResultsViewer(self.results, id="results-viewer")
             
             yield Footer()
@@ -104,9 +100,9 @@ class ParxyTUI(App):
         # Show initial processing message
         status_bar.update(f"Processing... Preparing to parse {self.current_file.name}")
 
-        # Hide welcome screen and show results viewer
-        self.query_one("#main-content-container").styles.display = "none"
-        self.query_one("#results-viewer").styles.display = "block"
+        # Hide welcome container and show results viewer
+        self.query_one("#welcome-container").display = False
+        self.query_one("#results-viewer").display = True
 
         # Clear previous results
         self.results.clear()
@@ -160,15 +156,15 @@ class ParxyTUI(App):
 
     async def refresh_results_viewer(self) -> None:
         """Refresh the results viewer with new data."""
-        # Remove old results viewer
+        # Remove old results viewer and create new one
         old_viewer = self.query_one("#results-viewer", ResultsViewer)
         await old_viewer.remove()
         
         # Create and mount new viewer with updated results
         main_area = self.query_one("#main-area", Vertical)
         new_viewer = ResultsViewer(self.results, id="results-viewer")
-        new_viewer.styles.display = "block"
-        await main_area.mount(new_viewer, before="#status-bar")
+        new_viewer.display = True
+        await main_area.mount(new_viewer, before="Footer")
 
     def action_refresh(self) -> None:
         """Refresh file tree - Reload the file list from the workspace."""
@@ -183,9 +179,9 @@ class ParxyTUI(App):
 
     def action_new_parse(self) -> None:
         """New parse - Return to welcome screen while keeping file selection."""
-        # Show welcome screen and hide results viewer
-        self.query_one("#main-content-container").styles.display = "block"
-        self.query_one("#results-viewer").styles.display = "none"
+        # Show welcome container and hide results viewer
+        self.query_one("#welcome-container").display = True
+        self.query_one("#results-viewer").display = False
         
         # Clear results but keep file selection
         self.results.clear()

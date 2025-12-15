@@ -74,8 +74,8 @@ Footer {
 }
 
 
-#main-content-container {
-    height: 1fr;
+#welcome-container {
+    height: auto;
     width: 100%;
 }
 
