@@ -1,0 +1,226 @@
+
+/* Utilities */
+
+.dock-bottom {
+    dock: bottom;
+}
+
+.p-1 {
+    padding: 1;
+}
+
+.pt-1 {
+    padding-top: 1;
+}
+
+.mb-1 {
+    margin-bottom: 1;
+}
+
+
+
+
+
+Screen {
+    layout: grid;
+    grid-size: 2 1;
+    grid-columns: 2fr 1fr;
+}
+
+/* When sidebar is hidden, use single column layout */
+Screen.sidebar-hidden {
+    grid-size: 1 1;
+    grid-columns: 1fr;
+}
+
+
+
+Footer {
+    layout: horizontal;
+    dock: bottom;
+    height: 1;
+    scrollbar-size: 0 0;
+
+    .command-palette  {
+        width: auto;
+        height: auto;
+        content-align: right middle;
+        color: $text-muted;
+        padding: 0 1;
+    }
+
+    &:ansi {
+        background: ansi_default;
+        .footer-key--key {
+            background: ansi_default;
+            color: ansi_magenta;
+        }
+        .footer-key--description {
+            background: ansi_default;
+            color: ansi_default;
+        }
+    }
+    
+}
+
+/* Main area - left side, 2/3 width */
+#main-area {
+    width: 100%;
+    height: 100%;
+    layout: vertical;
+}
+
+/* Sidebar - right side, 1/3 width */
+.sidebar {
+    width: 100%;
+    height: 100%;
+    layout: vertical;
+    padding: 1;
+    background: $surface;
+}
+
+
+#welcome-container {
+    height: auto;
+    width: 100%;
+}
+
+#results-viewer {
+    height: 1fr;
+    width: 100%;
+    display: none;
+}
+
+#status-container {
+    height: auto;
+    width: 100%;
+    padding-top: 1;
+    dock: bottom;
+    layout: horizontal;
+}
+
+#status-bar {
+    width: 1fr;
+    height: auto;
+    color: $text-muted;
+    content-align: left middle;
+}
+
+#new-parse-button {
+    width: auto;
+    min-width: 16;
+    display: none;
+}
+
+
+
+
+#file-tree-selector {
+    height: 1fr;
+}
+
+#file-tree-selector-container {
+    height: 100%;
+    layout: vertical;
+}
+
+#file-search-input {
+    margin-bottom: 1;
+    padding: 0 1;
+}
+
+#file-tree {
+    height: 1fr;
+}
+
+
+
+#workspace-footer {
+    height: auto;
+    padding: 1 0;
+    dock: bottom;
+}
+
+/* Welcome screen */
+#welcome-container {
+    height: 100%;
+    width: 100%;
+    align: center middle;
+}
+
+#welcome-title {
+    text-align: center;
+    text-style: bold;
+    color: $accent;
+    padding: 2;
+}
+
+#welcome-message {
+    text-align: center;
+    color: $text-muted;
+    padding: 1 4;
+}
+
+/* Parser selector */
+#parser-selector {
+    height: auto;
+    padding: 2 0;
+}
+
+#parser-selector-container {
+    height: auto;
+    layout: vertical;
+}
+
+.section-title {
+    text-style: bold;
+    padding: 0 0 1 0;
+}
+
+#parser-checkboxes-scroll {
+    max-height: 12;
+    width: 100%;
+}
+
+#parse-button {
+    margin: 2 0 0 0;
+    width: auto;
+}
+
+Checkbox {
+    margin: 0 0 0 2;
+}
+
+/* Results viewer */
+#diff-container {
+    width: 100%;
+    height: 100%;
+}
+
+#diff-content {
+    padding: 1;
+}
+
+#side-by-side-container {
+    width: 100%;
+    height: 100%;
+}
+
+.parser-column {
+    width: 1fr;
+    height: 100%;
+    margin: 0 1;
+}
+
+.parser-title {
+    background: $boost;
+    text-align: center;
+    padding: 1;
+    text-style: bold;
+}
+
+.parser-content {
+    width: 100%;
+    height: 100%;
+    padding: 1;
+}

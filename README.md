@@ -64,6 +64,7 @@ uvx parxy[all]  # All drivers included
 
 Once installed, you can use the `parxy` command to:
 
+- `parxy tui`: Interactive TUI for comparing multiple parsers side-by-side with diff visualization
 - `parxy parse`: Extract text content from documents with customizable granularity levels and output formats. Process individual files or entire folders, use multiple drivers, and control output with progress bars.
 - `parxy preview`: Interactive document viewer showing metadata, table of contents, and content preview in a scrollable interface
 - `parxy markdown`: Convert documents into Markdown format, with optional combining of multiple documents
@@ -76,6 +77,9 @@ Once installed, you can use the `parxy` command to:
 Example usage:
 
 ```bash
+# Launch interactive TUI for parser comparison
+parxy tui ./documents
+
 # Parse a PDF to markdown
 parxy parse --mode markdown document.pdf
 
