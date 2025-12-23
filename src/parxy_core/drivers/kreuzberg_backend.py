@@ -26,7 +26,7 @@ class KreuzbergBackend(Driver):
     By default, OCR is disabled for performance. Enable with force_ocr=True.
     """
 
-    supported_levels = ["page"]
+    supported_levels = ['page']
 
     def _initialize_driver(self):
         """Initialize Kreuzberg driver by checking if the library is available."""
@@ -34,18 +34,18 @@ class KreuzbergBackend(Driver):
             from kreuzberg import ExtractionConfig, extract_file  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "kreuzberg is required. Install with: pip install parxy[kreuzberg]"
+                'kreuzberg is required. Install with: pip install parxy[kreuzberg]'
             ) from e
 
         # Get OCR setting from config if available
         self._force_ocr = False
-        if self._config and hasattr(self._config, "force_ocr"):
+        if self._config and hasattr(self._config, 'force_ocr'):
             self._force_ocr = self._config.force_ocr
 
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -67,7 +67,7 @@ class KreuzbergBackend(Driver):
         return asyncio.run(self._handle_async(file, level, **kwargs))
 
     async def _handle_async(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Async implementation of PDF parsing.
 
@@ -91,7 +91,7 @@ class KreuzbergBackend(Driver):
 
         with self._trace_parse(filename, stream, **kwargs) as span:
             # Get OCR setting from kwargs or instance config
-            force_ocr = kwargs.get("force_ocr", self._force_ocr)
+            force_ocr = kwargs.get('force_ocr', self._force_ocr)
 
             # Create extraction config
             if force_ocr:
@@ -101,12 +101,12 @@ class KreuzbergBackend(Driver):
                 config = ExtractionConfig(ocr_backend=None, force_ocr=False)
 
             # Kreuzberg requires a file path, so write to temp file if needed
-            if isinstance(file, str) and not file.startswith(("http://", "https://")):
+            if isinstance(file, str) and not file.startswith(('http://', 'https://')):
                 # Use the original file path directly
                 result = await extract_file(file, config=config)
             else:
                 # Write stream to temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
                     tmp.write(stream)
                     tmp_path = tmp.name
 
@@ -114,6 +114,7 @@ class KreuzbergBackend(Driver):
                     result = await extract_file(tmp_path, config=config)
                 finally:
                     import os
+
                     os.unlink(tmp_path)
 
             markdown_text = result.content
@@ -127,7 +128,7 @@ class KreuzbergBackend(Driver):
                 )
             ]
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
         return Document(
             filename=filename,

@@ -13,7 +13,7 @@ class PyPDFBackend(Driver):
     Good for simple text extraction, not ideal for complex layouts or tables.
     """
 
-    supported_levels = ["page"]
+    supported_levels = ['page']
 
     def _initialize_driver(self):
         """Initialize PyPDF driver by checking if the library is available."""
@@ -21,12 +21,12 @@ class PyPDFBackend(Driver):
             import pypdf  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "pypdf is required. Install with: pip install parxy[pypdf]"
+                'pypdf is required. Install with: pip install parxy[pypdf]'
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -67,12 +67,12 @@ class PyPDFBackend(Driver):
                     pages.append(
                         Page(
                             number=page_num,
-                            text="",
+                            text='',
                             blocks=None,
                         )
                     )
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
         return Document(
             filename=filename,

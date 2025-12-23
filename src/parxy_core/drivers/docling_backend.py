@@ -31,10 +31,10 @@ from parxy_core.models import Document, Page
 
 # Set thread limits BEFORE importing docling (affects MKL, OpenMP, etc.)
 # See: https://github.com/docling-project/docling-serve/issues/366
-_num_threads = os.environ.get("PARXY_DOCLING_NUM_THREADS", "2")
-os.environ.setdefault("OMP_NUM_THREADS", _num_threads)
-os.environ.setdefault("MKL_NUM_THREADS", _num_threads)
-os.environ.setdefault("OPENBLAS_NUM_THREADS", _num_threads)
+_num_threads = os.environ.get('PARXY_DOCLING_NUM_THREADS', '2')
+os.environ.setdefault('OMP_NUM_THREADS', _num_threads)
+os.environ.setdefault('MKL_NUM_THREADS', _num_threads)
+os.environ.setdefault('OPENBLAS_NUM_THREADS', _num_threads)
 
 # Recreate converter every N documents to mitigate memory leaks
 # See: https://github.com/docling-project/docling/issues/2209
@@ -56,7 +56,7 @@ class DoclingBackend(Driver):
         - Accurate mode (OCR): 8-12GB RAM, 30-60 sec/doc, GPU recommended
     """
 
-    supported_levels = ["page"]
+    supported_levels = ['page']
 
     def _initialize_driver(self):
         """Initialize Docling driver and check dependencies."""
@@ -64,28 +64,28 @@ class DoclingBackend(Driver):
             import docling  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "docling is required. Install with: pip install parxy[docling]"
+                'docling is required. Install with: pip install parxy[docling]'
             ) from e
 
         # Extract configuration from config object
         if self._config:
-            self._do_ocr = getattr(self._config, "do_ocr", False)
-            self._do_table_structure = getattr(self._config, "do_table_structure", True)
-            self._num_threads = getattr(self._config, "num_threads", 2)
-            self._device = getattr(self._config, "device", "auto")
+            self._do_ocr = getattr(self._config, 'do_ocr', False)
+            self._do_table_structure = getattr(self._config, 'do_table_structure', True)
+            self._num_threads = getattr(self._config, 'num_threads', 2)
+            self._device = getattr(self._config, 'device', 'auto')
             self._generate_page_images = getattr(
-                self._config, "generate_page_images", False
+                self._config, 'generate_page_images', False
             )
             self._generate_picture_images = getattr(
-                self._config, "generate_picture_images", False
+                self._config, 'generate_picture_images', False
             )
-            self._images_scale = getattr(self._config, "images_scale", None)
+            self._images_scale = getattr(self._config, 'images_scale', None)
         else:
             # Defaults if no config provided
             self._do_ocr = False
             self._do_table_structure = True
             self._num_threads = 2
-            self._device = "auto"
+            self._device = 'auto'
             self._generate_page_images = False
             self._generate_picture_images = False
             self._images_scale = None
@@ -127,10 +127,10 @@ class DoclingBackend(Driver):
             )
 
             device_map = {
-                "auto": AcceleratorDevice.AUTO,
-                "cpu": AcceleratorDevice.CPU,
-                "cuda": AcceleratorDevice.CUDA,
-                "mps": AcceleratorDevice.MPS,
+                'auto': AcceleratorDevice.AUTO,
+                'cpu': AcceleratorDevice.CPU,
+                'cuda': AcceleratorDevice.CUDA,
+                'mps': AcceleratorDevice.MPS,
             }
             device = device_map.get(self._device.lower(), AcceleratorDevice.AUTO)
 
@@ -150,7 +150,7 @@ class DoclingBackend(Driver):
         return self._converter
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -183,12 +183,12 @@ class DoclingBackend(Driver):
             converter = self._get_converter()
 
             # Docling requires a file path, so write to temp file if needed
-            if isinstance(file, str) and not file.startswith(("http://", "https://")):
+            if isinstance(file, str) and not file.startswith(('http://', 'https://')):
                 # Use the original file path directly
                 result = converter.convert(file)
             else:
                 # Write stream to temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
                     tmp.write(stream)
                     tmp_path = tmp.name
 
@@ -203,19 +203,19 @@ class DoclingBackend(Driver):
             # See: https://github.com/docling-project/docling-serve/issues/366
             try:
                 # Primary cleanup path: result.input._backend.unload()
-                if hasattr(result, "input") and hasattr(result.input, "_backend"):
+                if hasattr(result, 'input') and hasattr(result.input, '_backend'):
                     backend = result.input._backend
-                    if hasattr(backend, "unload"):
+                    if hasattr(backend, 'unload'):
                         backend.unload()
                 # Fallback: try document._backend
-                elif hasattr(result, "document") and hasattr(
-                    result.document, "_backend"
+                elif hasattr(result, 'document') and hasattr(
+                    result.document, '_backend'
                 ):
                     backend = result.document._backend
-                    if hasattr(backend, "unload"):
+                    if hasattr(backend, 'unload'):
                         backend.unload()
                 # Also try result-level unload
-                if hasattr(result, "unload"):
+                if hasattr(result, 'unload'):
                     result.unload()
             except Exception:
                 pass  # Best effort cleanup
@@ -232,7 +232,7 @@ class DoclingBackend(Driver):
                 )
             ]
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
         return Document(
             filename=filename,
