@@ -14,7 +14,7 @@ class MarkerBackend(Driver):
     and technical documents. Excellent for LaTeX-heavy content.
     """
 
-    supported_levels = ["page"]
+    supported_levels = ['page']
 
     def _initialize_driver(self):
         """Initialize Marker driver and load ML models."""
@@ -23,7 +23,7 @@ class MarkerBackend(Driver):
             from marker.models import create_model_dict
         except ImportError as e:
             raise ImportError(
-                "marker-pdf is required. Install with: pip install parxy[marker]"
+                'marker-pdf is required. Install with: pip install parxy[marker]'
             ) from e
 
         # Load models
@@ -32,7 +32,7 @@ class MarkerBackend(Driver):
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -54,12 +54,12 @@ class MarkerBackend(Driver):
 
         with self._trace_parse(filename, stream, **kwargs) as span:
             # Marker requires a file path, so write to temp file if needed
-            if isinstance(file, str) and not file.startswith(("http://", "https://")):
+            if isinstance(file, str) and not file.startswith(('http://', 'https://')):
                 # Use the original file path directly
                 result = self._converter(file)
             else:
                 # Write stream to temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
                     tmp.write(stream)
                     tmp_path = tmp.name
 
@@ -67,6 +67,7 @@ class MarkerBackend(Driver):
                     result = self._converter(tmp_path)
                 finally:
                     import os
+
                     os.unlink(tmp_path)
 
             markdown_text = result.markdown
@@ -80,7 +81,7 @@ class MarkerBackend(Driver):
                 )
             ]
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
         return Document(
             filename=filename,

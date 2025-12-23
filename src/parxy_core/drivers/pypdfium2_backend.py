@@ -13,7 +13,7 @@ class PyPDFium2Backend(Driver):
     Fast and reliable for text extraction.
     """
 
-    supported_levels = ["page"]
+    supported_levels = ['page']
 
     def _initialize_driver(self):
         """Initialize PyPDFium2 driver by checking if the library is available."""
@@ -21,12 +21,12 @@ class PyPDFium2Backend(Driver):
             import pypdfium2  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "pypdfium2 is required. Install with: pip install parxy[pypdfium2]"
+                'pypdfium2 is required. Install with: pip install parxy[pypdfium2]'
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -68,12 +68,12 @@ class PyPDFium2Backend(Driver):
                     pages.append(
                         Page(
                             number=page_num,
-                            text="",
+                            text='',
                             blocks=None,
                         )
                     )
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
         return Document(
             filename=filename,

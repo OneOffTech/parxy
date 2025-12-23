@@ -14,7 +14,7 @@ class PDFPlumberBackend(Driver):
     with high accuracy. Good choice for documents with tabular data.
     """
 
-    supported_levels = ["page"]
+    supported_levels = ['page']
 
     def _initialize_driver(self):
         """Initialize pdfplumber driver by checking if the library is available."""
@@ -22,12 +22,12 @@ class PDFPlumberBackend(Driver):
             import pdfplumber  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "pdfplumber is required. Install with: pip install parxy[pdfplumber]"
+                'pdfplumber is required. Install with: pip install parxy[pdfplumber]'
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object with table extraction.
 
@@ -60,12 +60,12 @@ class PDFPlumberBackend(Driver):
                     pages.append(
                         Page(
                             number=page_num,
-                            text=page_content.strip() if page_content.strip() else "",
+                            text=page_content.strip() if page_content.strip() else '',
                             blocks=None,
                         )
                     )
 
-                span.set_attribute("output.pages", len(pages))
+                span.set_attribute('output.pages', len(pages))
 
             return Document(
                 filename=filename,
@@ -89,37 +89,37 @@ class PDFPlumberBackend(Driver):
         if text and text.strip():
             content_parts.append(text.strip())
 
-        return "\n\n".join(content_parts)
+        return '\n\n'.join(content_parts)
 
     def _table_to_markdown(self, table: list[list[str | None]]) -> str:
         """Convert table to GitHub Flavored Markdown."""
         if not table or len(table) < 2:
-            return ""
+            return ''
 
         # Filter empty rows
         table = [row for row in table if any(cell for cell in row if cell)]
         if not table:
-            return ""
+            return ''
 
         max_cols = max(len(row) for row in table)
         if max_cols == 0:
-            return ""
+            return ''
 
         # Normalize rows
         normalized: list[list[str]] = []
         for row in table:
             padded = row + [None] * (max_cols - len(row))
             normalized.append(
-                [str(cell).strip() if cell is not None else "" for cell in padded]
+                [str(cell).strip() if cell is not None else '' for cell in padded]
             )
 
         lines = []
         # Header
-        lines.append("| " + " | ".join(normalized[0]) + " |")
+        lines.append('| ' + ' | '.join(normalized[0]) + ' |')
         # Separator
-        lines.append("| " + " | ".join(["---"] * max_cols) + " |")
+        lines.append('| ' + ' | '.join(['---'] * max_cols) + ' |')
         # Data rows
         for row in normalized[1:]:  # type: ignore[assignment]
-            lines.append("| " + " | ".join(row) + " |")  # type: ignore[arg-type]
+            lines.append('| ' + ' | '.join(row) + ' |')  # type: ignore[arg-type]
 
-        return "\n".join(lines)
+        return '\n'.join(lines)

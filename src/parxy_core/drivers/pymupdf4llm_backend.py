@@ -13,7 +13,7 @@ class PyMuPDF4LLMBackend(Driver):
     formatted for LLM processing. Good balance of quality and speed.
     """
 
-    supported_levels = ["page"]
+    supported_levels = ['page']
 
     def _initialize_driver(self):
         """Initialize PyMuPDF4LLM driver by checking if the library is available."""
@@ -21,12 +21,12 @@ class PyMuPDF4LLMBackend(Driver):
             import pymupdf4llm  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "pymupdf4llm is required. Install with: pip install parxy[light]"
+                'pymupdf4llm is required. Install with: pip install parxy[light]'
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -51,12 +51,12 @@ class PyMuPDF4LLMBackend(Driver):
 
         with self._trace_parse(filename, stream, **kwargs) as span:
             # PyMuPDF4LLM requires a file path, so write to temp file if needed
-            if isinstance(file, str) and not file.startswith(("http://", "https://")):
+            if isinstance(file, str) and not file.startswith(('http://', 'https://')):
                 # Use the original file path directly
                 markdown_text = pymupdf4llm.to_markdown(file)
             else:
                 # Write stream to temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
                     tmp.write(stream)
                     tmp_path = tmp.name
 
@@ -64,6 +64,7 @@ class PyMuPDF4LLMBackend(Driver):
                     markdown_text = pymupdf4llm.to_markdown(tmp_path)
                 finally:
                     import os
+
                     os.unlink(tmp_path)
 
             # Create a single page with the markdown content
@@ -75,7 +76,7 @@ class PyMuPDF4LLMBackend(Driver):
                 )
             ]
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
         return Document(
             filename=filename,

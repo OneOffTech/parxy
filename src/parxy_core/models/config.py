@@ -189,7 +189,7 @@ class DoclingConfig(BaseConfig):
     num_threads: Optional[int] = 2
     """Number of CPU threads. Lower value recommended to limit memory. Default 2."""
 
-    device: Optional[str] = "auto"
+    device: Optional[str] = 'auto'
     """Device selection: auto, cpu, cuda, mps. Default auto."""
 
     generate_page_images: Optional[bool] = False
