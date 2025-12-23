@@ -136,6 +136,9 @@ class LlamaParseConfig(BaseConfig):
     verbose: Optional[bool] = False
     """Whether to print the progress of the parsing."""
 
+    parse_mode: Optional[str] = 'parse_page_with_llm'
+    """Parsing mode to use to process all documents."""
+
     # Parsing specific configurations (Alphabetical order)
 
     disable_ocr: Optional[bool] = False

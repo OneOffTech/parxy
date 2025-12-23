@@ -79,7 +79,7 @@ class LoggingSpanExporter(SpanExporter):
         return self._wrapped_exporter.force_flush(timeout_millis)
 
 
-def _serialize_value(value: Any, max_length: int = 10000) -> str:
+def _serialize_value(value: Any) -> str:
     """Serialize a value for span attributes with size limits."""
     try:
         if hasattr(value, 'model_dump_json'):
@@ -89,18 +89,15 @@ def _serialize_value(value: Any, max_length: int = 10000) -> str:
         else:
             result = json.dumps(value, default=str)
 
-        if len(result) > max_length:
-            return result[:max_length] + '...[truncated]'
         return result
     except Exception:
-        return str(value)[:max_length]
+        return str(value)
 
 
 def _serialize_args(
     args: tuple,
     kwargs: dict,
     exclude: set[str] | None = None,
-    max_length: int = 1000,
 ) -> dict[str, str]:
     """Serialize function arguments for span attributes."""
     exclude = exclude or {'self', 'cls'}
@@ -109,11 +106,11 @@ def _serialize_args(
     for i, arg in enumerate(args):
         key = f'arg.{i}'
         if key not in exclude:
-            attributes[key] = _serialize_value(arg, max_length)
+            attributes[key] = _serialize_value(arg)
 
     for key, value in kwargs.items():
         if key not in exclude:
-            attributes[f'arg.{key}'] = _serialize_value(value, max_length)
+            attributes[f'arg.{key}'] = _serialize_value(value)
 
     return attributes
 
@@ -259,7 +256,6 @@ class ParxyTracer:
         capture_return: bool = True,
         exclude_args: set[str] | None = None,
         max_arg_length: int = 1000,
-        max_return_length: int = 10000,
     ) -> Callable[[Callable[P, R]], Callable[P, R]]:
         """Decorator to automatically instrument a function with tracing.
 
@@ -278,8 +274,6 @@ class ParxyTracer:
             Argument names to exclude from capture. Always excludes 'self', 'cls'.
         max_arg_length : int, optional
             Max length for serialized arguments. Default 1000.
-        max_return_length : int, optional
-            Max length for serialized return value. Default 10000.
 
         Returns
         -------
@@ -315,9 +309,7 @@ class ParxyTracer:
                         result = func(*args, **kwargs)
 
                         if capture_return and result is not None:
-                            span.set_attribute(
-                                'return', _serialize_value(result, max_return_length)
-                            )
+                            span.set_attribute('return', _serialize_value(result))
 
                         return result
 

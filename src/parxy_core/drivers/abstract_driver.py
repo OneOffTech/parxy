@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import io
+import time
 from abc import ABC, abstractmethod
 from logging import Logger
 from typing import Dict, Any, Self, Tuple, Optional
@@ -108,7 +109,19 @@ class Driver(ABC):
             self._validate_level(level)
 
             try:
+                # Start timing
+                start_time = time.perf_counter()
+
                 document = self._handle(file=file, level=level, **kwargs)
+
+                # Calculate elapsed time in milliseconds
+                end_time = time.perf_counter()
+                elapsed_ms = (end_time - start_time) * 1000
+
+                # Store elapsed time in parsing metadata
+                if document.parsing_metadata is None:
+                    document.parsing_metadata = {}
+                document.parsing_metadata['driver_elapsed_time'] = elapsed_ms
 
                 # Increment the documents processed counter
                 tracer.count(
