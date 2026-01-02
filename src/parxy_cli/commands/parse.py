@@ -215,7 +215,7 @@ def parse(
             '-l',
             help='Extraction level',
         ),
-    ] = Level.PAGE,
+    ] = Level.BLOCK,
     mode: Annotated[
         OutputMode,
         typer.Option(

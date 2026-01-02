@@ -171,3 +171,15 @@ class TestPymuPdfDriver:
 
         # Verify counter was NOT incremented due to exception
         mock_tracer.count.assert_called_once()
+
+    def test_pymupdf_driver_records_elapsed_time(self):
+        driver = PyMuPdfDriver()
+
+        path = self.__fixture_path('test-doc.pdf')
+        document = driver.parse(path, level='page')
+
+        # Verify elapsed time is recorded in parsing_metadata
+        assert document.parsing_metadata is not None
+        assert 'driver_elapsed_time' in document.parsing_metadata
+        assert isinstance(document.parsing_metadata['driver_elapsed_time'], float)
+        assert document.parsing_metadata['driver_elapsed_time'] > 0

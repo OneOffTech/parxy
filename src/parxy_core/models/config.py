@@ -136,6 +136,9 @@ class LlamaParseConfig(BaseConfig):
     verbose: Optional[bool] = False
     """Whether to print the progress of the parsing."""
 
+    parse_mode: Optional[str] = 'parse_page_with_llm'
+    """Parsing mode to use to process all documents."""
+
     # Parsing specific configurations (Alphabetical order)
 
     disable_ocr: Optional[bool] = False
@@ -163,6 +166,9 @@ class LlmWhispererConfig(BaseConfig):
 
     logging_level: Optional[str] = 'INFO'
     """The logging level for the client. Can be "DEBUG", "INFO", "WARNING" or "ERROR". Default "INFO"."""
+
+    mode: Optional[str] = 'form'
+    """Default parsing mode. Can be high_quality, form, low_cost or native_text"""
 
     model_config = SettingsConfigDict(
         env_prefix='parxy_llmwhisperer_', env_file='.env', extra='ignore'
