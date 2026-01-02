@@ -25,6 +25,17 @@ from parxy_core.exceptions import (
 from parxy_core.models import Document, Page
 
 
+_credits_per_parsing_mode_per_page = {
+    # https://unstract.com/pricing/
+    # https://docs.unstract.com/llmwhisperer/llm_whisperer/llm_whisperer_modes/
+    'native_text': 1 / 1000,  
+    'low_cost': 5 / 1000,
+    'high_quality': 10 / 1000,
+    'form': 15 / 1000,
+    'table': 15 / 1000, # assumed to be the same as form
+}
+
+
 class LlmWhispererDriver(Driver):
     """Unstract LLMWhisperer API driver implementation.
 
@@ -63,8 +74,27 @@ class LlmWhispererDriver(Driver):
             api_key=self._config.api_key.get_secret_value()
             if self._config and self._config.api_key
             else None,
-            **self._config.model_dump() if self._config else {},
+            **config_dict,
         )
+
+    def _fetch_usage_info(self) -> dict | None:
+        """Fetch usage information from the LLMWhisperer API.
+
+        Returns
+        -------
+        dict | None
+            Dictionary with usage information including quota, page counts, and subscription plan.
+            Returns None if the API call fails.
+        """
+        try:
+            usage_info = self.__client.get_usage_info()
+            return usage_info
+        except Exception as e:
+            # Log the error but don't fail the parsing
+            self._logger.warning(
+                f'Failed to fetch usage information from LLMWhisperer API: {str(e)}'
+            )
+            return None
 
     def _handle(
         self,
@@ -132,6 +162,27 @@ class LlmWhispererDriver(Driver):
 
         doc = llmwhisperer_to_parxy(res)
         doc.filename = filename
+
+        # Initialize parsing_metadata if needed
+        if doc.parsing_metadata is None:
+            doc.parsing_metadata = {}
+
+        # Calculate cost based on number of pages and parsing mode
+        num_pages = len(doc.pages)
+        credits_per_page = _credits_per_parsing_mode_per_page.get(parsing_mode, 10 / 1000)
+        estimated_cost = credits_per_page * num_pages
+
+        doc.parsing_metadata['parsing_mode'] = parsing_mode
+        doc.parsing_metadata['cost_estimation'] = estimated_cost
+        doc.parsing_metadata['cost_estimation_unit'] = 'credits'
+        doc.parsing_metadata['pages_processed'] = num_pages
+
+        # Fetch usage information from the API
+        usage_info = self._fetch_usage_info()
+
+        if usage_info:
+            doc.parsing_metadata['usage_info'] = usage_info
+
         return doc
 
 
