@@ -55,6 +55,10 @@ class LlmWhispererDriver(Driver):
                 "Install with 'pip install parxy[llmwhisperer]'"
             ) from e
 
+        # Prepare config for client initialization, excluding mode (which is used per-request)
+        config_dict = self._config.model_dump() if self._config else {}
+        config_dict.pop('mode', None)  # Remove mode as it's not a client init parameter
+        
         self.__client = LLMWhispererClientV2(
             api_key=self._config.api_key.get_secret_value()
             if self._config and self._config.api_key
@@ -79,7 +83,7 @@ class LlmWhispererDriver(Driver):
         raw : bool, optional
             If True, return the raw response dict from LLMWhisperer instead of a `Document`. Default is False.
         **kwargs :
-            Additional arguments passed to the LLMWhisperer client (e.g., `wait_timeout`).
+            Additional arguments passed to the LLMWhisperer client (e.g., `wait_timeout`, `mode`).
 
         Returns
         -------
@@ -94,6 +98,9 @@ class LlmWhispererDriver(Driver):
 
         self._validate_level(level)
 
+        # Determine the parsing mode: kwargs takes precedence over config
+        parsing_mode = kwargs.pop('mode', None) or (getattr(self._config, 'mode', 'form') if self._config else 'form')
+
         try:
             filename, stream = self.handle_file_input(file)
             with self._trace_parse(filename, stream, **kwargs) as span:
@@ -102,6 +109,7 @@ class LlmWhispererDriver(Driver):
                     stream=io.BytesIO(stream),
                     wait_for_completion=True,
                     wait_timeout=200,  # TODO: Handle configuration of args
+                    mode=parsing_mode,
                     # wait_timeout=kwargs.get("wait_timeout", 200),
                     # **kwargs,
                 )
