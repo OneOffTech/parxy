@@ -299,7 +299,7 @@ class ParxyTracer:
 
                 if capture_args:
                     attributes.update(
-                        _serialize_args(args, kwargs, exclude, max_arg_length)
+                        _serialize_args(args, kwargs, exclude)
                     )
 
                 with self._tracer.start_as_current_span(
