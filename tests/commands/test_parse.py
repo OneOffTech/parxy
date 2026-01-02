@@ -43,7 +43,7 @@ def test_parse_command_calls_facade_correctly(runner, mock_document, tmp_path):
         # Assert Parxy.parse was called with the correct arguments
         mock_parxy.parse.assert_called_once_with(
             file=str(test_file),
-            level='page',  # default level
+            level='block',  # default level
             driver_name='pymupdf',  # default driver
         )
 
