@@ -244,7 +244,7 @@ class TestLlmWhispererDriver:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
         
-        # Mock whisper response with 2 pages
+        # Mock whisper response with 2 pages including detail fields
         mock_response = {
             'extraction': {
                 'result_text': 'Page 1\n<<<\x0cPage 2\n<<<\x0c',
@@ -252,7 +252,17 @@ class TestLlmWhispererDriver:
                     '0': {'page_number': 0},
                     '1': {'page_number': 1}
                 }
-            }
+            },
+            'whisper_hash': 'abc123def456',
+            'mode': 'native_text',
+            'completed_at': 'Mon, 10 Feb 2025 10:40:58 GMT',
+            'processing_started_at': 'Mon, 10 Feb 2025 10:40:53 GMT',
+            'processing_time_in_seconds': 5.0,
+            'total_pages': 2,
+            'requested_pages': 2,
+            'processed_pages': 2,
+            'upload_file_size_in_kb': 618.488,
+            'tag': 'test_tag'
         }
         mock_client.whisper.return_value = mock_response
         
@@ -283,3 +293,79 @@ class TestLlmWhispererDriver:
         assert document.parsing_metadata['cost_estimation'] == 0.002
         assert document.parsing_metadata['cost_estimation_unit'] == 'credits'
         assert document.parsing_metadata['pages_processed'] == 2
+        
+        # Verify whisper-specific metadata
+        assert 'whisper_hash' in document.parsing_metadata
+        assert document.parsing_metadata['whisper_hash'] == 'abc123def456'
+        
+        # Verify whisper details
+        assert 'whisper_details' in document.parsing_metadata
+        whisper_details = document.parsing_metadata['whisper_details']
+        assert whisper_details['completed_at'] == 'Mon, 10 Feb 2025 10:40:58 GMT'
+        assert whisper_details['processing_started_at'] == 'Mon, 10 Feb 2025 10:40:53 GMT'
+        assert whisper_details['processing_time_in_seconds'] == 5.0
+        assert whisper_details['total_pages'] == 2
+        assert whisper_details['requested_pages'] == 2
+        assert whisper_details['processed_pages'] == 2
+        assert whisper_details['upload_file_size_in_kb'] == 618.488
+        assert whisper_details['tag'] == 'test_tag'
+
+    @patch('unstract.llmwhisperer.LLMWhispererClientV2')
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_llmwhisperer_driver_metadata_extraction(self, mock_tracer, mock_client_class):
+        """Test that whisper metadata is properly extracted from response"""
+        # Setup tracing mocks
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.info = Mock()
+
+        # Setup client mock
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        
+        # Mock whisper response with partial metadata (some fields missing)
+        mock_response = {
+            'extraction': {
+                'result_text': 'Test content\n<<<\x0c',
+                'metadata': {'0': {'page_number': 0}}
+            },
+            'whisper_hash': 'xyz789',
+            'mode': 'high_quality',
+            'processing_time_in_seconds': 3.5,
+            'total_pages': 1
+            # Other fields intentionally missing to test robustness
+        }
+        mock_client.whisper.return_value = mock_response
+        mock_client.get_usage_info.return_value = None
+
+        # Create driver
+        config = LlmWhispererConfig(mode='form')
+        driver = LlmWhispererDriver(config)
+        
+        # Use bytes input
+        test_data = b'%PDF-1.4 test content'
+        
+        # Parse document
+        document = driver.parse(test_data, level='page')
+
+        # Verify whisper hash is extracted
+        assert 'whisper_hash' in document.parsing_metadata
+        assert document.parsing_metadata['whisper_hash'] == 'xyz789'
+        
+        # Verify mode from response takes precedence over config
+        assert document.parsing_metadata['parsing_mode'] == 'high_quality'
+        
+        # Verify whisper details only contains fields that were present
+        assert 'whisper_details' in document.parsing_metadata
+        whisper_details = document.parsing_metadata['whisper_details']
+        assert whisper_details['processing_time_in_seconds'] == 3.5
+        assert whisper_details['total_pages'] == 1
+        
+        # These fields should not be present since they weren't in the response
+        assert 'completed_at' not in whisper_details
+        assert 'processing_started_at' not in whisper_details
+        assert 'requested_pages' not in whisper_details
+        assert 'tag' not in whisper_details

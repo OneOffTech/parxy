@@ -167,12 +167,44 @@ class LlmWhispererDriver(Driver):
         if doc.parsing_metadata is None:
             doc.parsing_metadata = {}
 
+        # Extract whisper-specific metadata from the response
+        if 'whisper_hash' in res:
+            doc.parsing_metadata['whisper_hash'] = res['whisper_hash']
+        
+        if 'mode' in res:
+            doc.parsing_metadata['parsing_mode'] = res['mode']
+        else:
+            doc.parsing_metadata['parsing_mode'] = parsing_mode
+        
+        # Extract processing details
+        whisper_details = {}
+        if 'completed_at' in res:
+            whisper_details['completed_at'] = res['completed_at']
+        if 'processing_started_at' in res:
+            whisper_details['processing_started_at'] = res['processing_started_at']
+        if 'processing_time_in_seconds' in res:
+            whisper_details['processing_time_in_seconds'] = res['processing_time_in_seconds']
+        if 'total_pages' in res:
+            whisper_details['total_pages'] = res['total_pages']
+        if 'requested_pages' in res:
+            whisper_details['requested_pages'] = res['requested_pages']
+        if 'processed_pages' in res:
+            whisper_details['processed_pages'] = res['processed_pages']
+        if 'upload_file_size_in_kb' in res:
+            whisper_details['upload_file_size_in_kb'] = res['upload_file_size_in_kb']
+        if 'tag' in res:
+            whisper_details['tag'] = res['tag']
+        
+        if whisper_details:
+            doc.parsing_metadata['whisper_details'] = whisper_details
+
         # Calculate cost based on number of pages and parsing mode
+        # Use the actual mode from the response if available, otherwise use the requested mode
+        actual_mode = res.get('mode', parsing_mode)
         num_pages = len(doc.pages)
-        credits_per_page = _credits_per_parsing_mode_per_page.get(parsing_mode, 10 / 1000)
+        credits_per_page = _credits_per_parsing_mode_per_page.get(actual_mode, 10 / 1000)
         estimated_cost = credits_per_page * num_pages
 
-        doc.parsing_metadata['parsing_mode'] = parsing_mode
         doc.parsing_metadata['cost_estimation'] = estimated_cost
         doc.parsing_metadata['cost_estimation_unit'] = 'credits'
         doc.parsing_metadata['pages_processed'] = num_pages
