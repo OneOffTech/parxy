@@ -28,11 +28,11 @@ from parxy_core.models import Document, Page
 _credits_per_parsing_mode_per_page = {
     # https://unstract.com/pricing/
     # https://docs.unstract.com/llmwhisperer/llm_whisperer/llm_whisperer_modes/
-    'native_text': 1 / 1000,  
+    'native_text': 1 / 1000,
     'low_cost': 5 / 1000,
     'high_quality': 10 / 1000,
     'form': 15 / 1000,
-    'table': 15 / 1000, # assumed to be the same as form
+    'table': 15 / 1000,  # assumed to be the same as form
 }
 
 
@@ -69,7 +69,7 @@ class LlmWhispererDriver(Driver):
         # Prepare config for client initialization, excluding mode (which is used per-request)
         config_dict = self._config.model_dump() if self._config else {}
         config_dict.pop('mode', None)  # Remove mode as it's not a client init parameter
-        
+
         self.__client = LLMWhispererClientV2(
             api_key=self._config.api_key.get_secret_value()
             if self._config and self._config.api_key
@@ -129,7 +129,9 @@ class LlmWhispererDriver(Driver):
         self._validate_level(level)
 
         # Determine the parsing mode: kwargs takes precedence over config
-        parsing_mode = kwargs.pop('mode', None) or (getattr(self._config, 'mode', 'form') if self._config else 'form')
+        parsing_mode = kwargs.pop('mode', None) or (
+            getattr(self._config, 'mode', 'form') if self._config else 'form'
+        )
 
         try:
             filename, stream = self.handle_file_input(file)
@@ -170,12 +172,12 @@ class LlmWhispererDriver(Driver):
         # Extract whisper-specific metadata from the response
         if 'whisper_hash' in res:
             doc.parsing_metadata['whisper_hash'] = res['whisper_hash']
-        
+
         if 'mode' in res:
             doc.parsing_metadata['parsing_mode'] = res['mode']
         else:
             doc.parsing_metadata['parsing_mode'] = parsing_mode
-        
+
         # Extract processing details
         whisper_details = {}
         if 'completed_at' in res:
@@ -183,7 +185,9 @@ class LlmWhispererDriver(Driver):
         if 'processing_started_at' in res:
             whisper_details['processing_started_at'] = res['processing_started_at']
         if 'processing_time_in_seconds' in res:
-            whisper_details['processing_time_in_seconds'] = res['processing_time_in_seconds']
+            whisper_details['processing_time_in_seconds'] = res[
+                'processing_time_in_seconds'
+            ]
         if 'total_pages' in res:
             whisper_details['total_pages'] = res['total_pages']
         if 'requested_pages' in res:
@@ -194,7 +198,7 @@ class LlmWhispererDriver(Driver):
             whisper_details['upload_file_size_in_kb'] = res['upload_file_size_in_kb']
         if 'tag' in res:
             whisper_details['tag'] = res['tag']
-        
+
         if whisper_details:
             doc.parsing_metadata['whisper_details'] = whisper_details
 
@@ -202,7 +206,9 @@ class LlmWhispererDriver(Driver):
         # Use the actual mode from the response if available, otherwise use the requested mode
         actual_mode = res.get('mode', parsing_mode)
         num_pages = len(doc.pages)
-        credits_per_page = _credits_per_parsing_mode_per_page.get(actual_mode, 10 / 1000)
+        credits_per_page = _credits_per_parsing_mode_per_page.get(
+            actual_mode, 10 / 1000
+        )
         estimated_cost = credits_per_page * num_pages
 
         doc.parsing_metadata['cost_estimation'] = estimated_cost

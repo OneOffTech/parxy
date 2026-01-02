@@ -190,7 +190,7 @@ class TestLandingAIADEDriver:
         # Setup client mock
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
-        
+
         # Mock parse response with metadata including credit usage
         # Based on https://docs.landing.ai/ade/ade-json-response.md
         mock_metadata = MagicMock()
@@ -200,15 +200,17 @@ class TestLandingAIADEDriver:
         mock_metadata.job_id = 'td8wu72tq2g9l9tfgkwn3q3kp'
         mock_metadata.page_count = 2
         mock_metadata.version = 'dpt-2-20251103'
-        mock_metadata.model_dump = Mock(return_value={
-            'credit_usage': 6.0,
-            'duration_ms': 24382,
-            'filename': 'test-document.pdf',
-            'job_id': 'td8wu72tq2g9l9tfgkwn3q3kp',
-            'page_count': 2,
-            'version': 'dpt-2-20251103'
-        })
-        
+        mock_metadata.model_dump = Mock(
+            return_value={
+                'credit_usage': 6.0,
+                'duration_ms': 24382,
+                'filename': 'test-document.pdf',
+                'job_id': 'td8wu72tq2g9l9tfgkwn3q3kp',
+                'page_count': 2,
+                'version': 'dpt-2-20251103',
+            }
+        )
+
         mock_chunk_1 = MagicMock()
         mock_chunk_1.markdown = 'Page 1 content'
         mock_chunk_1.type = 'text'
@@ -220,7 +222,7 @@ class TestLandingAIADEDriver:
         mock_chunk_1.grounding.box.right = 0.9
         mock_chunk_1.grounding.box.bottom = 0.5
         mock_chunk_1.model_dump = Mock(return_value={})
-        
+
         mock_chunk_2 = MagicMock()
         mock_chunk_2.markdown = 'Page 2 content'
         mock_chunk_2.type = 'text'
@@ -232,21 +234,21 @@ class TestLandingAIADEDriver:
         mock_chunk_2.grounding.box.right = 0.9
         mock_chunk_2.grounding.box.bottom = 0.5
         mock_chunk_2.model_dump = Mock(return_value={})
-        
+
         mock_response_metadata = MagicMock()
         mock_response_metadata.filename = 'test-document.pdf'
         mock_response_metadata.model_dump = Mock(return_value={})
-        
+
         mock_response = MagicMock()
         mock_response.chunks = [mock_chunk_1, mock_chunk_2]
         mock_response.metadata = mock_metadata
         mock_response.model_dump_json = Mock(return_value='{}')
-        
+
         mock_client.parse.return_value = mock_response
 
         # Create driver
         driver = LandingAIADEDriver(LandingAIConfig())
-        
+
         # Parse document
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path)
@@ -256,7 +258,7 @@ class TestLandingAIADEDriver:
         assert 'cost_estimation' in document.parsing_metadata
         assert document.parsing_metadata['cost_estimation'] == 6.0
         assert document.parsing_metadata['cost_estimation_unit'] == 'credits'
-        
+
         # Verify ADE details
         assert 'ade_details' in document.parsing_metadata
         ade_details = document.parsing_metadata['ade_details']

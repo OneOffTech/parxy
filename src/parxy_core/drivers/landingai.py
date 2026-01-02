@@ -56,22 +56,22 @@ class LandingAIADEDriver(Driver):
             ) from aex
 
         doc = landingaiade_to_parxy(parse_response)
-        
+
         # Initialize parsing_metadata if needed
         if doc.parsing_metadata is None:
             doc.parsing_metadata = {}
-        
+
         # Extract cost information from metadata
         # According to https://docs.landing.ai/ade/ade-json-response.md
         # metadata contains: credit_usage, duration_ms, filename, job_id, page_count, version
         if parse_response.metadata:
             metadata = parse_response.metadata
-            
+
             # Extract cost estimation from credit_usage
             if hasattr(metadata, 'credit_usage') and metadata.credit_usage is not None:
                 doc.parsing_metadata['cost_estimation'] = metadata.credit_usage
                 doc.parsing_metadata['cost_estimation_unit'] = 'credits'
-            
+
             # Extract processing details
             ade_details = {}
             if hasattr(metadata, 'duration_ms') and metadata.duration_ms is not None:
@@ -84,14 +84,14 @@ class LandingAIADEDriver(Driver):
                 ade_details['version'] = metadata.version
             if hasattr(metadata, 'filename') and metadata.filename is not None:
                 ade_details['filename'] = metadata.filename
-            
+
             # Add failed_pages if present (for partial content responses)
             if hasattr(metadata, 'failed_pages') and metadata.failed_pages is not None:
                 ade_details['failed_pages'] = metadata.failed_pages
-            
+
             if ade_details:
                 doc.parsing_metadata['ade_details'] = ade_details
-        
+
         return doc
 
 
