@@ -298,9 +298,7 @@ class ParxyTracer:
                 attributes: dict[str, Any] = {'function': func.__qualname__}
 
                 if capture_args:
-                    attributes.update(
-                        _serialize_args(args, kwargs, exclude)
-                    )
+                    attributes.update(_serialize_args(args, kwargs, exclude))
 
                 with self._tracer.start_as_current_span(
                     span_name, attributes=attributes
