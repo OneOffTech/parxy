@@ -32,7 +32,7 @@ parxy_cli = [".env.example", "compose.example.yaml", "otel-collector-config.exam
 
 [project.optional-dependencies]
 llama = [
-    "llama-cloud-services>=0.6.60",
+    "llama-cloud-services>=0.6.77",
 ]
 llmwhisperer = [
     "llmwhisperer-client>=2.4.2",
@@ -46,7 +46,7 @@ landingai = [
 ]
 
 all = [
-    "llama-cloud-services>=0.6.60",
+    "llama-cloud-services>=0.6.77",
     "llmwhisperer-client>=2.4.2",
     "unstructured[pdf]>=0.18.13",
     "landingai-ade>=0.15.1",
