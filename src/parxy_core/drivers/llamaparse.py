@@ -249,7 +249,9 @@ class LlamaParseDriver(Driver):
             res.job_metadata.model_dump_json()
         )
         converted_document.parsing_metadata['job_error'] = getattr(res, 'error', None)
-        converted_document.parsing_metadata['job_error_code'] = getattr(res, 'error_code', None)
+        converted_document.parsing_metadata['job_error_code'] = getattr(
+            res, 'error_code', None
+        )
         converted_document.parsing_metadata['job_status'] = getattr(res, 'status', None)
 
         # Try to fetch actual usage metrics from beta API if organization_id is configured
