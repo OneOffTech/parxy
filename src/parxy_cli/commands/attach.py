@@ -76,7 +76,14 @@ def list_attachments(
 
     try:
         # Validate input file
-        input_path = validate_pdf_file(input_file)
+        try:
+            input_path = validate_pdf_file(input_file)
+        except FileNotFoundError as e:
+            console.error(str(e), panel=True)
+            raise
+        except ValueError as e:
+            console.error(str(e), panel=True)
+            raise
 
         # Use service to list attachments
         with PdfService(input_path) as pdf:
@@ -189,7 +196,14 @@ def remove_attachment(
             raise ValueError('Cannot specify both attachment names and --all flag')
 
         # Validate input file
-        input_path = validate_pdf_file(input_file)
+        try:
+            input_path = validate_pdf_file(input_file)
+        except FileNotFoundError as e:
+            console.error(str(e), panel=True)
+            raise
+        except ValueError as e:
+            console.error(str(e), panel=True)
+            raise
 
         # Use service to handle attachments
         with PdfService(input_path) as pdf:
@@ -375,7 +389,14 @@ def add_attachment(
 
     try:
         # Validate input file
-        input_path = validate_pdf_file(input_file)
+        try:
+            input_path = validate_pdf_file(input_file)
+        except FileNotFoundError as e:
+            console.error(str(e), panel=True)
+            raise
+        except ValueError as e:
+            console.error(str(e), panel=True)
+            raise
 
         # Validate all files to attach exist
         file_paths = []
@@ -526,7 +547,14 @@ def read_attachment(
 
     try:
         # Validate input file
-        input_path = validate_pdf_file(input_file)
+        try:
+            input_path = validate_pdf_file(input_file)
+        except FileNotFoundError as e:
+            console.error(str(e), panel=True)
+            raise
+        except ValueError as e:
+            console.error(str(e), panel=True)
+            raise
 
         # Use service to extract attachment
         with PdfService(input_path) as pdf:

@@ -4,10 +4,6 @@ import re
 from pathlib import Path
 from typing import List, Tuple, Optional
 
-from parxy_cli.console.console import Console
-
-console = Console()
-
 
 def format_file_size(size_bytes: int) -> str:
     """
@@ -43,10 +39,8 @@ def validate_pdf_file(file_path: str) -> Path:
     """
     path = Path(file_path)
     if not path.is_file():
-        console.error(f'Input file not found: {file_path}', panel=True)
         raise FileNotFoundError(f'Input file not found: {file_path}')
     if path.suffix.lower() != '.pdf':
-        console.error(f'Input file must be a PDF: {file_path}', panel=True)
         raise ValueError(f'Input file must be a PDF: {file_path}')
     return path
 
@@ -129,6 +123,12 @@ def collect_pdf_files_with_ranges(
     For folders, only files in the exact directory are collected (non-recursive).
     For files with page ranges (e.g., file.pdf[1:3]), parse and extract the range.
 
+    Silently skips:
+    - Non-existent paths
+    - Non-PDF files
+    - Empty directories
+    - Page ranges on directories (directories are processed without ranges)
+
     Args:
         inputs: List of file paths (with optional page ranges) and/or folder paths
 
@@ -147,22 +147,15 @@ def collect_pdf_files_with_ranges(
             # Check if it's a PDF
             if path.suffix.lower() == '.pdf':
                 files.append((path, from_page, to_page))
-            else:
-                console.warning(f'Skipping non-PDF file: {file_path_str}')
+            # Silently skip non-PDF files
         elif path.is_dir():
             # Non-recursive: only files in the given directory
-            # Directories cannot have page ranges
-            if from_page is not None or to_page is not None:
-                console.warning(
-                    f'Page ranges are not supported for directories: {input_str}'
-                )
+            # Directories cannot have page ranges - ignore them if specified
             pdf_files = sorted(path.glob('*.pdf'))
             if pdf_files:
                 # Add all PDFs from directory without page ranges
                 files.extend([(f, None, None) for f in pdf_files])
-            else:
-                console.warning(f'No PDF files found in directory: {file_path_str}')
-        else:
-            console.warning(f'Path not found: {file_path_str}')
+            # Silently skip empty directories
+        # Silently skip non-existent paths
 
     return files
