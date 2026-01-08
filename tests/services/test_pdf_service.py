@@ -302,9 +302,7 @@ class TestSplitPdf:
         """Test splitting a PDF into individual pages."""
         output_dir = multiple_pdfs['tmp_path'] / 'split'
 
-        output_files = PdfService.split_pdf(
-            multiple_pdfs['pdf1'], output_dir, 'doc1'
-        )
+        output_files = PdfService.split_pdf(multiple_pdfs['pdf1'], output_dir, 'doc1')
 
         assert len(output_files) == 3
         assert all(f.exists() for f in output_files)
@@ -343,9 +341,7 @@ class TestSplitPdf:
         """Test that split creates output directory if needed."""
         output_dir = multiple_pdfs['tmp_path'] / 'nested' / 'split'
 
-        output_files = PdfService.split_pdf(
-            multiple_pdfs['pdf1'], output_dir, 'doc1'
-        )
+        output_files = PdfService.split_pdf(multiple_pdfs['pdf1'], output_dir, 'doc1')
 
         assert output_dir.exists()
         assert len(output_files) == 3

@@ -253,9 +253,7 @@ class PdfService:
                             f'Invalid page range for {file_path.name}: start page {actual_from + 1} > end page {actual_to + 1}'
                         )
 
-                    merged_pdf.insert_pdf(
-                        pdf, from_page=actual_from, to_page=actual_to
-                    )
+                    merged_pdf.insert_pdf(pdf, from_page=actual_from, to_page=actual_to)
 
                 pdf.close()
 

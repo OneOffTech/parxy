@@ -212,7 +212,9 @@ def remove_attachment(
 
             if not all_embeds:
                 console.newline()
-                console.error(f'No attached files found in {input_path.name}', panel=True)
+                console.error(
+                    f'No attached files found in {input_path.name}', panel=True
+                )
                 raise ValueError(f'No attached files found in {input_path.name}')
 
             # Determine which embeds to remove
@@ -266,7 +268,9 @@ def remove_attachment(
 
             # Determine output path
             if output is None:
-                output_path = input_path.parent / f'{input_path.stem}_no_attachments.pdf'
+                output_path = (
+                    input_path.parent / f'{input_path.stem}_no_attachments.pdf'
+                )
             else:
                 output_path = Path(output)
 
@@ -465,7 +469,9 @@ def add_attachment(
 
             # Determine output path
             if output is None:
-                output_path = input_path.parent / f'{input_path.stem}_with_attachments.pdf'
+                output_path = (
+                    input_path.parent / f'{input_path.stem}_with_attachments.pdf'
+                )
             else:
                 output_path = Path(output)
 
