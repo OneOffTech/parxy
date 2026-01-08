@@ -17,6 +17,7 @@ from parxy_cli.commands.env import app as env_command
 from parxy_cli.commands.version import app as version_command
 from parxy_cli.commands.markdown import app as markdown_command
 from parxy_cli.commands.pdf import app as pdf_command
+from parxy_cli.commands.embed import app as embed_command
 from parxy_cli.commands.tui import app as tui_command
 
 
@@ -74,6 +75,7 @@ app.add_typer(env_command)
 app.add_typer(version_command)
 app.add_typer(markdown_command)
 app.add_typer(pdf_command)
+app.add_typer(embed_command)
 app.add_typer(tui_command)
 
 
