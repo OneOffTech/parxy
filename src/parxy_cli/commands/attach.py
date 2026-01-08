@@ -1,4 +1,4 @@
-"""PDF embedded file commands."""
+"""PDF attached file commands."""
 
 from pathlib import Path
 from typing import List, Annotated, Optional
@@ -99,8 +99,8 @@ def prompt_overwrite(file_path: Path) -> bool:
 # ============================================================================
 
 
-@app.command(name='embed:list', help='List embedded files in a PDF')
-def list_embeds(
+@app.command(name='attach:list', help='List attached files in a PDF')
+def list_attachments(
     input_file: Annotated[
         str,
         typer.Argument(help='PDF file to inspect'),
@@ -111,22 +111,22 @@ def list_embeds(
     ] = False,
 ):
     """
-    List all embedded files in a PDF.
+    List all attached files in a PDF.
 
-    Displays a list of all files embedded in the specified PDF document.
+    Displays a list of all files attached to the specified PDF document.
     In verbose mode, shows additional metadata including file size,
     description, and modification date.
 
     Examples:
 
-        # List embeds
-        parxy embed:list document.pdf
+        # List attachments
+        parxy attach:list document.pdf
 
         # List with detailed information
-        parxy embed:list document.pdf --verbose
-        parxy embed:list document.pdf -v
+        parxy attach:list document.pdf --verbose
+        parxy attach:list document.pdf -v
     """
-    console.action('List embedded files', space_after=False)
+    console.action('List attached files', space_after=False)
 
     try:
         # Validate input file
@@ -180,68 +180,68 @@ def list_embeds(
         raise typer.Exit(1)
 
 
-@app.command(name='embed:remove', help='Remove embedded files from a PDF')
-def remove_embed(
+@app.command(name='attach:remove', help='Remove attached files from a PDF')
+def remove_attachment(
     input_file: Annotated[
         str,
         typer.Argument(help='PDF file to process'),
     ],
     names: Annotated[
         Optional[List[str]],
-        typer.Argument(help='Names of embeds to remove'),
+        typer.Argument(help='Names of attachments to remove'),
     ] = None,
     output: Annotated[
         Optional[str],
         typer.Option(
             '--output',
             '-o',
-            help='Output file path. If not specified, creates {input}_no_embeds.pdf',
+            help='Output file path. If not specified, creates {input}_no_attachments.pdf',
         ),
     ] = None,
     all: Annotated[
         bool,
-        typer.Option('--all', help='Remove all embedded files'),
+        typer.Option('--all', help='Remove all attached files'),
     ] = False,
 ):
     """
-    Remove embedded files from a PDF.
+    Remove attached files from a PDF.
 
-    Creates a new PDF with specified embedded files removed. The original
+    Creates a new PDF with specified attached files removed. The original
     file is never modified.
 
-    You must specify either embed names to remove OR use --all to remove
-    all embeds (not both).
+    You must specify either attachment names to remove OR use --all to remove
+    all attachments (not both).
 
     When using --all, you'll be prompted to confirm the operation.
 
     Examples:
 
-        # Remove specific embed
-        parxy embed:remove document.pdf data.csv
+        # Remove specific attachment
+        parxy attach:remove document.pdf data.csv
 
-        # Remove multiple embeds
-        parxy embed:remove document.pdf data.csv report.docx
+        # Remove multiple attachments
+        parxy attach:remove document.pdf data.csv report.docx
 
         # Remove with custom output path
-        parxy embed:remove document.pdf data.csv -o clean.pdf
+        parxy attach:remove document.pdf data.csv -o clean.pdf
 
-        # Remove all embeds (will prompt for confirmation)
-        parxy embed:remove document.pdf --all
+        # Remove all attachments (will prompt for confirmation)
+        parxy attach:remove document.pdf --all
     """
-    console.action('Remove embedded files', space_after=False)
+    console.action('Remove attached files', space_after=False)
 
     try:
         # Validate arguments
         if not names and not all:
             console.error(
-                'You must specify either embed names to remove or use --all flag',
+                'You must specify either attachment names to remove or use --all flag',
                 panel=True,
             )
-            raise ValueError('You must specify either embed names to remove or use --all flag')
+            raise ValueError('You must specify either attachment names to remove or use --all flag')
 
         if names and all:
-            console.error('Cannot specify both embed names and --all flag', panel=True)
-            raise ValueError('Cannot specify both embed names and --all flag')
+            console.error('Cannot specify both attachment names and --all flag', panel=True)
+            raise ValueError('Cannot specify both attachment names and --all flag')
 
         # Validate input file
         input_path = validate_pdf_file(input_file)
@@ -294,18 +294,18 @@ def remove_embed(
                 if name not in all_embeds:
                     console.newline()
                     console.error(
-                        f"Embed '{name}' not found in {input_path.name}", panel=True
+                        f"Attachment '{name}' not found in {input_path.name}", panel=True
                     )
                     console.newline()
-                    console.print('Available embeds:')
+                    console.print('Available attachments:')
                     for available in all_embeds:
                         console.print(f'[faint]⎿ [/faint]{available}')
                     doc.close()
-                    raise ValueError(f"Embed '{name}' not found in {input_path.name}")
+                    raise ValueError(f"Attachment '{name}' not found in {input_path.name}")
 
         # Determine output path
         if output is None:
-            output_path = input_path.parent / f'{input_path.stem}_no_embeds.pdf'
+            output_path = input_path.parent / f'{input_path.stem}_no_attachments.pdf'
         else:
             output_path = Path(output)
 
@@ -328,8 +328,8 @@ def remove_embed(
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         console.newline()
-        with console.shimmer(f'Removing {len(embeds_to_remove)} embed(s)...'):
-            # Remove each embed
+        with console.shimmer(f'Removing {len(embeds_to_remove)} attachment(s)...'):
+            # Remove each attachment
             for name in embeds_to_remove:
                 doc.embfile_del(name)
                 console.print(f'[faint]⎿ [/faint]Removed {name}')
@@ -341,7 +341,7 @@ def remove_embed(
 
         console.newline()
         console.success(
-            f'Successfully removed {len(embeds_to_remove)} embed{"s" if len(embeds_to_remove) != 1 else ""} from {output_path}'
+            f'Successfully removed {len(embeds_to_remove)} attachment{"s" if len(embeds_to_remove) != 1 else ""} from {output_path}'
         )
 
     except typer.Exit:
@@ -353,22 +353,22 @@ def remove_embed(
         raise typer.Exit(1)
 
 
-@app.command(name='embed:add', help='Add files as embeds to a PDF')
-def add_embed(
+@app.command(name='attach:add', help='Add files as attachments to a PDF')
+def add_attachment(
     input_file: Annotated[
         str,
-        typer.Argument(help='PDF file to add embeds to'),
+        typer.Argument(help='PDF file to add attachments to'),
     ],
     files: Annotated[
         List[str],
-        typer.Argument(help='One or more files to embed'),
+        typer.Argument(help='One or more files to attach'),
     ],
     output: Annotated[
         Optional[str],
         typer.Option(
             '--output',
             '-o',
-            help='Output file path. If not specified, creates {input}_with_embeds.pdf',
+            help='Output file path. If not specified, creates {input}_with_attachments.pdf',
         ),
     ] = None,
     description: Annotated[
@@ -376,7 +376,7 @@ def add_embed(
         typer.Option(
             '--description',
             '-d',
-            help='Description for embedded file(s). Matched by position to files.',
+            help='Description for attached file(s). Matched by position to files.',
         ),
     ] = None,
     name: Annotated[
@@ -384,51 +384,51 @@ def add_embed(
         typer.Option(
             '--name',
             '-n',
-            help='Custom name(s) for embedded file(s). Matched by position to files.',
+            help='Custom name(s) for attached file(s). Matched by position to files.',
         ),
     ] = None,
     overwrite: Annotated[
         bool,
-        typer.Option('--overwrite', help='Overwrite existing embeds with same name'),
+        typer.Option('--overwrite', help='Overwrite existing attachments with same name'),
     ] = False,
 ):
     """
-    Add files as embeds to a PDF.
+    Add files as attachments to a PDF.
 
-    Creates a new PDF with the specified files embedded. The original
+    Creates a new PDF with the specified files attached. The original
     file is never modified.
 
     Custom names and descriptions are matched by position to the files.
     If you provide fewer names/descriptions than files, the remaining
     files use their original names/no description.
 
-    By default, attempting to add an embed with a name that already exists
-    will result in an error. Use --overwrite to replace existing embeds.
+    By default, attempting to add an attachment with a name that already exists
+    will result in an error. Use --overwrite to replace existing attachments.
 
     Examples:
 
-        # Embed a single file
-        parxy embed:add document.pdf data.csv
+        # Attach a single file
+        parxy attach:add document.pdf data.csv
 
-        # Embed multiple files
-        parxy embed:add document.pdf data.csv report.docx chart.png
+        # Attach multiple files
+        parxy attach:add document.pdf data.csv report.docx chart.png
 
-        # Embed with custom output path
-        parxy embed:add document.pdf data.csv -o enhanced.pdf
+        # Attach with custom output path
+        parxy attach:add document.pdf data.csv -o enhanced.pdf
 
-        # Embed with description
-        parxy embed:add document.pdf data.csv -d "Q4 Sales Data"
+        # Attach with description
+        parxy attach:add document.pdf data.csv -d "Q4 Sales Data"
 
-        # Embed with custom name
-        parxy embed:add document.pdf data.csv -n "quarterly_sales.csv"
+        # Attach with custom name
+        parxy attach:add document.pdf data.csv -n "quarterly_sales.csv"
 
-        # Embed multiple files with descriptions
-        parxy embed:add document.pdf file1.csv file2.csv -d "Sales" -d "Revenue"
+        # Attach multiple files with descriptions
+        parxy attach:add document.pdf file1.csv file2.csv -d "Sales" -d "Revenue"
 
-        # Overwrite existing embed
-        parxy embed:add document.pdf data.csv --overwrite
+        # Overwrite existing attachment
+        parxy attach:add document.pdf data.csv --overwrite
     """
-    console.action('Add embedded files', space_after=False)
+    console.action('Add attached files', space_after=False)
 
     try:
         # Validate input file
@@ -446,35 +446,35 @@ def add_embed(
         # Open PDF
         doc = pymupdf.open(input_path)
 
-        # Get existing embeds
+        # Get existing attachments
         existing_embeds = doc.embfile_names()
 
         console.newline()
-        console.info(f'Embedding {len(file_paths)} file{"s" if len(file_paths) != 1 else ""}...')
+        console.info(f'Attaching {len(file_paths)} file{"s" if len(file_paths) != 1 else ""}...')
         console.newline()
 
-        # Process each file to embed
-        with console.shimmer('Adding embeds...'):
+        # Process each file to attach
+        with console.shimmer('Adding attachments...'):
             for idx, file_path in enumerate(file_paths):
-                # Determine embed name
+                # Determine attachment name
                 embed_name = file_path.name
                 if name is not None and idx < len(name):
                     embed_name = name[idx]
 
-                # Check if embed already exists
+                # Check if attachment already exists
                 if embed_name in existing_embeds:
                     if not overwrite:
                         console.newline()
                         console.error(
-                            f"Embed '{embed_name}' already exists in {input_path.name}",
+                            f"Attachment '{embed_name}' already exists in {input_path.name}",
                             panel=True,
                         )
                         console.newline()
                         console.print('Use --overwrite to replace it')
                         doc.close()
-                        raise ValueError(f"Embed '{embed_name}' already exists. Use --overwrite to replace it")
+                        raise ValueError(f"Attachment '{embed_name}' already exists. Use --overwrite to replace it")
                     else:
-                        # Delete existing embed before adding new one
+                        # Delete existing attachment before adding new one
                         doc.embfile_del(embed_name)
 
                 # Get description
@@ -486,7 +486,7 @@ def add_embed(
                 with open(file_path, 'rb') as f:
                     file_content = f.read()
 
-                # Add embed
+                # Add attachment
                 doc.embfile_add(
                     name=embed_name,
                     buffer_=file_content,
@@ -504,7 +504,7 @@ def add_embed(
 
         # Determine output path
         if output is None:
-            output_path = input_path.parent / f'{input_path.stem}_with_embeds.pdf'
+            output_path = input_path.parent / f'{input_path.stem}_with_attachments.pdf'
         else:
             output_path = Path(output)
 
@@ -532,7 +532,7 @@ def add_embed(
 
         console.newline()
         console.success(
-            f'Successfully added {len(file_paths)} embed{"s" if len(file_paths) != 1 else ""} to {output_path}'
+            f'Successfully added {len(file_paths)} attachment{"s" if len(file_paths) != 1 else ""} to {output_path}'
         )
 
     except typer.Exit:
@@ -544,15 +544,15 @@ def add_embed(
         raise typer.Exit(1)
 
 
-@app.command(name='embed', help='Extract an embedded file from a PDF')
-def read_embed(
+@app.command(name='attach', help='Extract an attached file from a PDF')
+def read_attachment(
     input_file: Annotated[
         str,
-        typer.Argument(help='PDF file containing the embed'),
+        typer.Argument(help='PDF file containing the attachment'),
     ],
     name: Annotated[
         str,
-        typer.Argument(help='Name of embedded file to extract'),
+        typer.Argument(help='Name of attached file to extract'),
     ],
     output: Annotated[
         Optional[str],
@@ -568,9 +568,9 @@ def read_embed(
     ] = False,
 ):
     """
-    Extract an embedded file from a PDF.
+    Extract an attached file from a PDF.
 
-    Extracts the specified embedded file from the PDF. By default, saves
+    Extracts the specified attached file from the PDF. By default, saves
     to the current directory with the original filename.
 
     Use -o to specify a custom output path, or --stdout to output text
@@ -579,15 +579,15 @@ def read_embed(
     Examples:
 
         # Extract to current directory
-        parxy embed document.pdf data.csv
+        parxy attach document.pdf data.csv
 
         # Extract to specific path
-        parxy embed document.pdf data.csv -o /path/to/output.csv
+        parxy attach document.pdf data.csv -o /path/to/output.csv
 
         # Output text file to stdout
-        parxy embed document.pdf notes.txt --stdout
+        parxy attach document.pdf notes.txt --stdout
     """
-    console.action('Extract embedded file', space_after=False)
+    console.action('Extract attached file', space_after=False)
 
     try:
         # Validate input file
@@ -596,25 +596,25 @@ def read_embed(
         # Open PDF
         doc = pymupdf.open(input_path)
 
-        # Get list of embeds
+        # Get list of attachments
         embed_names = doc.embfile_names()
 
-        # Validate embed exists
+        # Validate attachment exists
         if name not in embed_names:
             console.newline()
-            console.error(f"Embed '{name}' not found in {input_path.name}", panel=True)
+            console.error(f"Attachment '{name}' not found in {input_path.name}", panel=True)
 
             if embed_names:
                 console.newline()
-                console.print('Available embeds:')
+                console.print('Available attachments:')
                 for available in embed_names:
                     console.print(f'[faint]⎿ [/faint]{available}')
             else:
                 console.newline()
-                console.print('No embedded files found in this PDF')
+                console.print('No attached files found in this PDF')
 
             doc.close()
-            raise ValueError(f"Embed '{name}' not found in {input_path.name}")
+            raise ValueError(f"Attachment '{name}' not found in {input_path.name}")
 
         # Extract content
         content = doc.embfile_get(name)
@@ -667,19 +667,19 @@ def read_embed(
     except (FileNotFoundError, ValueError):
         raise typer.Exit(1)
     except Exception as e:
-        console.error(f'Error extracting embed: {str(e)}')
+        console.error(f'Error extracting attachment: {str(e)}')
         raise typer.Exit(1)
 
 
-@app.command(name='embed:read', help='Extract an embedded file from a PDF', hidden=True)
-def read_embed_alias(
+@app.command(name='attach:read', help='Extract an attached file from a PDF', hidden=True)
+def read_attachment_alias(
     input_file: Annotated[
         str,
-        typer.Argument(help='PDF file containing the embed'),
+        typer.Argument(help='PDF file containing the attachment'),
     ],
     name: Annotated[
         str,
-        typer.Argument(help='Name of embedded file to extract'),
+        typer.Argument(help='Name of attached file to extract'),
     ],
     output: Annotated[
         Optional[str],
@@ -694,5 +694,5 @@ def read_embed_alias(
         typer.Option('--stdout', help='Output content to stdout (text files only)'),
     ] = False,
 ):
-    """Alias for embed command."""
-    return read_embed(input_file, name, output, stdout)
+    """Alias for attach command."""
+    return read_attachment(input_file, name, output, stdout)

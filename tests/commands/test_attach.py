@@ -1,4 +1,4 @@
-"""Test suite for PDF embed commands."""
+"""Test suite for PDF attach commands."""
 
 import pytest
 from pathlib import Path
@@ -7,7 +7,7 @@ from click.utils import strip_ansi
 import pymupdf
 import typer
 
-from parxy_cli.commands.embed import (
+from parxy_cli.commands.attach import (
     app,
     format_file_size,
     validate_pdf_file,
@@ -22,13 +22,13 @@ def runner():
 
 
 @pytest.fixture
-def sample_pdf_with_embeds(tmp_path):
-    """Create a sample PDF with embedded files."""
+def sample_pdf_with_attachments(tmp_path):
+    """Create a sample PDF with attached files."""
     # Create the main PDF
     pdf_path = tmp_path / 'document.pdf'
     doc = pymupdf.open()
     page = doc.new_page(width=612, height=792)
-    page.insert_text((100, 100), 'Test document with embeds')
+    page.insert_text((100, 100), 'Test document with attachments')
     
     # Create some files to embed
     text_file = tmp_path / 'notes.txt'
@@ -73,12 +73,12 @@ def sample_pdf_with_embeds(tmp_path):
 
 
 @pytest.fixture
-def sample_pdf_no_embeds(tmp_path):
-    """Create a sample PDF without embedded files."""
+def sample_pdf_no_attachments(tmp_path):
+    """Create a sample PDF without attached files."""
     pdf_path = tmp_path / 'empty.pdf'
     doc = pymupdf.open()
     page = doc.new_page(width=612, height=792)
-    page.insert_text((100, 100), 'Test document without embeds')
+    page.insert_text((100, 100), 'Test document without attachments')
     doc.save(str(pdf_path))
     doc.close()
     
@@ -86,8 +86,8 @@ def sample_pdf_no_embeds(tmp_path):
 
 
 @pytest.fixture
-def sample_files_to_embed(tmp_path):
-    """Create sample files for embedding."""
+def sample_files_to_attach(tmp_path):
+    """Create sample files for attaching."""
     files = {}
     
     # Text file
@@ -130,10 +130,10 @@ class TestHelperFunctions:
         """Test formatting gigabytes."""
         assert format_file_size(1073741824) == '1.0 GB'
     
-    def test_validate_pdf_file_success(self, sample_pdf_no_embeds):
+    def test_validate_pdf_file_success(self, sample_pdf_no_attachments):
         """Test validating a valid PDF file."""
-        path = validate_pdf_file(str(sample_pdf_no_embeds))
-        assert path == sample_pdf_no_embeds
+        path = validate_pdf_file(str(sample_pdf_no_attachments))
+        assert path == sample_pdf_no_attachments
     
     def test_validate_pdf_file_not_found(self, tmp_path):
         """Test validating a nonexistent file."""
@@ -163,15 +163,15 @@ class TestHelperFunctions:
         assert not is_binary_file(utf8_content)
 
 
-# Tests for embed:list command
+# Tests for attach:list command
 class TestListCommand:
-    """Tests for the embed:list command."""
-    
-    def test_list_embeds_with_files(self, runner, sample_pdf_with_embeds):
-        """Test listing embeds from PDF with embedded files."""
+    """Tests for the attach:list command."""
+
+    def test_list_attachments_with_files(self, runner, sample_pdf_with_attachments):
+        """Test listing attachments from PDF with attached files."""
         result = runner.invoke(
             app,
-            ['embed:list', str(sample_pdf_with_embeds['pdf'])],
+            ['attach:list', str(sample_pdf_with_attachments['pdf'])],
         )
         
         assert result.exit_code == 0
@@ -180,11 +180,11 @@ class TestListCommand:
         assert 'data.csv' in result.stdout
         assert 'binary.bin' in result.stdout
     
-    def test_list_embeds_verbose(self, runner, sample_pdf_with_embeds):
-        """Test listing embeds with verbose flag."""
+    def test_list_attachments_verbose(self, runner, sample_pdf_with_attachments):
+        """Test listing attachments with verbose flag."""
         result = runner.invoke(
             app,
-            ['embed:list', str(sample_pdf_with_embeds['pdf']), '--verbose'],
+            ['attach:list', str(sample_pdf_with_attachments['pdf']), '--verbose'],
         )
         
         assert result.exit_code == 0
@@ -195,53 +195,53 @@ class TestListCommand:
         # Should show file sizes
         assert 'B' in result.stdout or 'KB' in result.stdout
     
-    def test_list_embeds_no_files(self, runner, sample_pdf_no_embeds):
-        """Test listing embeds from PDF without embedded files."""
+    def test_list_attachments_no_files(self, runner, sample_pdf_no_attachments):
+        """Test listing attachments from PDF without attached files."""
         result = runner.invoke(
             app,
-            ['embed:list', str(sample_pdf_no_embeds)],
+            ['attach:list', str(sample_pdf_no_attachments)],
         )
-        
+
         assert result.exit_code == 0
         assert 'No embedded files found' in result.stdout
-    
-    def test_list_embeds_nonexistent_pdf(self, runner, tmp_path):
-        """Test listing embeds from nonexistent PDF."""
+
+    def test_list_attachments_nonexistent_pdf(self, runner, tmp_path):
+        """Test listing attachments from nonexistent PDF."""
         result = runner.invoke(
             app,
-            ['embed:list', str(tmp_path / 'nonexistent.pdf')],
+            ['attach:list', str(tmp_path / 'nonexistent.pdf')],
         )
-        
+
         assert result.exit_code == 1
         assert 'not found' in result.stdout.lower()
-    
-    def test_list_embeds_non_pdf_file(self, runner, tmp_path):
-        """Test listing embeds from non-PDF file."""
+
+    def test_list_attachments_non_pdf_file(self, runner, tmp_path):
+        """Test listing attachments from non-PDF file."""
         txt_file = tmp_path / 'file.txt'
         txt_file.write_text('not a pdf')
-        
+
         result = runner.invoke(
             app,
-            ['embed:list', str(txt_file)],
+            ['attach:list', str(txt_file)],
         )
-        
+
         assert result.exit_code == 1
         assert 'must be a pdf' in result.stdout.lower()
 
 
-# Tests for embed:add command
+# Tests for attach:add command
 class TestAddCommand:
-    """Tests for the embed:add command."""
-    
-    def test_add_single_embed(self, runner, sample_pdf_no_embeds, sample_files_to_embed, tmp_path):
-        """Test adding a single embed to PDF."""
+    """Tests for the attach:add command."""
+
+    def test_add_single_attachment(self, runner, sample_pdf_no_attachments, sample_files_to_attach, tmp_path):
+        """Test adding a single attachment to PDF."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_no_embeds),
-                str(sample_files_to_embed['text']),
+                'attach:add',
+                str(sample_pdf_no_attachments),
+                str(sample_files_to_attach['text']),
                 '--output',
                 str(output),
             ],
@@ -257,16 +257,16 @@ class TestAddCommand:
         assert 'file1.txt' in embeds
         doc.close()
     
-    def test_add_multiple_embeds(self, runner, sample_pdf_no_embeds, sample_files_to_embed, tmp_path):
-        """Test adding multiple embeds to PDF."""
+    def test_add_multiple_attachments(self, runner, sample_pdf_no_attachments, sample_files_to_attach, tmp_path):
+        """Test adding multiple attachments to PDF."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_no_embeds),
-                str(sample_files_to_embed['text']),
-                str(sample_files_to_embed['csv']),
+                'attach:add',
+                str(sample_pdf_no_attachments),
+                str(sample_files_to_attach['text']),
+                str(sample_files_to_attach['csv']),
                 '--output',
                 str(output),
             ],
@@ -283,15 +283,15 @@ class TestAddCommand:
         assert 'file2.csv' in embeds
         doc.close()
     
-    def test_add_embed_with_description(self, runner, sample_pdf_no_embeds, sample_files_to_embed, tmp_path):
-        """Test adding embed with custom description."""
+    def test_add_attachment_with_description(self, runner, sample_pdf_no_attachments, sample_files_to_attach, tmp_path):
+        """Test adding attachment with custom description."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_no_embeds),
-                str(sample_files_to_embed['text']),
+                'attach:add',
+                str(sample_pdf_no_attachments),
+                str(sample_files_to_attach['text']),
                 '--description',
                 'Custom description',
                 '--output',
@@ -308,15 +308,15 @@ class TestAddCommand:
         assert info['description'] == 'Custom description'
         doc.close()
     
-    def test_add_embed_with_custom_name(self, runner, sample_pdf_no_embeds, sample_files_to_embed, tmp_path):
-        """Test adding embed with custom name."""
+    def test_add_attachment_with_custom_name(self, runner, sample_pdf_no_attachments, sample_files_to_attach, tmp_path):
+        """Test adding attachment with custom name."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_no_embeds),
-                str(sample_files_to_embed['text']),
+                'attach:add',
+                str(sample_pdf_no_attachments),
+                str(sample_files_to_attach['text']),
                 '--name',
                 'custom_name.txt',
                 '--output',
@@ -334,8 +334,8 @@ class TestAddCommand:
         assert 'file1.txt' not in embeds
         doc.close()
     
-    def test_add_embed_duplicate_without_overwrite(self, runner, sample_pdf_with_embeds, sample_files_to_embed, tmp_path):
-        """Test adding duplicate embed without overwrite flag fails."""
+    def test_add_attachment_duplicate_without_overwrite(self, runner, sample_pdf_with_attachments, sample_files_to_attach, tmp_path):
+        """Test adding duplicate attachment without overwrite flag fails."""
         # Create a file with the same name as an existing embed
         duplicate_file = tmp_path / 'notes.txt'
         duplicate_file.write_text('Different content')
@@ -344,8 +344,8 @@ class TestAddCommand:
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:add',
+                str(sample_pdf_with_attachments['pdf']),
                 str(duplicate_file),
                 '--output',
                 str(output),
@@ -356,8 +356,8 @@ class TestAddCommand:
         assert 'already exists' in result.stdout.lower()
         assert '--overwrite' in result.stdout.lower()
     
-    def test_add_embed_duplicate_with_overwrite(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test adding duplicate embed with overwrite flag succeeds."""
+    def test_add_attachment_duplicate_with_overwrite(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test adding duplicate attachment with overwrite flag succeeds."""
         # Create a NEW file (not overwriting the fixture's notes.txt)
         new_notes_path = tmp_path / 'new_notes.txt'
         new_content = 'New content for notes'
@@ -367,8 +367,8 @@ class TestAddCommand:
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:add',
+                str(sample_pdf_with_attachments['pdf']),
                 str(new_notes_path),
                 '--name',  # Use the same name as existing embed
                 'notes.txt',
@@ -387,31 +387,31 @@ class TestAddCommand:
         assert content.decode('utf-8') == new_content
         doc.close()
     
-    def test_add_embed_default_output_path(self, runner, sample_pdf_no_embeds, sample_files_to_embed):
+    def test_add_attachment_default_output_path(self, runner, sample_pdf_no_attachments, sample_files_to_attach):
         """Test that default output path is created correctly."""
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_no_embeds),
-                str(sample_files_to_embed['text']),
+                'attach:add',
+                str(sample_pdf_no_attachments),
+                str(sample_files_to_attach['text']),
             ],
         )
         
         assert result.exit_code == 0
         
-        # Default output should be {input_stem}_with_embeds.pdf
-        expected_output = sample_pdf_no_embeds.parent / 'empty_with_embeds.pdf'
+        # Default output should be {input_stem}_with_attachments.pdf
+        expected_output = sample_pdf_no_attachments.parent / 'empty_with_attachments.pdf'
         assert expected_output.exists()
     
-    def test_add_embed_file_not_found(self, runner, sample_pdf_no_embeds, tmp_path):
+    def test_add_attachment_file_not_found(self, runner, sample_pdf_no_attachments, tmp_path):
         """Test adding nonexistent file fails."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_no_embeds),
+                'attach:add',
+                str(sample_pdf_no_attachments),
                 str(tmp_path / 'nonexistent.txt'),
                 '--output',
                 str(output),
@@ -421,16 +421,16 @@ class TestAddCommand:
         assert result.exit_code == 1
         assert 'not found' in result.stdout.lower()
     
-    def test_add_embed_multiple_descriptions(self, runner, sample_pdf_no_embeds, sample_files_to_embed, tmp_path):
-        """Test adding multiple embeds with descriptions."""
+    def test_add_attachment_multiple_descriptions(self, runner, sample_pdf_no_attachments, sample_files_to_attach, tmp_path):
+        """Test adding multiple attachments with descriptions."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_no_embeds),
-                str(sample_files_to_embed['text']),
-                str(sample_files_to_embed['csv']),
+                'attach:add',
+                str(sample_pdf_no_attachments),
+                str(sample_files_to_attach['text']),
+                str(sample_files_to_attach['csv']),
                 '--description',
                 'First file',
                 '--description',
@@ -451,17 +451,17 @@ class TestAddCommand:
         assert info2['description'] == 'Second file'
         doc.close()
     
-    def test_add_embed_fewer_descriptions_than_files(self, runner, sample_pdf_no_embeds, sample_files_to_embed, tmp_path):
+    def test_add_attachment_fewer_descriptions_than_files(self, runner, sample_pdf_no_attachments, sample_files_to_attach, tmp_path):
         """Test adding files with fewer descriptions than files."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:add',
-                str(sample_pdf_no_embeds),
-                str(sample_files_to_embed['text']),
-                str(sample_files_to_embed['csv']),
-                str(sample_files_to_embed['text2']),
+                'attach:add',
+                str(sample_pdf_no_attachments),
+                str(sample_files_to_attach['text']),
+                str(sample_files_to_attach['csv']),
+                str(sample_files_to_attach['text2']),
                 '--description',
                 'Only first',
                 '--output',
@@ -483,16 +483,16 @@ class TestAddCommand:
 
 # Tests for embed:remove command
 class TestRemoveCommand:
-    """Tests for the embed:remove command."""
+    """Tests for the attach:remove command."""
     
-    def test_remove_single_embed(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test removing a single embed."""
+    def test_remove_single_attachment(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test removing a single attachment."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:remove',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:remove',
+                str(sample_pdf_with_attachments['pdf']),
                 'notes.txt',
                 '--output',
                 str(output),
@@ -510,14 +510,14 @@ class TestRemoveCommand:
         assert 'binary.bin' in embeds
         doc.close()
     
-    def test_remove_multiple_embeds(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test removing multiple embeds."""
+    def test_remove_multiple_attachments(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test removing multiple attachments."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:remove',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:remove',
+                str(sample_pdf_with_attachments['pdf']),
                 'notes.txt',
                 'data.csv',
                 '--output',
@@ -536,14 +536,14 @@ class TestRemoveCommand:
         assert 'binary.bin' in embeds
         doc.close()
     
-    def test_remove_all_embeds_with_confirmation(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test removing all embeds with confirmation."""
+    def test_remove_all_attachments_with_confirmation(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test removing all attachments with confirmation."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:remove',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:remove',
+                str(sample_pdf_with_attachments['pdf']),
                 '--all',
                 '--output',
                 str(output),
@@ -555,20 +555,20 @@ class TestRemoveCommand:
         assert output.exists()
         assert 'Continue? [y/N]' in result.stdout
         
-        # Verify all embeds were removed
+        # Verify all attachments were removed
         doc = pymupdf.open(str(output))
         embeds = doc.embfile_names()
         assert len(embeds) == 0
         doc.close()
     
-    def test_remove_all_embeds_cancel_confirmation(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test cancelling removal of all embeds."""
+    def test_remove_all_attachments_cancel_confirmation(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test cancelling removal of all attachments."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:remove',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:remove',
+                str(sample_pdf_with_attachments['pdf']),
                 '--all',
                 '--output',
                 str(output),
@@ -580,8 +580,8 @@ class TestRemoveCommand:
         assert 'cancelled' in result.stdout.lower()
         assert not output.exists()
     
-    def test_remove_all_shows_embed_list_small(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test that removing all embeds shows list when ≤2 embeds."""
+    def test_remove_all_shows_attachment_list_small(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test that removing all attachments shows list when ≤2 embeds."""
         # Create PDF with only 2 embeds
         pdf_path = tmp_path / 'two_embeds.pdf'
         doc = pymupdf.open()
@@ -596,7 +596,7 @@ class TestRemoveCommand:
         result = runner.invoke(
             app,
             [
-                'embed:remove',
+                'attach:remove',
                 str(pdf_path),
                 '--all',
                 '--output',
@@ -611,7 +611,7 @@ class TestRemoveCommand:
         assert 'file2.txt' in result.stdout
     
     def test_remove_all_shows_count_large(self, runner, tmp_path):
-        """Test that removing all embeds shows count when >2 embeds."""
+        """Test that removing all attachments shows count when >2 embeds."""
         # Create PDF with 4 embeds
         pdf_path = tmp_path / 'many_embeds.pdf'
         doc = pymupdf.open()
@@ -626,7 +626,7 @@ class TestRemoveCommand:
         result = runner.invoke(
             app,
             [
-                'embed:remove',
+                'attach:remove',
                 str(pdf_path),
                 '--all',
                 '--output',
@@ -643,14 +643,14 @@ class TestRemoveCommand:
         assert 'file0.txt' in cleaned_output
         assert '3 more' in cleaned_output
     
-    def test_remove_nonexistent_embed(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test removing nonexistent embed fails."""
+    def test_remove_nonexistent_attachment(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test removing nonexistent attachment fails."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:remove',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:remove',
+                str(sample_pdf_with_attachments['pdf']),
                 'nonexistent.txt',
                 '--output',
                 str(output),
@@ -662,16 +662,16 @@ class TestRemoveCommand:
         cleaned_output = strip_ansi(result.stdout)
 
         assert 'not found' in cleaned_output.lower()
-        assert 'Available embeds:' in cleaned_output
+        assert 'Available attachments:' in cleaned_output
     
-    def test_remove_from_pdf_without_embeds(self, runner, sample_pdf_no_embeds, tmp_path):
+    def test_remove_from_pdf_without_attachments(self, runner, sample_pdf_no_attachments, tmp_path):
         """Test removing from PDF without embeds fails."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:remove',
-                str(sample_pdf_no_embeds),
+                'attach:remove',
+                str(sample_pdf_no_attachments),
                 'any.txt',
                 '--output',
                 str(output),
@@ -681,31 +681,31 @@ class TestRemoveCommand:
         assert result.exit_code == 1
         assert 'no embedded files found' in strip_ansi(result.stdout).lower()
     
-    def test_remove_default_output_path(self, runner, sample_pdf_with_embeds):
+    def test_remove_default_output_path(self, runner, sample_pdf_with_attachments):
         """Test that default output path is created correctly."""
         result = runner.invoke(
             app,
             [
-                'embed:remove',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:remove',
+                str(sample_pdf_with_attachments['pdf']),
                 'notes.txt',
             ],
         )
         
         assert result.exit_code == 0
         
-        # Default output should be {input_stem}_no_embeds.pdf
-        expected_output = sample_pdf_with_embeds['pdf'].parent / 'document_no_embeds.pdf'
+        # Default output should be {input_stem}_no_attachments.pdf
+        expected_output = sample_pdf_with_attachments['pdf'].parent / 'document_no_attachments.pdf'
         assert expected_output.exists()
     
-    def test_remove_neither_names_nor_all(self, runner, sample_pdf_with_embeds, tmp_path):
+    def test_remove_neither_names_nor_all(self, runner, sample_pdf_with_attachments, tmp_path):
         """Test that providing neither names nor --all fails."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:remove',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:remove',
+                str(sample_pdf_with_attachments['pdf']),
                 '--output',
                 str(output),
             ],
@@ -714,14 +714,14 @@ class TestRemoveCommand:
         assert result.exit_code == 1
         assert 'must specify' in strip_ansi(result.stdout).lower()
     
-    def test_remove_both_names_and_all(self, runner, sample_pdf_with_embeds, tmp_path):
+    def test_remove_both_names_and_all(self, runner, sample_pdf_with_attachments, tmp_path):
         """Test that providing both names and --all fails."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
             [
-                'embed:remove',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:remove',
+                str(sample_pdf_with_attachments['pdf']),
                 'notes.txt',
                 '--all',
                 '--output',
@@ -733,12 +733,12 @@ class TestRemoveCommand:
         assert 'cannot' in result.stdout.lower()
 
 
-# Tests for embed and embed:read commands
+# Tests for embed and attach:read commands
 class TestReadCommand:
-    """Tests for the embed and embed:read commands."""
+    """Tests for the attach and attach:read commands."""
     
-    def test_read_embed_to_current_directory(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test extracting embed to current directory."""
+    def test_read_attachment_to_current_directory(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test extracting attachment to current directory."""
         # Create a subdirectory to avoid file conflicts with fixture files
         import os
         extract_dir = tmp_path / 'extract'
@@ -750,8 +750,8 @@ class TestReadCommand:
             result = runner.invoke(
                 app,
                 [
-                    'embed',
-                    str(sample_pdf_with_embeds['pdf']),
+                    'attach',
+                    str(sample_pdf_with_attachments['pdf']),
                     'notes.txt',
                 ],
             )
@@ -765,14 +765,14 @@ class TestReadCommand:
         finally:
             os.chdir(original_cwd)
     
-    def test_read_embed_with_output_path(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test extracting embed to specific path."""
+    def test_read_attachment_with_output_path(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test extracting attachment to specific path."""
         output = tmp_path / 'extracted.txt'
         result = runner.invoke(
             app,
             [
-                'embed',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach',
+                str(sample_pdf_with_attachments['pdf']),
                 'notes.txt',
                 '--output',
                 str(output),
@@ -786,13 +786,13 @@ class TestReadCommand:
         content = output.read_text()
         assert 'text file with some notes' in content
     
-    def test_read_embed_to_stdout(self, runner, sample_pdf_with_embeds):
-        """Test extracting text embed to stdout."""
+    def test_read_attachment_to_stdout(self, runner, sample_pdf_with_attachments):
+        """Test extracting text attachment to stdout."""
         result = runner.invoke(
             app,
             [
-                'embed',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach',
+                str(sample_pdf_with_attachments['pdf']),
                 'notes.txt',
                 '--stdout',
             ],
@@ -801,13 +801,13 @@ class TestReadCommand:
         assert result.exit_code == 0
         assert 'text file with some notes' in result.stdout
     
-    def test_read_binary_to_stdout_fails(self, runner, sample_pdf_with_embeds):
-        """Test extracting binary embed to stdout fails."""
+    def test_read_binary_to_stdout_fails(self, runner, sample_pdf_with_attachments):
+        """Test extracting binary attachment to stdout fails."""
         result = runner.invoke(
             app,
             [
-                'embed',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach',
+                str(sample_pdf_with_attachments['pdf']),
                 'binary.bin',
                 '--stdout',
             ],
@@ -817,14 +817,14 @@ class TestReadCommand:
         assert 'cannot output binary' in result.stdout.lower()
         assert 'use -o' in result.stdout.lower()
     
-    def test_read_nonexistent_embed(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test extracting nonexistent embed fails."""
+    def test_read_nonexistent_attachment(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test extracting nonexistent attachment fails."""
         output = tmp_path / 'output.txt'
         result = runner.invoke(
             app,
             [
-                'embed',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach',
+                str(sample_pdf_with_attachments['pdf']),
                 'nonexistent.txt',
                 '--output',
                 str(output),
@@ -833,16 +833,16 @@ class TestReadCommand:
         
         assert result.exit_code == 1
         assert 'not found' in result.stdout.lower()
-        assert 'Available embeds:' in result.stdout
+        assert 'Available attachments:' in result.stdout
     
-    def test_read_from_pdf_without_embeds(self, runner, sample_pdf_no_embeds, tmp_path):
+    def test_read_from_pdf_without_attachments(self, runner, sample_pdf_no_attachments, tmp_path):
         """Test extracting from PDF without embeds fails."""
         output = tmp_path / 'output.txt'
         result = runner.invoke(
             app,
             [
-                'embed',
-                str(sample_pdf_no_embeds),
+                'attach',
+                str(sample_pdf_no_attachments),
                 'any.txt',
                 '--output',
                 str(output),
@@ -852,18 +852,18 @@ class TestReadCommand:
         assert result.exit_code == 1
 
         cleaned_output = strip_ansi(result.stdout)
-        
+
         assert 'not found' in cleaned_output.lower()
-        assert 'no embedded files found' in cleaned_output.lower()
+        assert 'no attached files found' in cleaned_output.lower()
     
-    def test_read_embed_alias(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test that embed:read alias works."""
+    def test_read_attachment_alias(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test that attach:read alias works."""
         output = tmp_path / 'output.txt'
         result = runner.invoke(
             app,
             [
-                'embed:read',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach:read',
+                str(sample_pdf_with_attachments['pdf']),
                 'notes.txt',
                 '--output',
                 str(output),
@@ -873,15 +873,15 @@ class TestReadCommand:
         assert result.exit_code == 0
         assert output.exists()
     
-    def test_read_embed_multiple_files(self, runner, sample_pdf_with_embeds, tmp_path):
-        """Test extracting multiple embeds one by one."""
+    def test_read_attachment_multiple_files(self, runner, sample_pdf_with_attachments, tmp_path):
+        """Test extracting multiple attachments one by one."""
         # Extract first file (use different name to avoid conflict with fixture files)
         output1 = tmp_path / 'extracted_notes.txt'
         result1 = runner.invoke(
             app,
             [
-                'embed',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach',
+                str(sample_pdf_with_attachments['pdf']),
                 'notes.txt',
                 '--output',
                 str(output1),
@@ -896,8 +896,8 @@ class TestReadCommand:
         result2 = runner.invoke(
             app,
             [
-                'embed',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach',
+                str(sample_pdf_with_attachments['pdf']),
                 'data.csv',
                 '--output',
                 str(output2),
@@ -911,14 +911,14 @@ class TestReadCommand:
         assert 'notes' in output1.read_text()
         assert 'name,value' in output2.read_text()
     
-    def test_read_embed_csv_content(self, runner, sample_pdf_with_embeds, tmp_path):
+    def test_read_attachment_csv_content(self, runner, sample_pdf_with_attachments, tmp_path):
         """Test extracting and verifying CSV content."""
         output = tmp_path / 'extracted_data.csv'  # Use different name to avoid conflict
         result = runner.invoke(
             app,
             [
-                'embed',
-                str(sample_pdf_with_embeds['pdf']),
+                'attach',
+                str(sample_pdf_with_attachments['pdf']),
                 'data.csv',
                 '--output',
                 str(output),
@@ -934,15 +934,15 @@ class TestReadCommand:
         assert 'item1,100' in content
         assert 'item2,200' in content
 
-    def test_read_embed_from_fixture_pdf(self, runner, tmp_path):
-        """Test extracting embed from fixture PDF file."""
-        fixture_pdf = Path(__file__).parent.parent / 'fixtures' / 'pdf-with-embed.pdf'
+    def test_read_attachment_from_fixture_pdf(self, runner, tmp_path):
+        """Test extracting attachment from fixture PDF file."""
+        fixture_pdf = Path(__file__).parent.parent / 'fixtures' / 'pdf-with-attachment.pdf'
         output = tmp_path / 'extracted_experiment.csv'
 
         result = runner.invoke(
             app,
             [
-                'embed',
+                'attach',
                 str(fixture_pdf),
                 'experiment.csv',
                 '--output',
