@@ -237,10 +237,14 @@ def remove_attachment(
                 'You must specify either attachment names to remove or use --all flag',
                 panel=True,
             )
-            raise ValueError('You must specify either attachment names to remove or use --all flag')
+            raise ValueError(
+                'You must specify either attachment names to remove or use --all flag'
+            )
 
         if names and all:
-            console.error('Cannot specify both attachment names and --all flag', panel=True)
+            console.error(
+                'Cannot specify both attachment names and --all flag', panel=True
+            )
             raise ValueError('Cannot specify both attachment names and --all flag')
 
         # Validate input file
@@ -277,7 +281,9 @@ def remove_attachment(
                 console.print(
                     f'This will remove the following attached file{"s" if count != 1 else ""} from {input_path.name}:'
                 )
-                console.print(f'[faint]⎿ [/faint]{embeds_to_remove[0]} and {count - 1} more')
+                console.print(
+                    f'[faint]⎿ [/faint]{embeds_to_remove[0]} and {count - 1} more'
+                )
 
             console.newline()
             confirm = typer.prompt('Continue? [y/N]', default='n')
@@ -294,14 +300,17 @@ def remove_attachment(
                 if name not in all_embeds:
                     console.newline()
                     console.error(
-                        f"Attachment '{name}' not found in {input_path.name}", panel=True
+                        f"Attachment '{name}' not found in {input_path.name}",
+                        panel=True,
                     )
                     console.newline()
                     console.print('Available attachments:')
                     for available in all_embeds:
                         console.print(f'[faint]⎿ [/faint]{available}')
                     doc.close()
-                    raise ValueError(f"Attachment '{name}' not found in {input_path.name}")
+                    raise ValueError(
+                        f"Attachment '{name}' not found in {input_path.name}"
+                    )
 
         # Determine output path
         if output is None:
@@ -389,7 +398,9 @@ def add_attachment(
     ] = None,
     overwrite: Annotated[
         bool,
-        typer.Option('--overwrite', help='Overwrite existing attachments with same name'),
+        typer.Option(
+            '--overwrite', help='Overwrite existing attachments with same name'
+        ),
     ] = False,
 ):
     """
@@ -450,7 +461,9 @@ def add_attachment(
         existing_embeds = doc.embfile_names()
 
         console.newline()
-        console.info(f'Attaching {len(file_paths)} file{"s" if len(file_paths) != 1 else ""}...')
+        console.info(
+            f'Attaching {len(file_paths)} file{"s" if len(file_paths) != 1 else ""}...'
+        )
         console.newline()
 
         # Process each file to attach
@@ -472,7 +485,9 @@ def add_attachment(
                         console.newline()
                         console.print('Use --overwrite to replace it')
                         doc.close()
-                        raise ValueError(f"Attachment '{embed_name}' already exists. Use --overwrite to replace it")
+                        raise ValueError(
+                            f"Attachment '{embed_name}' already exists. Use --overwrite to replace it"
+                        )
                     else:
                         # Delete existing attachment before adding new one
                         doc.embfile_del(embed_name)
@@ -602,7 +617,9 @@ def read_attachment(
         # Validate attachment exists
         if name not in embed_names:
             console.newline()
-            console.error(f"Attachment '{name}' not found in {input_path.name}", panel=True)
+            console.error(
+                f"Attachment '{name}' not found in {input_path.name}", panel=True
+            )
 
             if embed_names:
                 console.newline()
@@ -660,7 +677,9 @@ def read_attachment(
 
         console.newline()
         size_str = format_file_size(len(content))
-        console.success(f"Successfully extracted '{name}' ({size_str}) to {output_path}")
+        console.success(
+            f"Successfully extracted '{name}' ({size_str}) to {output_path}"
+        )
 
     except typer.Exit:
         raise
@@ -671,7 +690,9 @@ def read_attachment(
         raise typer.Exit(1)
 
 
-@app.command(name='attach:read', help='Extract an attached file from a PDF', hidden=True)
+@app.command(
+    name='attach:read', help='Extract an attached file from a PDF', hidden=True
+)
 def read_attachment_alias(
     input_file: Annotated[
         str,
