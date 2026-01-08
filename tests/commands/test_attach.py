@@ -175,20 +175,20 @@ class TestListCommand:
         )
         
         assert result.exit_code == 0
-        assert 'Found 3 embedded file' in result.stdout
+        assert 'Found 3 attached file' in result.stdout
         assert 'notes.txt' in result.stdout
         assert 'data.csv' in result.stdout
         assert 'binary.bin' in result.stdout
-    
+
     def test_list_attachments_verbose(self, runner, sample_pdf_with_attachments):
         """Test listing attachments with verbose flag."""
         result = runner.invoke(
             app,
             ['attach:list', str(sample_pdf_with_attachments['pdf']), '--verbose'],
         )
-        
+
         assert result.exit_code == 0
-        assert 'Found 3 embedded file' in result.stdout
+        assert 'Found 3 attached file' in result.stdout
         # Should show descriptions
         assert 'Text notes' in result.stdout
         assert 'Sales data' in result.stdout
@@ -203,7 +203,7 @@ class TestListCommand:
         )
 
         assert result.exit_code == 0
-        assert 'No embedded files found' in result.stdout
+        assert 'No attached files found' in result.stdout
 
     def test_list_attachments_nonexistent_pdf(self, runner, tmp_path):
         """Test listing attachments from nonexistent PDF."""
@@ -665,7 +665,7 @@ class TestRemoveCommand:
         assert 'Available attachments:' in cleaned_output
     
     def test_remove_from_pdf_without_attachments(self, runner, sample_pdf_no_attachments, tmp_path):
-        """Test removing from PDF without embeds fails."""
+        """Test removing from PDF without attachments fails."""
         output = tmp_path / 'output.pdf'
         result = runner.invoke(
             app,
@@ -677,9 +677,9 @@ class TestRemoveCommand:
                 str(output),
             ],
         )
-        
+
         assert result.exit_code == 1
-        assert 'no embedded files found' in strip_ansi(result.stdout).lower()
+        assert 'no attached files found' in strip_ansi(result.stdout).lower()
     
     def test_remove_default_output_path(self, runner, sample_pdf_with_attachments):
         """Test that default output path is created correctly."""

@@ -140,7 +140,7 @@ def list_attachments(
 
         if not embed_names:
             console.newline()
-            console.info(f'No embedded files found in {input_path.name}')
+            console.info(f'No attached files found in {input_path.name}')
             doc.close()
             return
 
@@ -148,7 +148,7 @@ def list_attachments(
         count = len(embed_names)
         console.newline()
         console.info(
-            f'Found {count} embedded file{"s" if count != 1 else ""} in {input_path.name}:'
+            f'Found {count} attached file{"s" if count != 1 else ""} in {input_path.name}:'
         )
         console.newline()
 
@@ -253,9 +253,9 @@ def remove_attachment(
 
         if not all_embeds:
             console.newline()
-            console.error(f'No embedded files found in {input_path.name}', panel=True)
+            console.error(f'No attached files found in {input_path.name}', panel=True)
             doc.close()
-            raise ValueError(f'No embedded files found in {input_path.name}')
+            raise ValueError(f'No attached files found in {input_path.name}')
 
         # Determine which embeds to remove
         if all:
@@ -268,14 +268,14 @@ def remove_attachment(
             if count <= 2:
                 # Show all embeds
                 console.print(
-                    f'This will remove the following embedded file{"s" if count != 1 else ""} from {input_path.name}:'
+                    f'This will remove the following attached file{"s" if count != 1 else ""} from {input_path.name}:'
                 )
                 for name in embeds_to_remove:
                     console.print(f'[faint]⎿ [/faint]{name}')
             else:
                 # Show first + count
                 console.print(
-                    f'This will remove the following embedded file{"s" if count != 1 else ""} from {input_path.name}:'
+                    f'This will remove the following attached file{"s" if count != 1 else ""} from {input_path.name}:'
                 )
                 console.print(f'[faint]⎿ [/faint]{embeds_to_remove[0]} and {count - 1} more')
 
@@ -434,7 +434,7 @@ def add_attachment(
         # Validate input file
         input_path = validate_pdf_file(input_file)
 
-        # Validate all files to embed exist
+        # Validate all files to attach exist
         file_paths = []
         for file_str in files:
             file_path = Path(file_str)
