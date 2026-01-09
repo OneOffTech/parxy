@@ -5,11 +5,8 @@ from pathlib import Path
 from typer.testing import CliRunner
 import pymupdf
 
-from parxy_cli.commands.pdf import (
-    app,
-    parse_input_with_pages,
-    collect_pdf_files_with_ranges,
-)
+from parxy_cli.commands.pdf import app
+from parxy_cli.services import parse_input_with_pages, collect_pdf_files_with_ranges
 
 
 @pytest.fixture
