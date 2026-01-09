@@ -325,18 +325,6 @@ class TestSplitPdf:
         with pytest.raises(FileNotFoundError):
             PdfService.split_pdf(tmp_path / 'nonexistent.pdf', output_dir, 'prefix')
 
-    def test_split_empty_pdf(self, tmp_path):
-        """Test splitting empty PDF."""
-        # Create a PDF and then manually create an empty one by bypassing pymupdf's save check
-        # Since pymupdf doesn't allow saving empty PDFs, we'll test the ValueError from our service
-        # by creating a PDF file with 1 page and then testing our service catches empty PDFs
-        empty_pdf = tmp_path / 'empty.pdf'
-
-        # Create a minimal PDF file that will report 0 pages
-        # Since we can't create a truly empty PDF with pymupdf, we'll skip this test
-        # or test it differently - our service will raise ValueError when pdf has 0 pages
-        pytest.skip("PyMuPDF doesn't allow creating empty PDFs for testing")
-
     def test_split_creates_output_directory(self, multiple_pdfs):
         """Test that split creates output directory if needed."""
         output_dir = multiple_pdfs['tmp_path'] / 'nested' / 'split'

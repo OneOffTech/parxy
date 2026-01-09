@@ -286,7 +286,7 @@ class PdfService:
             raise FileNotFoundError(f'PDF file not found: {input_path}')
 
         pdf = pymupdf.open(input_path)
-        total_pages = len(pdf)
+        total_pages = pdf.page_count
 
         if total_pages == 0:
             pdf.close()
