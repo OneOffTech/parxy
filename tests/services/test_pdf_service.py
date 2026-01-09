@@ -350,14 +350,16 @@ class TestOptimizePdf:
             page.insert_text((100, 100), f'Page {i + 1} content\n' * 20)
 
         # Add metadata
-        doc.set_metadata({
-            'author': 'Test Author',
-            'title': 'Test Document',
-            'subject': 'Testing PDF optimization',
-            'keywords': 'test, optimization, metadata',
-            'creator': 'Test Creator',
-            'producer': 'PyMuPDF',
-        })
+        doc.set_metadata(
+            {
+                'author': 'Test Author',
+                'title': 'Test Document',
+                'subject': 'Testing PDF optimization',
+                'keywords': 'test, optimization, metadata',
+                'creator': 'Test Creator',
+                'producer': 'PyMuPDF',
+            }
+        )
 
         # Add attachments
         attachment_content = b'This is test attachment content ' * 100
@@ -396,7 +398,9 @@ class TestOptimizePdf:
         # For PDF with attachments and metadata, should see reduction
         assert result['reduction_bytes'] >= 0
 
-    def test_optimize_reduces_file_size(self, pdf_with_metadata_and_attachments, tmp_path):
+    def test_optimize_reduces_file_size(
+        self, pdf_with_metadata_and_attachments, tmp_path
+    ):
         """Test that optimization actually reduces file size."""
         output_pdf = tmp_path / 'optimized.pdf'
 
@@ -413,7 +417,9 @@ class TestOptimizePdf:
         assert result['reduction_bytes'] > 0
         assert result['reduction_percent'] > 0
 
-    def test_optimize_without_scrubbing(self, pdf_with_metadata_and_attachments, tmp_path):
+    def test_optimize_without_scrubbing(
+        self, pdf_with_metadata_and_attachments, tmp_path
+    ):
         """Test optimization without scrubbing metadata."""
         output_pdf = tmp_path / 'optimized.pdf'
 

@@ -420,7 +420,9 @@ class PdfService:
         # Get optimized file size
         optimized_size = output_path.stat().st_size
         reduction_bytes = original_size - optimized_size
-        reduction_percent = (reduction_bytes / original_size * 100) if original_size > 0 else 0
+        reduction_percent = (
+            (reduction_bytes / original_size * 100) if original_size > 0 else 0
+        )
 
         return {
             'original_size': original_size,
