@@ -310,3 +310,121 @@ class PdfService:
             pdf.close()
 
         return output_files
+
+    @staticmethod
+    def optimize_pdf(
+        input_path: Path,
+        output_path: Path,
+        scrub_metadata: bool = True,
+        subset_fonts: bool = True,
+        compress_images: bool = True,
+        dpi_threshold: int = 100,
+        dpi_target: int = 72,
+        image_quality: int = 60,
+        convert_to_grayscale: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Optimize PDF file size using PyMuPDF's compression techniques.
+
+        This method applies three optimization techniques:
+        1. Dead-weight removal - Removes metadata, thumbnails, embedded files
+        2. Font subsetting - Keeps only used glyphs from embedded fonts
+        3. Image compression - Downsamples and compresses images
+
+        Args:
+            input_path: Path to the input PDF file
+            output_path: Path where optimized PDF should be saved
+            scrub_metadata: Remove metadata, thumbnails, and embedded files
+            subset_fonts: Subset embedded fonts to only used glyphs
+            compress_images: Apply image compression and downsampling
+            dpi_threshold: Only process images above this DPI (default: 100)
+            dpi_target: Target DPI for downsampling (default: 72)
+            image_quality: JPEG quality level 0-100 (default: 60)
+            convert_to_grayscale: Convert images to grayscale (default: False)
+
+        Returns:
+            Dictionary with optimization results:
+            - original_size: Original file size in bytes
+            - optimized_size: Optimized file size in bytes
+            - reduction_bytes: Size reduction in bytes
+            - reduction_percent: Size reduction as percentage
+
+        Raises:
+            FileNotFoundError: If input PDF doesn't exist
+            ValueError: If parameters are invalid
+
+        Example:
+            result = PdfService.optimize_pdf(
+                input_path=Path("large.pdf"),
+                output_path=Path("optimized.pdf"),
+                compress_images=True,
+                convert_to_grayscale=True
+            )
+            print(f"Reduced by {result['reduction_percent']:.1f}%")
+        """
+        if not input_path.is_file():
+            raise FileNotFoundError(f'PDF file not found: {input_path}')
+
+        if dpi_threshold < 1 or dpi_target < 1:
+            raise ValueError('DPI values must be positive')
+
+        if not 0 <= image_quality <= 100:
+            raise ValueError('Image quality must be between 0 and 100')
+
+        # Get original file size
+        original_size = input_path.stat().st_size
+
+        pdf = pymupdf.open(input_path)
+
+        try:
+            # 1. Dead-weight removal - scrub unwanted content
+            if scrub_metadata:
+                pdf.scrub(
+                    metadata=True,  # Clear basic metadata
+                    xml_metadata=True,  # Remove XML metadata
+                    attached_files=True,  # Delete file attachments
+                    embedded_files=True,  # Delete embedded files
+                    thumbnails=True,  # Strip page thumbnails
+                    reset_fields=True,  # Revert form fields to defaults
+                    reset_responses=True,  # Remove annotation replies
+                )
+
+            # 2. Font subsetting - keep only used glyphs
+            if subset_fonts:
+                pdf.subset_fonts()
+
+            # 3. Advanced image compression
+            if compress_images:
+                pdf.rewrite_images(
+                    dpi_threshold=dpi_threshold,
+                    dpi_target=dpi_target,
+                    quality=image_quality,
+                    lossy=True,  # Include lossy images
+                    lossless=True,  # Include lossless images
+                    bitonal=True,  # Include monochrome images
+                    color=True,  # Include colored images
+                    gray=True,  # Include gray-scale images
+                    set_to_gray=convert_to_grayscale,  # Convert to grayscale
+                )
+
+            # Ensure output directory exists
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Save with advanced compression options
+            # ez_save() applies garbage=3, deflate=True, use_objstms=True
+            pdf.ez_save(str(output_path))
+
+        finally:
+            pdf.close()
+
+        # Get optimized file size
+        optimized_size = output_path.stat().st_size
+        reduction_bytes = original_size - optimized_size
+        reduction_percent = (reduction_bytes / original_size * 100) if original_size > 0 else 0
+
+        return {
+            'original_size': original_size,
+            'optimized_size': optimized_size,
+            'reduction_bytes': reduction_bytes,
+            'reduction_percent': reduction_percent,
+        }

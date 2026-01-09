@@ -333,3 +333,240 @@ class TestSplitPdf:
 
         assert output_dir.exists()
         assert len(output_files) == 3
+
+
+class TestOptimizePdf:
+    """Tests for the optimize_pdf static method."""
+
+    @pytest.fixture
+    def pdf_with_metadata_and_attachments(self, tmp_path):
+        """Create a PDF with metadata, attachments for testing optimization."""
+        pdf_path = tmp_path / 'heavy.pdf'
+        doc = pymupdf.open()
+
+        # Add pages with text
+        for i in range(3):
+            page = doc.new_page(width=612, height=792)
+            page.insert_text((100, 100), f'Page {i + 1} content\n' * 20)
+
+        # Add metadata
+        doc.set_metadata({
+            'author': 'Test Author',
+            'title': 'Test Document',
+            'subject': 'Testing PDF optimization',
+            'keywords': 'test, optimization, metadata',
+            'creator': 'Test Creator',
+            'producer': 'PyMuPDF',
+        })
+
+        # Add attachments
+        attachment_content = b'This is test attachment content ' * 100
+        doc.embfile_add(
+            name='attachment.txt',
+            buffer_=attachment_content,
+            filename='attachment.txt',
+            desc='Test attachment',
+        )
+
+        doc.save(str(pdf_path))
+        doc.close()
+        return pdf_path
+
+    def test_optimize_with_all_defaults(self, tmp_path):
+        """Test optimization with all default settings."""
+        # Use existing fixture
+        input_pdf = Path('tests/fixtures/pdf-with-attachment.pdf')
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        result = PdfService.optimize_pdf(input_pdf, output_pdf)
+
+        # Verify output exists
+        assert output_pdf.exists()
+
+        # Verify result structure
+        assert 'original_size' in result
+        assert 'optimized_size' in result
+        assert 'reduction_bytes' in result
+        assert 'reduction_percent' in result
+
+        # Verify sizes are positive
+        assert result['original_size'] > 0
+        assert result['optimized_size'] > 0
+
+        # For PDF with attachments and metadata, should see reduction
+        assert result['reduction_bytes'] >= 0
+
+    def test_optimize_reduces_file_size(self, pdf_with_metadata_and_attachments, tmp_path):
+        """Test that optimization actually reduces file size."""
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        result = PdfService.optimize_pdf(
+            pdf_with_metadata_and_attachments,
+            output_pdf,
+            scrub_metadata=True,
+            subset_fonts=True,
+            compress_images=True,
+        )
+
+        # Should reduce size due to metadata and attachment removal
+        assert result['optimized_size'] < result['original_size']
+        assert result['reduction_bytes'] > 0
+        assert result['reduction_percent'] > 0
+
+    def test_optimize_without_scrubbing(self, pdf_with_metadata_and_attachments, tmp_path):
+        """Test optimization without scrubbing metadata."""
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        result = PdfService.optimize_pdf(
+            pdf_with_metadata_and_attachments,
+            output_pdf,
+            scrub_metadata=False,
+            subset_fonts=False,
+            compress_images=False,
+        )
+
+        # Should still work, but may not reduce size much
+        assert output_pdf.exists()
+        assert result['optimized_size'] > 0
+
+        # Verify metadata is preserved
+        doc = pymupdf.open(str(output_pdf))
+        metadata = doc.metadata
+        assert metadata['author'] == 'Test Author'
+        assert metadata['title'] == 'Test Document'
+
+        # Verify attachments are preserved
+        attachments = doc.embfile_names()
+        assert 'attachment.txt' in attachments
+        doc.close()
+
+    def test_optimize_with_scrubbing_removes_metadata(
+        self, pdf_with_metadata_and_attachments, tmp_path
+    ):
+        """Test that scrubbing removes metadata and attachments."""
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        PdfService.optimize_pdf(
+            pdf_with_metadata_and_attachments,
+            output_pdf,
+            scrub_metadata=True,
+        )
+
+        # Verify metadata is cleared
+        doc = pymupdf.open(str(output_pdf))
+        metadata = doc.metadata
+
+        # Metadata should be empty or default values
+        assert metadata['author'] == ''
+        assert metadata['title'] == ''
+
+        # Verify attachments are removed
+        attachments = doc.embfile_names()
+        assert len(attachments) == 0
+        doc.close()
+
+    def test_optimize_with_grayscale_conversion(self, tmp_path):
+        """Test optimization with grayscale conversion."""
+        input_pdf = Path('tests/fixtures/pdf-with-attachment.pdf')
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        result = PdfService.optimize_pdf(
+            input_pdf,
+            output_pdf,
+            compress_images=True,
+            convert_to_grayscale=True,
+        )
+
+        assert output_pdf.exists()
+        assert result['optimized_size'] > 0
+
+    def test_optimize_with_custom_dpi_settings(self, tmp_path):
+        """Test optimization with custom DPI settings."""
+        input_pdf = Path('tests/fixtures/pdf-with-attachment.pdf')
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        result = PdfService.optimize_pdf(
+            input_pdf,
+            output_pdf,
+            compress_images=True,
+            dpi_threshold=150,
+            dpi_target=50,
+            image_quality=50,
+        )
+
+        assert output_pdf.exists()
+        assert result['optimized_size'] > 0
+
+    def test_optimize_file_not_found(self, tmp_path):
+        """Test optimization with nonexistent input file."""
+        input_pdf = tmp_path / 'nonexistent.pdf'
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        with pytest.raises(FileNotFoundError):
+            PdfService.optimize_pdf(input_pdf, output_pdf)
+
+    def test_optimize_invalid_dpi_threshold(self, tmp_path):
+        """Test optimization with invalid DPI threshold."""
+        input_pdf = Path('tests/fixtures/pdf-with-attachment.pdf')
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        with pytest.raises(ValueError, match='DPI values must be positive'):
+            PdfService.optimize_pdf(
+                input_pdf,
+                output_pdf,
+                dpi_threshold=-1,
+            )
+
+    def test_optimize_invalid_dpi_target(self, tmp_path):
+        """Test optimization with invalid DPI target."""
+        input_pdf = Path('tests/fixtures/pdf-with-attachment.pdf')
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        with pytest.raises(ValueError, match='DPI values must be positive'):
+            PdfService.optimize_pdf(
+                input_pdf,
+                output_pdf,
+                dpi_target=0,
+            )
+
+    def test_optimize_invalid_image_quality(self, tmp_path):
+        """Test optimization with invalid image quality."""
+        input_pdf = Path('tests/fixtures/pdf-with-attachment.pdf')
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        with pytest.raises(ValueError, match='Image quality must be between 0 and 100'):
+            PdfService.optimize_pdf(
+                input_pdf,
+                output_pdf,
+                image_quality=150,
+            )
+
+    def test_optimize_creates_output_directory(self, tmp_path):
+        """Test that optimize creates output directory if needed."""
+        input_pdf = Path('tests/fixtures/pdf-with-attachment.pdf')
+        output_pdf = tmp_path / 'nested' / 'subdir' / 'optimized.pdf'
+
+        result = PdfService.optimize_pdf(input_pdf, output_pdf)
+
+        assert output_pdf.exists()
+        assert output_pdf.parent.exists()
+        assert result['optimized_size'] > 0
+
+    def test_optimize_calculates_reduction_correctly(
+        self, pdf_with_metadata_and_attachments, tmp_path
+    ):
+        """Test that size reduction calculations are correct."""
+        output_pdf = tmp_path / 'optimized.pdf'
+
+        result = PdfService.optimize_pdf(
+            pdf_with_metadata_and_attachments,
+            output_pdf,
+            scrub_metadata=True,
+        )
+
+        # Verify reduction calculation
+        expected_reduction = result['original_size'] - result['optimized_size']
+        assert result['reduction_bytes'] == expected_reduction
+
+        expected_percent = (expected_reduction / result['original_size']) * 100
+        assert abs(result['reduction_percent'] - expected_percent) < 0.01
