@@ -16,6 +16,7 @@ else:
 
 from parxy_core.drivers import Driver
 from parxy_core.models import Document, Metadata, TextBlock, Page, BoundingBox
+from parxy_core.utils import safe_json_dumps
 
 
 class LandingAIADEDriver(Driver):
@@ -47,7 +48,9 @@ class LandingAIADEDriver(Driver):
             filename, stream = self.handle_file_input(file)
             with self._trace_parse(filename, stream, **kwargs) as span:
                 parse_response = self.__client.parse(document=Path(file), **kwargs)
-                span.set_attribute('output.document', parse_response.model_dump_json())
+                span.set_attribute(
+                    'output.document', safe_json_dumps(parse_response.model_dump())
+                )
 
         except AuthenticationError as aex:
             raise AuthenticationException(

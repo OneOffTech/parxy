@@ -19,6 +19,7 @@ else:
 
 from parxy_core.drivers import Driver
 from parxy_core.models import Document, Page, BoundingBox, TextBlock, HierarchyLevel
+from parxy_core.utils import safe_json_dumps
 from parxy_core.exceptions import (
     ParsingException,
     AuthenticationException,
@@ -206,7 +207,7 @@ class LlamaParseDriver(Driver):
             extra_info = {'file_name': filename if len(filename) > 0 else 'default'}
             with self._trace_parse(filename, stream, **kwargs) as span:
                 res = self.__client.parse(stream, extra_info=extra_info)
-                span.set_attribute('output.document', res.model_dump_json())
+                span.set_attribute('output.document', safe_json_dumps(res.model_dump()))
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.__class__) from fex
         except Exception as ex:

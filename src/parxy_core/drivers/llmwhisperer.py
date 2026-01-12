@@ -23,6 +23,7 @@ from parxy_core.exceptions import (
     AuthenticationException,
 )
 from parxy_core.models import Document, Page
+from parxy_core.utils import safe_json_dumps
 
 
 _credits_per_parsing_mode_per_page = {
@@ -145,7 +146,7 @@ class LlmWhispererDriver(Driver):
                     # wait_timeout=kwargs.get("wait_timeout", 200),
                     # **kwargs,
                 )
-                span.set_attribute('output.document', json.dumps(res))
+                span.set_attribute('output.document', safe_json_dumps(res))
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.SERVICE_NAME) from fex
         except LLMWhispererClientException as wex:

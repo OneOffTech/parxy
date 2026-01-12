@@ -7,6 +7,7 @@ import pymupdf
 
 from parxy_core.drivers import Driver
 from parxy_core.exceptions import FileNotFoundException
+from parxy_core.utils import safe_json_dumps
 from parxy_core.models import (
     BoundingBox,
     Style,
@@ -52,7 +53,7 @@ class PyMuPdfDriver(Driver):
             with self._trace_parse(filename, stream, **kwargs) as span:
                 doc = pymupdf.open(stream=stream)
                 doc_pages = [page.get_text(page_key_to_extract) for page in doc.pages()]
-                span.set_attribute('output.document', json.dumps(doc_pages))
+                span.set_attribute('output.document', safe_json_dumps(doc_pages))
                 span.set_attribute('output.pages', len(doc_pages))
 
             res = pymupdf_to_parxy(doc=doc, pages=doc_pages, level=level)
