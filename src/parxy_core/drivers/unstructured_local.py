@@ -16,6 +16,7 @@ else:
 from parxy_core.drivers import Driver
 from parxy_core.exceptions import FileNotFoundException, ParsingException
 from parxy_core.models import Document, TextBlock, BoundingBox, Page, HierarchyLevel
+from parxy_core.utils import safe_json_dumps
 from parxy_core.models.config import UnstructuredLocalConfig
 from parxy_core.tracing.utils import trace_with_output
 
@@ -85,7 +86,7 @@ class UnstructuredLocalDriver(Driver):
                     file=io.BytesIO(stream), languages=['eng'], **kwargs
                 )
                 span.set_attribute(
-                    'output.document', json.dumps([el.to_dict() for el in res])
+                    'output.document', safe_json_dumps([el.to_dict() for el in res])
                 )
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.__class__) from fex

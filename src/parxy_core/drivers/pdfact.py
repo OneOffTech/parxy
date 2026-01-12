@@ -8,6 +8,7 @@ import validators
 from urllib.parse import urljoin
 
 from parxy_core.drivers import Driver
+from parxy_core.utils import safe_json_dumps
 from parxy_core.models import (
     BoundingBox,
     Style,
@@ -70,7 +71,7 @@ class PdfActDriver(Driver):
         filename, stream = self.handle_file_input(file)
         with self._trace_parse(filename, stream, **kwargs) as span:
             res = self._request(file, level)
-            span.set_attribute('output.document', json.dumps(res))
+            span.set_attribute('output.document', safe_json_dumps(res))
 
         return pdfact_to_parxy(doc=res, level=level, filename=file)
 
