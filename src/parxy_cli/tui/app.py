@@ -20,6 +20,8 @@ from parxy_cli.tui.widgets import (
     ResultsViewer,
     Footer,
     WelcomeContainer,
+    WorkspaceViewer,
+    find_processed_files,
 )
 
 if TYPE_CHECKING:
@@ -56,6 +58,11 @@ class ParxyCommandProvider(Provider):
                 'view: Toggle sidebar',
                 app.action_toggle_sidebar,
                 'Toggle sidebar visibility to expand main area',
+            ),
+            (
+                'view: View processed files',
+                app.action_view_processed,
+                'View pre-processed results for the selected file',
             ),
             (
                 'file: Refresh file tree',
@@ -115,6 +122,7 @@ class ParxyTUI(App):
         Binding('ctrl+n', 'new_parse', 'New parse', key_display='Ctrl+N'),
         Binding('ctrl+s', 'start_parse', 'Start parsing', key_display='Ctrl+S'),
         Binding('ctrl+b', 'toggle_sidebar', 'Toggle sidebar', key_display='Ctrl+B'),
+        Binding('ctrl+v', 'view_processed', 'View processed', key_display='Ctrl+V'),
         Binding(
             'ctrl+c',
             'request_quit',
@@ -147,6 +155,9 @@ class ParxyTUI(App):
             # Results viewer (initially hidden)
             yield ResultsViewer(self.results, id='results-viewer')
 
+            # Workspace viewer placeholder (initially hidden, will be replaced dynamically)
+            yield Container(id='workspace-viewer')
+
             yield Footer()
 
         # # Sidebar (right side, 1/3 width)
@@ -166,7 +177,17 @@ class ParxyTUI(App):
         """Handle file selection from the tree selector widget."""
         self.current_file = event.path
         status_bar = self.query_one('#status-bar', Static)
-        status_bar.update(f'File selected: {self.current_file.name}')
+
+        # Check if there are processed files for this selection
+        processed_files = find_processed_files(self.workspace, self.current_file.name)
+        if processed_files:
+            driver_names = ', '.join(info.driver_name for info in processed_files)
+            status_bar.update(
+                f'File: {self.current_file.name} | '
+                f'Processed: {driver_names} (Ctrl+V to view)'
+            )
+        else:
+            status_bar.update(f'File selected: {self.current_file.name}')
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -284,9 +305,10 @@ class ParxyTUI(App):
 
     def action_new_parse(self) -> None:
         """Start a new parse (return to parser selection)."""
-        # Show welcome container and hide results viewer
+        # Show welcome container and hide results viewer and workspace viewer
         self.query_one('#welcome-container').display = True
         self.query_one('#results-viewer').display = False
+        self.query_one('#workspace-viewer').display = False
 
         # Clear results but keep file selection
         self.results.clear()
@@ -298,9 +320,18 @@ class ParxyTUI(App):
         # Update status
         status_bar = self.query_one('#status-bar', Static)
         if self.current_file:
-            status_bar.update(
-                f'Ready for new parse. File selected: {self.current_file.name}'
-            )
+            # Check for processed files
+            processed_files = find_processed_files(self.workspace, self.current_file.name)
+            if processed_files:
+                driver_names = ', '.join(info.driver_name for info in processed_files)
+                status_bar.update(
+                    f'File: {self.current_file.name} | '
+                    f'Processed: {driver_names} (Ctrl+V to view)'
+                )
+            else:
+                status_bar.update(
+                    f'Ready for new parse. File selected: {self.current_file.name}'
+                )
         else:
             status_bar.update('Ready for new parse. Select a file to begin.')
 
@@ -340,6 +371,60 @@ class ParxyTUI(App):
             status_bar.update(
                 f'Press Ctrl+C again within {self._ctrl_c_window:.0f}s to quit, or use Ctrl+Q'
             )
+
+    def action_view_processed(self) -> None:
+        """View pre-processed results for the selected file."""
+        status_bar = self.query_one('#status-bar', Static)
+
+        if not self.current_file:
+            status_bar.update('Error: Please select a file first!')
+            return
+
+        # Check if there are processed files
+        processed_files = find_processed_files(self.workspace, self.current_file.name)
+
+        if not processed_files:
+            status_bar.update(
+                f'No processed results found for {self.current_file.name}. '
+                'Parse the file first with Ctrl+S.'
+            )
+            return
+
+        # Run the async view method
+        self.run_worker(self.show_workspace_viewer())
+
+    async def show_workspace_viewer(self) -> None:
+        """Show the workspace viewer for the current file."""
+        if not self.current_file:
+            return
+
+        status_bar = self.query_one('#status-bar', Static)
+        status_bar.update(f'Loading processed results for {self.current_file.name}...')
+
+        # Hide welcome container and results viewer
+        self.query_one('#welcome-container').display = False
+        self.query_one('#results-viewer').display = False
+
+        # Remove old workspace viewer and create new one
+        old_viewer = self.query_one('#workspace-viewer', Container)
+        await old_viewer.remove()
+
+        # Create and mount new workspace viewer
+        main_area = self.query_one('#main-area', Vertical)
+        new_viewer = WorkspaceViewer(
+            self.workspace,
+            self.current_file.name,
+            id='workspace-viewer',
+        )
+        new_viewer.display = True
+        await main_area.mount(new_viewer, before='Footer')
+
+        # Update status
+        processed_files = find_processed_files(self.workspace, self.current_file.name)
+        driver_names = ', '.join(info.driver_name for info in processed_files)
+        status_bar.update(
+            f'Viewing {self.current_file.name} - Drivers: {driver_names}'
+        )
 
 
 def run_tui(workspace: Path):

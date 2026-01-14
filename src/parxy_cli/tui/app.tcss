@@ -224,3 +224,46 @@ Checkbox {
     height: 100%;
     padding: 1;
 }
+
+/* Workspace viewer */
+#workspace-viewer {
+    height: 1fr;
+    width: 100%;
+    display: none;
+}
+
+#workspace-viewer-container {
+    height: 100%;
+    width: 100%;
+    layout: vertical;
+}
+
+#driver-comparison-table {
+    height: auto;
+    max-height: 12;
+    margin-bottom: 1;
+}
+
+#driver-tabs {
+    height: 1fr;
+}
+
+#no-results-message {
+    padding: 2;
+    text-align: center;
+    color: $text-muted;
+}
+
+.subsection-title {
+    padding: 1 0;
+}
+
+/* Workspace summary */
+#workspace-summary-container {
+    height: 100%;
+    width: 100%;
+}
+
+#workspace-summary-table {
+    height: 1fr;
+}

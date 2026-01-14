@@ -15,6 +15,12 @@ from parxy_cli.tui.widgets.welcome_screen import WelcomeScreen
 from parxy_cli.tui.widgets.welcome_container import WelcomeContainer
 from parxy_cli.tui.widgets.footer import Footer
 from parxy_cli.tui.widgets.logo import Logo
+from parxy_cli.tui.widgets.workspace_viewer import (
+    WorkspaceViewer,
+    WorkspaceSummary,
+    ProcessedFileInfo,
+    find_processed_files,
+)
 
 __all__ = [
     'FileTreeSelector',
@@ -28,4 +34,8 @@ __all__ = [
     'WelcomeContainer',
     'Footer',
     'Logo',
+    'WorkspaceViewer',
+    'WorkspaceSummary',
+    'ProcessedFileInfo',
+    'find_processed_files',
 ]
