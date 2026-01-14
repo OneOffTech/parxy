@@ -9,7 +9,14 @@ from typing import Optional
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, VerticalScroll
 from textual.message import Message
-from textual.widgets import DataTable, Label, Static, TabbedContent, TabPane, MarkdownViewer
+from textual.widgets import (
+    DataTable,
+    Label,
+    Static,
+    TabbedContent,
+    TabPane,
+    MarkdownViewer,
+)
 
 from parxy_core.models import Document
 
@@ -172,7 +179,11 @@ class WorkspaceViewer(Container):
 
         # Add rows for each driver
         for info in self.processed_files:
-            cost_str = f'{info.cost_estimation:.2f}' if info.cost_estimation is not None else '-'
+            cost_str = (
+                f'{info.cost_estimation:.2f}'
+                if info.cost_estimation is not None
+                else '-'
+            )
             unit_str = info.cost_estimation_unit or '-'
             time_str = (
                 f'{info.driver_elapsed_time / 1000:.2f}'
@@ -237,7 +248,9 @@ class WorkspaceSummary(Container):
         # Add rows for each PDF
         for pdf_file in sorted(pdf_files):
             processed = find_processed_files(self.workspace, pdf_file.name)
-            driver_names = ', '.join(info.driver_name for info in processed) if processed else '-'
+            driver_names = (
+                ', '.join(info.driver_name for info in processed) if processed else '-'
+            )
 
             table.add_row(
                 pdf_file.name,

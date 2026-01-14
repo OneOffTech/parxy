@@ -321,7 +321,9 @@ class ParxyTUI(App):
         status_bar = self.query_one('#status-bar', Static)
         if self.current_file:
             # Check for processed files
-            processed_files = find_processed_files(self.workspace, self.current_file.name)
+            processed_files = find_processed_files(
+                self.workspace, self.current_file.name
+            )
             if processed_files:
                 driver_names = ', '.join(info.driver_name for info in processed_files)
                 status_bar.update(
@@ -422,9 +424,7 @@ class ParxyTUI(App):
         # Update status
         processed_files = find_processed_files(self.workspace, self.current_file.name)
         driver_names = ', '.join(info.driver_name for info in processed_files)
-        status_bar.update(
-            f'Viewing {self.current_file.name} - Drivers: {driver_names}'
-        )
+        status_bar.update(f'Viewing {self.current_file.name} - Drivers: {driver_names}')
 
 
 def run_tui(workspace: Path):
