@@ -146,7 +146,7 @@ def landingaiade_to_parxy(parsed_data: ParseResponse) -> Document:
         # Create page
         page_text = '\n'.join(page_text_parts)
         page = Page(
-            number=page_num,
+            number=page_num + 1,
             blocks=blocks,
             text=page_text,
             source_data={'page_index': page_num},
