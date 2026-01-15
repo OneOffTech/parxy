@@ -34,6 +34,7 @@ from typing import Any, Callable, Iterator, Optional, TypeVar, ParamSpec
 from opentelemetry import trace, metrics
 from opentelemetry.trace import Span, Tracer, StatusCode
 from opentelemetry.metrics import Meter, Counter, Histogram
+from opentelemetry.exporter.otlp.proto.http import Compression
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.sdk.trace import TracerProvider
@@ -193,6 +194,8 @@ class ParxyTracer:
             otlp_exporter = OTLPSpanExporter(
                 endpoint=config.tracing.traces_endpoint,
                 headers=auth_headers,
+                timeout=config.tracing.timeout_seconds if config.tracing.timeout_seconds is not None else 10,
+                compression=Compression.Gzip if config.tracing.use_compression else Compression.NoCompression,
             )
 
             # Wrap with logging if verbose
