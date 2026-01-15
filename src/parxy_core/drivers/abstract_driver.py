@@ -98,7 +98,7 @@ class Driver(ABC):
             For all unhandled exceptions during document processing
         """
 
-        self._logger.debug(f'Parsing file using {self.__class__.__name__}', file)
+        self._logger.debug(f'Parsing file using {self.__class__.__name__}', file if isinstance(file, str) else 'stream')
 
         with tracer.span(
             'document-processing',
