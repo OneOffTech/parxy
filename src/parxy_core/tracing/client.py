@@ -194,8 +194,12 @@ class ParxyTracer:
             otlp_exporter = OTLPSpanExporter(
                 endpoint=config.tracing.traces_endpoint,
                 headers=auth_headers,
-                timeout=config.tracing.timeout_seconds if config.tracing.timeout_seconds is not None else 10,
-                compression=Compression.Gzip if config.tracing.use_compression else Compression.NoCompression,
+                timeout=config.tracing.timeout_seconds
+                if config.tracing.timeout_seconds is not None
+                else 10,
+                compression=Compression.Gzip
+                if config.tracing.use_compression
+                else Compression.NoCompression,
             )
 
             # Wrap with logging if verbose

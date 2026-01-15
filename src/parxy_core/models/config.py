@@ -37,10 +37,10 @@ class ParxyTracingConfig(BaseSettings):
         default_factory=lambda data: f'{data["endpoint"].rstrip("/")}/v1/metrics'
     )
     """The endpoint for the metrics exporter. Default 'http://localhost:4318/v1/metrics'."""
-    
+
     timeout_seconds: int = 10
     """The client timeout when sending traces. Default 10 seconds."""
-    
+
     use_compression: bool = True
     """The client should compress traces before send. Default True."""
 
