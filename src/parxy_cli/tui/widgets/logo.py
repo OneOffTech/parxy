@@ -3,9 +3,11 @@ from textual.widgets import Static
 from textual.widget import Widget
 
 LOGO_LINES = [
-    '█▀▀▀█ █▀▀▀█ █▀▀▀█ █▄ ▄█ █░░░█',
-    '█░░░█ █▀▀▀█ █▀▀█▀ ▄▄▀▄▄ ▀▀█▀▀',
-    '█▀▀▀▀ ▀   ▀ ▀   ▀ ▀   ▀   ▀  ',
+    '╔═══╗  ╔═══╗  ╔═══╗  ╦   ╦  ╦   ╦',
+    '║   ║  ║   ║  ║   ║  ╚═╤═╝  ║   ║',
+    '╬═══╝  ╬═══╬  ╬═══╝    │    ╚═╦═╝',
+    '║      ║   ║  ║  \\   ╔═╧═╗    ║  ',
+    '║      ║   ║  ║   \\  ║   ║    ║  ',
 ]
 
 
@@ -14,8 +16,8 @@ class Logo(Widget):
 
     DEFAULT_CSS = """
     Logo {
-        width: 30;
-        height: 3;
+        width: 33;
+        height: 5;
     }
     """
 
