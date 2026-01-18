@@ -5,9 +5,12 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, Dict, Callable, List, Union, Iterator
 
+from pathlib import Path
+
 from parxy_core.drivers import DriverFactory, Driver
 from parxy_core.models import Document, BatchTask, BatchResult
 from parxy_core.models.config import ParxyConfig
+from parxy_core.services.pdf_service import PdfService
 
 
 class Parxy:
@@ -338,3 +341,187 @@ class Parxy:
                 break
 
         return results
+
+    # ========================================================================
+    # PDF Manipulation Namespace
+    # ========================================================================
+
+    class pdf:
+        """PDF manipulation operations namespace.
+
+        Provides static methods for PDF operations like merging, splitting,
+        and optimizing PDFs.
+
+        Example
+        -------
+        >>> Parxy.pdf.merge([(Path('doc1.pdf'), None, None)], Path('out.pdf'))
+        >>> Parxy.pdf.split(Path('doc.pdf'), Path('./pages'), 'doc')
+        >>> Parxy.pdf.optimize(Path('large.pdf'), Path('small.pdf'))
+        """
+
+        def __new__(cls):
+            """Prevent instantiation of this static class."""
+            raise TypeError(
+                f'{cls.__name__} is a static class and cannot be instantiated'
+            )
+
+        @staticmethod
+        def merge(
+            inputs: List[tuple[Path, Optional[int], Optional[int]]],
+            output: Path,
+        ) -> None:
+            """Merge multiple PDF files into a single PDF.
+
+            Parameters
+            ----------
+            inputs : List[tuple[Path, Optional[int], Optional[int]]]
+                List of tuples (pdf_path, from_page, to_page) where
+                page numbers are 0-based. None means all pages or last page.
+            output : Path
+                Path where the merged PDF should be saved
+
+            Raises
+            ------
+            FileNotFoundError
+                If any input PDF doesn't exist
+            ValueError
+                If page ranges are invalid
+
+            Example
+            -------
+            Merge two complete PDFs:
+
+            >>> Parxy.pdf.merge(
+            ...     [(Path('doc1.pdf'), None, None), (Path('doc2.pdf'), None, None)],
+            ...     Path('merged.pdf')
+            ... )
+
+            Merge specific page ranges:
+
+            >>> Parxy.pdf.merge(
+            ...     [(Path('doc1.pdf'), 0, 2), (Path('doc2.pdf'), 0, 0)],
+            ...     Path('selected.pdf')
+            ... )
+            """
+            PdfService.merge_pdfs(inputs, output)
+
+        @staticmethod
+        def split(
+            input_path: Path,
+            output_dir: Path,
+            prefix: str,
+        ) -> List[Path]:
+            """Split a PDF file into individual pages.
+
+            Parameters
+            ----------
+            input_path : Path
+                Path to the PDF file to split
+            output_dir : Path
+                Directory where split PDFs should be saved
+            prefix : str
+                Prefix for output filenames
+
+            Returns
+            -------
+            List[Path]
+                List of paths to the created PDF files
+
+            Raises
+            ------
+            FileNotFoundError
+                If input PDF doesn't exist
+            ValueError
+                If PDF is empty or invalid
+
+            Example
+            -------
+            Split a PDF into individual pages:
+
+            >>> pages = Parxy.pdf.split(
+            ...     Path('document.pdf'),
+            ...     Path('./pages'),
+            ...     'doc'
+            ... )
+            >>> print(pages)
+            [Path('pages/doc_page_1.pdf'), Path('pages/doc_page_2.pdf'), ...]
+            """
+            return PdfService.split_pdf(input_path, output_dir, prefix)
+
+        @staticmethod
+        def optimize(
+            input_path: Path,
+            output_path: Path,
+            scrub_metadata: bool = True,
+            subset_fonts: bool = True,
+            compress_images: bool = True,
+            dpi_threshold: int = 100,
+            dpi_target: int = 72,
+            image_quality: int = 60,
+            convert_to_grayscale: bool = False,
+        ) -> Dict[str, any]:
+            """Optimize PDF file size using compression techniques.
+
+            This method applies three optimization techniques:
+            1. Dead-weight removal - Removes metadata, thumbnails, embedded files
+            2. Font subsetting - Keeps only used glyphs from embedded fonts
+            3. Image compression - Downsamples and compresses images
+
+            Parameters
+            ----------
+            input_path : Path
+                Path to the input PDF file
+            output_path : Path
+                Path where optimized PDF should be saved
+            scrub_metadata : bool, optional
+                Remove metadata, thumbnails, and embedded files, by default True
+            subset_fonts : bool, optional
+                Subset embedded fonts to only used glyphs, by default True
+            compress_images : bool, optional
+                Apply image compression and downsampling, by default True
+            dpi_threshold : int, optional
+                Only process images above this DPI, by default 100
+            dpi_target : int, optional
+                Target DPI for downsampling, by default 72
+            image_quality : int, optional
+                JPEG quality level 0-100, by default 60
+            convert_to_grayscale : bool, optional
+                Convert images to grayscale, by default False
+
+            Returns
+            -------
+            Dict[str, any]
+                Dictionary with optimization results:
+                - original_size: Original file size in bytes
+                - optimized_size: Optimized file size in bytes
+                - reduction_bytes: Size reduction in bytes
+                - reduction_percent: Size reduction as percentage
+
+            Raises
+            ------
+            FileNotFoundError
+                If input PDF doesn't exist
+            ValueError
+                If parameters are invalid
+
+            Example
+            -------
+            Optimize a PDF with default settings:
+
+            >>> result = Parxy.pdf.optimize(
+            ...     Path('large.pdf'),
+            ...     Path('optimized.pdf')
+            ... )
+            >>> print(f"Reduced by {result['reduction_percent']:.1f}%")
+            """
+            return PdfService.optimize_pdf(
+                input_path=input_path,
+                output_path=output_path,
+                scrub_metadata=scrub_metadata,
+                subset_fonts=subset_fonts,
+                compress_images=compress_images,
+                dpi_threshold=dpi_threshold,
+                dpi_target=dpi_target,
+                image_quality=image_quality,
+                convert_to_grayscale=convert_to_grayscale,
+            )
