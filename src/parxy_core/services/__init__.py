@@ -1,4 +1,4 @@
-"""PDF manipulation service - re-exported from parxy_core."""
+"""Services module for parxy_core."""
 
 from parxy_core.services.pdf_service import PdfService
 
