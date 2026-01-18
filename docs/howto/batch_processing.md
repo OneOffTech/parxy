@@ -24,6 +24,33 @@ for result in results:
 ```
 
 
+## Streaming Results with batch_iter()
+
+For real-time progress updates, use `batch_iter()` which yields results as they complete:
+
+```python
+from parxy_core.facade import Parxy
+
+for result in Parxy.batch_iter(tasks=['doc1.pdf', 'doc2.pdf', 'doc3.pdf']):
+    if result.success:
+        print(f'Completed: {result.file} ({len(result.document.pages)} pages)')
+    else:
+        print(f'Failed: {result.file} - {result.error}')
+```
+
+This is ideal for CLI applications or any scenario where you want to show progress as documents are processed.
+
+**Stop on first error with iterator:**
+
+```python
+for result in Parxy.batch_iter(tasks=['doc1.pdf', 'doc2.pdf']):
+    if result.failed:
+        print(f'Stopping due to error: {result.error}')
+        break
+    process(result.document)
+```
+
+
 ## Using Multiple Drivers
 
 You can process each file with multiple drivers to compare results or use different backends:
@@ -226,6 +253,21 @@ class BatchResult:
     def failed(self) -> bool:    # True if error is not None
 ```
 
+### Parxy.batch_iter()
+
+```python
+@classmethod
+def batch_iter(
+    cls,
+    tasks: List[BatchTask | str | BytesIO | bytes],
+    drivers: List[str] | None = None,  # Default: [default_driver()]
+    level: str = 'block',
+    workers: int | None = None,        # Default: CPU count
+) -> Iterator[BatchResult]
+```
+
+Streaming version that yields results as they complete. Use this for real-time progress updates.
+
 ### Parxy.batch()
 
 ```python
@@ -239,3 +281,5 @@ def batch(
     stop_on_error: bool = False,       # Stop on first error
 ) -> List[BatchResult]
 ```
+
+Collects all results and returns them as a list. Internally uses `batch_iter()`.
