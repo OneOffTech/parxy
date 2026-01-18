@@ -3,7 +3,7 @@
 import io
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional, Dict, Callable, List, Union
+from typing import Optional, Dict, Callable, List, Union, Iterator
 
 from parxy_core.drivers import DriverFactory, Driver
 from parxy_core.models import Document, BatchTask, BatchResult
@@ -148,6 +148,107 @@ class Parxy:
         return cls._get_factory().extend(name=name, callback=callback)
 
     @classmethod
+    def batch_iter(
+        cls,
+        tasks: List[Union[BatchTask, str, io.BytesIO, bytes]],
+        drivers: Optional[List[str]] = None,
+        level: str = 'block',
+        workers: Optional[int] = None,
+    ) -> Iterator[BatchResult]:
+        """Parse multiple documents in parallel, yielding results as they complete.
+
+        This is the streaming version of batch(). Results are yielded as soon as
+        each task completes, allowing for real-time progress updates.
+
+        Parameters
+        ----------
+        tasks : List[BatchTask | str | io.BytesIO | bytes]
+            List of tasks to process. Can be:
+            - BatchTask objects with per-file configuration (drivers, level)
+            - Simple file references (paths, URLs, or binary data)
+        drivers : List[str], optional
+            Default driver(s) to use when not specified in BatchTask.
+            If None, uses the default driver
+        level : str, optional
+            Default extraction level when not specified in BatchTask,
+            by default "block"
+        workers : int, optional
+            Number of parallel workers. Defaults to CPU count
+
+        Yields
+        ------
+        BatchResult
+            Results as they complete. Each result includes the file, driver used,
+            parsed document (or None), and any error message.
+
+        Example
+        -------
+        Stream results with real-time progress:
+
+        >>> for result in Parxy.batch_iter(tasks=['doc1.pdf', 'doc2.pdf']):
+        ...     if result.success:
+        ...         print(f'{result.file} parsed with {result.driver}')
+        ...     else:
+        ...         print(f'{result.file} failed: {result.error}')
+
+        Stop iteration on first error:
+
+        >>> for result in Parxy.batch_iter(tasks=['doc1.pdf', 'doc2.pdf']):
+        ...     if result.failed:
+        ...         print(f'Stopping due to error: {result.error}')
+        ...         break
+        ...     process(result.document)
+        """
+        # Get default driver if none specified
+        default_drivers = drivers if drivers else [cls.default_driver()]
+
+        # Initialize factory before parallel execution to avoid
+        # concurrent initialization of tracing/telemetry providers
+        cls._get_factory()
+
+        # Determine number of workers
+        max_workers = workers if workers else (os.cpu_count() or 2)
+
+        # Normalize tasks to BatchTask objects
+        normalized_tasks: List[BatchTask] = []
+        for task in tasks:
+            if isinstance(task, BatchTask):
+                normalized_tasks.append(task)
+            else:
+                # Simple file reference - wrap in BatchTask
+                normalized_tasks.append(BatchTask(file=task))
+
+        # Build list of (file, driver, level) work items
+        work_items: List[tuple] = []
+        for task in normalized_tasks:
+            task_drivers = task.drivers if task.drivers else default_drivers
+            task_level = task.level if task.level else level
+            for driver_name in task_drivers:
+                work_items.append((task.file, driver_name, task_level))
+
+        def process_task(
+            file: Union[str, io.BytesIO, bytes], driver_name: str, task_level: str
+        ) -> BatchResult:
+            try:
+                doc = cls.parse(file=file, level=task_level, driver_name=driver_name)
+                return BatchResult(
+                    file=file, driver=driver_name, document=doc, error=None
+                )
+            except Exception as e:
+                return BatchResult(
+                    file=file, driver=driver_name, document=None, error=str(e)
+                )
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for file, driver_name, task_level in work_items:
+                future = executor.submit(process_task, file, driver_name, task_level)
+                futures.append(future)
+
+            for future in as_completed(futures):
+                yield future.result()
+
+    @classmethod
     def batch(
         cls,
         tasks: List[Union[BatchTask, str, io.BytesIO, bytes]],
@@ -159,7 +260,8 @@ class Parxy:
         """Parse multiple documents in parallel using specified drivers.
 
         Accepts either a list of BatchTask objects for per-file configuration,
-        or a simple list of files with shared configuration.
+        or a simple list of files with shared configuration. For streaming results
+        as they complete, use batch_iter() instead.
 
         Parameters
         ----------
@@ -222,62 +324,17 @@ class Parxy:
         ...     stop_on_error=True,
         ... )
         """
-        # Get default driver if none specified
-        default_drivers = drivers if drivers else [cls.default_driver()]
-
-        # Initialize factory before parallel execution to avoid
-        # concurrent initialization of tracing/telemetry providers
-        cls._get_factory()
-
-        # Determine number of workers
-        max_workers = workers if workers else (os.cpu_count() or 2)
-
-        # Normalize tasks to BatchTask objects
-        normalized_tasks: List[BatchTask] = []
-        for task in tasks:
-            if isinstance(task, BatchTask):
-                normalized_tasks.append(task)
-            else:
-                # Simple file reference - wrap in BatchTask
-                normalized_tasks.append(BatchTask(file=task))
-
-        # Build list of (file, driver, level) work items
-        work_items: List[tuple] = []
-        for task in normalized_tasks:
-            task_drivers = task.drivers if task.drivers else default_drivers
-            task_level = task.level if task.level else level
-            for driver_name in task_drivers:
-                work_items.append((task.file, driver_name, task_level))
-
         results: List[BatchResult] = []
 
-        def process_task(
-            file: Union[str, io.BytesIO, bytes], driver_name: str, task_level: str
-        ) -> BatchResult:
-            try:
-                doc = cls.parse(file=file, level=task_level, driver_name=driver_name)
-                return BatchResult(
-                    file=file, driver=driver_name, document=doc, error=None
-                )
-            except Exception as e:
-                return BatchResult(
-                    file=file, driver=driver_name, document=None, error=str(e)
-                )
+        for result in cls.batch_iter(
+            tasks=tasks,
+            drivers=drivers,
+            level=level,
+            workers=workers,
+        ):
+            results.append(result)
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = []
-            for file, driver_name, task_level in work_items:
-                future = executor.submit(process_task, file, driver_name, task_level)
-                futures.append(future)
-
-            for future in as_completed(futures):
-                result = future.result()
-                results.append(result)
-
-                if stop_on_error and not result.success:
-                    # Cancel remaining futures
-                    for f in futures:
-                        f.cancel()
-                    break
+            if stop_on_error and result.failed:
+                break
 
         return results

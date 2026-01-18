@@ -46,7 +46,9 @@ class TestParxyFacade:
 class TestBatchResult:
     def test_success_property_true_when_document_present(self):
         doc = Document(pages=[Page(number=1, text='test')])
-        result = BatchResult(file='test.pdf', driver='pymupdf', document=doc, error=None)
+        result = BatchResult(
+            file='test.pdf', driver='pymupdf', document=doc, error=None
+        )
 
         assert result.success is True
         assert result.failed is False
@@ -68,7 +70,9 @@ class TestBatchResult:
 
     def test_failed_property_false_when_no_error(self):
         doc = Document(pages=[Page(number=1, text='test')])
-        result = BatchResult(file='test.pdf', driver='pymupdf', document=doc, error=None)
+        result = BatchResult(
+            file='test.pdf', driver='pymupdf', document=doc, error=None
+        )
 
         assert result.failed is False
 
@@ -263,3 +267,96 @@ class TestParxyBatch:
         assert len(results) == 1
         assert results[0].file == pdf_bytes
         assert results[0].success is True
+
+
+class TestParxyBatchIter:
+    @patch.object(Parxy, 'parse')
+    def test_batch_iter_yields_results(self, mock_parse):
+        doc = Document(pages=[Page(number=1, text='test')])
+        mock_parse.return_value = doc
+
+        results = list(Parxy.batch_iter(tasks=['doc1.pdf', 'doc2.pdf'], workers=1))
+
+        assert len(results) == 2
+        assert all(isinstance(r, BatchResult) for r in results)
+
+    @patch.object(Parxy, 'parse')
+    def test_batch_iter_is_iterator(self, mock_parse):
+        doc = Document(pages=[Page(number=1, text='test')])
+        mock_parse.return_value = doc
+
+        result_iter = Parxy.batch_iter(tasks=['doc.pdf'], workers=1)
+
+        # Should be an iterator
+        assert hasattr(result_iter, '__iter__')
+        assert hasattr(result_iter, '__next__')
+
+    @patch.object(Parxy, 'parse')
+    def test_batch_iter_streams_results(self, mock_parse):
+        doc = Document(pages=[Page(number=1, text='test')])
+        mock_parse.return_value = doc
+        received_results = []
+
+        for result in Parxy.batch_iter(tasks=['doc1.pdf', 'doc2.pdf'], workers=1):
+            received_results.append(result)
+            # Can process each result as it arrives
+            assert result.success is True
+
+        assert len(received_results) == 2
+
+    @patch.object(Parxy, 'parse')
+    def test_batch_iter_can_break_early(self, mock_parse):
+        call_count = 0
+
+        def parse_side_effect(file, level, driver_name):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise Exception('First parse failed')
+            return Document(pages=[Page(number=1, text='test')])
+
+        mock_parse.side_effect = parse_side_effect
+        received_results = []
+
+        for result in Parxy.batch_iter(
+            tasks=['doc1.pdf', 'doc2.pdf', 'doc3.pdf'], workers=1
+        ):
+            received_results.append(result)
+            if result.failed:
+                break
+
+        # Should have stopped after first error
+        assert len(received_results) >= 1
+        assert any(r.failed for r in received_results)
+
+    @patch.object(Parxy, 'parse')
+    def test_batch_iter_with_multiple_drivers(self, mock_parse):
+        doc = Document(pages=[Page(number=1, text='test')])
+        mock_parse.return_value = doc
+
+        results = list(
+            Parxy.batch_iter(
+                tasks=['doc.pdf'], drivers=['pymupdf', 'pdfact'], workers=1
+            )
+        )
+
+        assert len(results) == 2
+        drivers_used = {r.driver for r in results}
+        assert drivers_used == {'pymupdf', 'pdfact'}
+
+    @patch.object(Parxy, 'parse')
+    def test_batch_iter_with_batch_task(self, mock_parse):
+        doc = Document(pages=[Page(number=1, text='test')])
+        mock_parse.return_value = doc
+
+        results = list(
+            Parxy.batch_iter(
+                tasks=[BatchTask(file='doc.pdf', drivers=['pdfact'], level='line')],
+                workers=1,
+            )
+        )
+
+        assert len(results) == 1
+        assert results[0].driver == 'pdfact'
+        mock_parse.assert_called_once()
+        assert mock_parse.call_args[1]['level'] == 'line'
