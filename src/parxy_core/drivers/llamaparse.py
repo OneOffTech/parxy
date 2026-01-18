@@ -37,6 +37,28 @@ _credits_per_parsing_mode = {
     'parse_document_with_agent': 30,
 }
 
+# Options that can be overridden per-call via kwargs
+_PER_CALL_OPTIONS = frozenset(
+    {
+        'model',
+        'skip_diagonal_text',
+        'preset',
+        'parse_mode',
+        'language',
+        'target_pages',
+        'max_pages',
+        'continuous_mode',
+        'disable_ocr',
+        'disable_image_extraction',
+        'fast_mode',
+        'premium_mode',
+        'high_res_ocr',
+        'extract_layout',
+        'auto_mode',
+        'do_not_unroll_columns',
+    }
+)
+
 
 class LlamaParseDriver(Driver):
     """Llama Cloud Services document processing via LlamaParse API.
@@ -59,6 +81,9 @@ class LlamaParseDriver(Driver):
     def _initialize_driver(self):
         """Initialize the Llama Parse driver.
 
+        Validates that dependencies are installed and creates the default client.
+        Client creation is also available per-call to support configuration overrides.
+
         Raises
         ------
         ImportError
@@ -66,18 +91,48 @@ class LlamaParseDriver(Driver):
         """
         try:
             from llama_cloud_services import LlamaParse
+
+            self._LlamaParse = LlamaParse  # Store class reference for per-call clients
         except ImportError as e:
             raise ImportError(
                 'LlamaParse dependencies not installed. '
                 "Install with 'pip install parxy[llama]'"
             ) from e
 
-        self.__client = LlamaParse(
-            api_key=self._config.api_key.get_secret_value()
-            if self._config and self._config.api_key
-            else None,
-            **self._config.model_dump() if self._config else {},
+        # Create default client for calls without overrides
+        self.__default_client = self._create_client(
+            self._config.model_dump() if self._config else {},
+            api_key=self._config.api_key if self._config else None,
         )
+
+    def _create_client(
+        self, config_dict: dict, api_key: Optional['SecretStr'] = None
+    ) -> 'LlamaParse':
+        """Create a LlamaParse client with the given configuration.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Configuration dictionary to pass to LlamaParse constructor.
+        api_key : SecretStr, optional
+            The API key (passed separately since it's excluded from model_dump).
+
+        Returns
+        -------
+        LlamaParse
+            Configured client instance
+        """
+        # Make a copy to avoid modifying the original
+        config = config_dict.copy()
+
+        # Handle api_key (may be SecretStr, needs to be converted)
+        if api_key is not None:
+            if hasattr(api_key, 'get_secret_value'):
+                api_key = api_key.get_secret_value()
+            # Only pass api_key if it has a value, otherwise let LlamaParse use default
+            config['api_key'] = api_key
+
+        return self._LlamaParse(**config)
 
     def _fetch_usage_metrics(self, job_id: str) -> Optional[dict]:
         """Fetch actual usage metrics from the LlamaParse beta API.
@@ -178,13 +233,30 @@ class LlamaParseDriver(Driver):
         """Parse a document using LlamaParse.
 
         Parameters
-        ----
+        -------
         file : str | io.BytesIO | bytes
             Path, URL or stream of the file to parse.
         level : str, optional
             Desired extraction level. Must be one of `supported_levels`. Default is `"block"`.
-        raw : bool, optional
-            If True, return the raw `JobResult` object from LlamaParse instead of a `Document`. Default is False.
+        **kwargs
+            Per-call configuration overrides. Supported options:
+
+            - model: Document model name for parse_with_agent
+            - skip_diagonal_text: Skip diagonal text (useful for CAD)
+            - preset: Parser preset (overrides most options)
+            - parse_mode: Parsing mode ('accurate', 'parse_page_with_llm', etc.)
+            - language: Text language
+            - target_pages: Specific pages to parse (e.g., '0,2,5-10')
+            - max_pages: Maximum pages to extract
+            - continuous_mode: Better table handling across pages
+            - disable_ocr: Disable OCR
+            - disable_image_extraction: Don't extract images
+            - fast_mode: Speed over accuracy
+            - premium_mode: Best parser mode
+            - high_res_ocr: High resolution OCR
+            - extract_layout: Extract layout information
+            - auto_mode: Automatic mode selection
+            - do_not_unroll_columns: Keep columns in layout
 
         Returns
         -------
@@ -202,11 +274,29 @@ class LlamaParseDriver(Driver):
         ParsingException
             If any other parsing error occurs
         """
+        # Extract per-call overrides from kwargs
+        overrides = {k: v for k, v in kwargs.items() if k in _PER_CALL_OPTIONS}
+        remaining_kwargs = {
+            k: v for k, v in kwargs.items() if k not in _PER_CALL_OPTIONS
+        }
+
+        # Determine which client to use
+        if overrides:
+            # Merge base config with overrides
+            merged_config = self._config.model_dump() if self._config else {}
+            merged_config.update(overrides)
+            client = self._create_client(
+                merged_config,
+                api_key=self._config.api_key if self._config else None,
+            )
+        else:
+            client = self.__default_client
+
         try:
             filename, stream = self.handle_file_input(file)
             extra_info = {'file_name': filename if len(filename) > 0 else 'default'}
             with self._trace_parse(filename, stream, **kwargs) as span:
-                res = self.__client.parse(stream, extra_info=extra_info)
+                res = client.parse(stream, extra_info=extra_info)
                 span.set_attribute('output.document', safe_json_dumps(res.model_dump()))
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.__class__) from fex

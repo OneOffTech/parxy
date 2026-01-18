@@ -121,6 +121,7 @@ class LandingAIConfig(BaseConfig):
 class LlamaParseConfig(BaseConfig):
     """Configuration values for LlamaParse service. All env variables must start with parxy_llamaparse_"""
 
+    # Connection settings
     base_url: str = 'https://api.cloud.eu.llamaindex.ai'
     """The base URL of the Llama Parsing API."""
 
@@ -133,6 +134,7 @@ class LlamaParseConfig(BaseConfig):
     project_id: Optional[str] = None
     """The project ID for the LlamaParse API."""
 
+    # Client behavior
     num_workers: Optional[int] = 4
     """The number of workers to use sending API requests for parsing."""
 
@@ -142,19 +144,62 @@ class LlamaParseConfig(BaseConfig):
     verbose: Optional[bool] = False
     """Whether to print the progress of the parsing."""
 
+    # Parsing mode configuration
     parse_mode: Optional[str] = 'parse_page_with_llm'
-    """Parsing mode to use to process all documents."""
+    """Parsing mode to use. Options: 'accurate', 'parse_page_without_llm', 'parse_page_with_llm', 'parse_page_with_lvm', 'parse_page_with_agent', 'parse_document_with_llm', 'parse_document_with_agent'."""
 
-    # Parsing specific configurations (Alphabetical order)
+    preset: Optional[str] = None
+    """Parser preset. If set, overrides most other parameters. See LlamaParse documentation for available presets."""
 
+    model: Optional[str] = None
+    """Document model name for parse_with_agent mode."""
+
+    premium_mode: Optional[bool] = False
+    """Use best parser mode if set to True."""
+
+    fast_mode: Optional[bool] = False
+    """Use faster mode that skips OCR of images and table/heading reconstruction. Not compatible with gpt-4o."""
+
+    # OCR and extraction settings
     disable_ocr: Optional[bool] = False
     """Disable the OCR on the document. LlamaParse will only extract the copyable text from the document."""
 
     disable_image_extraction: Optional[bool] = False
-    """If set to true, the parser will not extract images from the document. Make the parser faster."""
+    """If set to true, the parser will not extract images from the document. Makes the parser faster."""
 
+    high_res_ocr: Optional[bool] = False
+    """Use high resolution OCR to extract text from images. Increases accuracy but reduces speed."""
+
+    extract_layout: Optional[bool] = False
+    """Extract layout information from the document. Costs 1 credit per page."""
+
+    # Text handling
+    skip_diagonal_text: Optional[bool] = False
+    """Skip diagonal text (when text rotation in degrees modulo 90 is not 0). Useful for CAD drawings."""
+
+    language: Optional[str] = 'en'
+    """Language of the text to parse."""
+
+    do_not_unroll_columns: Optional[bool] = False
+    """Keep columns in text according to document layout. May reduce reconstruction accuracy."""
+
+    # Page selection
+    target_pages: Optional[str] = None
+    """Target pages to extract. Comma-separated list of page numbers (0-indexed). E.g., '0,2,5-10'."""
+
+    max_pages: Optional[int] = None
+    """Maximum number of pages to extract. If not set, all pages are extracted."""
+
+    # Advanced features
+    continuous_mode: Optional[bool] = False
+    """Parse documents continuously for better results on tables spanning multiple pages."""
+
+    auto_mode: Optional[bool] = False
+    """Automatically select best mode based on page content. Upgrades matching pages to Premium mode."""
+
+    # Caching
     do_not_cache: Optional[bool] = True
-    """If set to true, the document will not be cached. This mean that you will be re-charged it you reprocess them as they will not be cached."""
+    """If set to true, the document will not be cached. You will be re-charged if you reprocess them."""
 
     model_config = SettingsConfigDict(
         env_prefix='parxy_llamaparse_', env_file='.env', extra='ignore'
