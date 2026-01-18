@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 import pymupdf
 
-from parxy_cli.services.pdf_service import PdfService
+from parxy_core.services.pdf_service import PdfService
 
 
 @pytest.fixture
