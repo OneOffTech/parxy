@@ -13,6 +13,8 @@ from parxy_core.models.models import (
     Page as Page,
     Metadata as Metadata,
     Document as Document,
+    BatchTask as BatchTask,
+    BatchResult as BatchResult,
     # estimate_lines_from_block,
     HierarchyLevel as HierarchyLevel,
 )
