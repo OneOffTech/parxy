@@ -393,14 +393,14 @@ class Parxy:
 
             >>> Parxy.pdf.merge(
             ...     [(Path('doc1.pdf'), None, None), (Path('doc2.pdf'), None, None)],
-            ...     Path('merged.pdf')
+            ...     Path('merged.pdf'),
             ... )
 
             Merge specific page ranges:
 
             >>> Parxy.pdf.merge(
             ...     [(Path('doc1.pdf'), 0, 2), (Path('doc2.pdf'), 0, 0)],
-            ...     Path('selected.pdf')
+            ...     Path('selected.pdf'),
             ... )
             """
             PdfService.merge_pdfs(inputs, output)
@@ -438,11 +438,7 @@ class Parxy:
             -------
             Split a PDF into individual pages:
 
-            >>> pages = Parxy.pdf.split(
-            ...     Path('document.pdf'),
-            ...     Path('./pages'),
-            ...     'doc'
-            ... )
+            >>> pages = Parxy.pdf.split(Path('document.pdf'), Path('./pages'), 'doc')
             >>> print(pages)
             [Path('pages/doc_page_1.pdf'), Path('pages/doc_page_2.pdf'), ...]
             """
@@ -508,11 +504,8 @@ class Parxy:
             -------
             Optimize a PDF with default settings:
 
-            >>> result = Parxy.pdf.optimize(
-            ...     Path('large.pdf'),
-            ...     Path('optimized.pdf')
-            ... )
-            >>> print(f"Reduced by {result['reduction_percent']:.1f}%")
+            >>> result = Parxy.pdf.optimize(Path('large.pdf'), Path('optimized.pdf'))
+            >>> print(f'Reduced by {result["reduction_percent"]:.1f}%')
             """
             return PdfService.optimize_pdf(
                 input_path=input_path,
