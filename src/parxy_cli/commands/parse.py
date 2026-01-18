@@ -1,16 +1,14 @@
 """Command line interface for Parxy document processing."""
 
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import timedelta
 from pathlib import Path
 from typing import Optional, List, Annotated
-from threading import Lock
 
 import typer
 
 from parxy_core.facade import Parxy
-from parxy_core.models.models import Document
+from parxy_core.models import Document, BatchTask, BatchResult
 
 from parxy_cli.models import Level, OutputMode
 from parxy_cli.console.console import Console
@@ -192,6 +190,59 @@ def format_timedelta(td):
     return ', '.join(parts)
 
 
+def save_batch_result(
+    result: BatchResult,
+    mode: OutputMode,
+    output_dir: Optional[Path],
+    show: bool,
+    use_driver_suffix: bool = False,
+) -> tuple[str, int]:
+    """
+    Save a BatchResult to file.
+
+    Args:
+        result: BatchResult containing the parsed document
+        mode: Output mode
+        output_dir: Optional output directory
+        show: Whether to show content in console
+        use_driver_suffix: Whether to append driver name to output filename
+
+    Returns:
+        Tuple of (output_path, page_count)
+    """
+    doc = result.document
+    file_path = Path(result.file) if isinstance(result.file, str) else Path('document')
+
+    # Get content
+    content = get_content(doc, mode)
+
+    # Determine output path
+    if output_dir:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        base_name = file_path.stem
+    else:
+        # Save in same directory as source file
+        output_dir = file_path.parent
+        base_name = file_path.stem
+
+    # If multiple drivers, append driver name to filename
+    if use_driver_suffix and result.driver:
+        base_name = f'{base_name}-{result.driver}'
+
+    extension = get_output_extension(mode)
+    output_path = output_dir / f'{base_name}{extension}'
+
+    # Save to file
+    output_path.write_text(content, encoding='utf-8')
+
+    # Show in console if requested
+    if show:
+        console.print(content)
+        console.newline()
+
+    return str(output_path), len(doc.pages)
+
+
 @app.command()
 def parse(
     inputs: Annotated[
@@ -346,10 +397,6 @@ def parse(
         max_workers = workers if workers else (os.cpu_count() or 2)
         console.info(f'Using parallel processing with {max_workers} workers')
 
-        # Initialize the factory once before parallel execution to avoid
-        # concurrent initialization of tracing/telemetry providers
-        Parxy._get_factory()
-
     # Show info
     with console.shimmer(
         f'Processing {len(files)} file{"s" if len(files) > 1 else ""} with {len(drivers)} driver{"s" if len(drivers) > 1 else ""}...'
@@ -359,68 +406,46 @@ def parse(
             task = progress.add_task('', total=total_tasks)
 
             if parallel:
-                # Parallel processing
-                progress_lock = Lock()
-                should_stop = False
+                # Parallel processing using batch_iter
+                batch_tasks = [str(f) for f in files]
 
-                def process_task(file_path, driver):
-                    nonlocal error_count, should_stop
+                for result in Parxy.batch_iter(
+                    tasks=batch_tasks,
+                    drivers=drivers,
+                    level=level.value,
+                    workers=max_workers,
+                ):
+                    file_name = (
+                        Path(result.file).name
+                        if isinstance(result.file, str)
+                        else 'document'
+                    )
 
-                    if should_stop:
-                        return None
-
-                    try:
-                        output_file, page_count = process_file_with_driver(
-                            file_path=file_path,
-                            driver=driver,
-                            level=level,
+                    if result.success:
+                        output_file, page_count = save_batch_result(
+                            result=result,
                             mode=mode,
                             output_dir=output_path,
                             show=show,
                             use_driver_suffix=use_driver_suffix,
                         )
+                        console.print(
+                            f'[faint]⎿ [/faint] {file_name} via {result.driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
+                        )
+                    else:
+                        console.print(
+                            f'[faint]⎿ [/faint] {file_name} via {result.driver} error. [error]{result.error}[/error]'
+                        )
+                        error_count += 1
 
-                        # Thread-safe progress update
-                        with progress_lock:
-                            console.print(
-                                f'[faint]⎿ [/faint] {file_path.name} via {driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
-                            )
-                            progress.update(task, advance=1)
-
-                        return ('success', file_path, driver, output_file, page_count)
-
-                    except Exception as e:
-                        with progress_lock:
-                            console.print(
-                                f'[faint]⎿ [/faint] {file_path.name} via {driver} error. [error]{str(e)}[/error]'
-                            )
-                            progress.update(task, advance=1)
-                            error_count += 1
-
-                            if stop_on_failure:
-                                should_stop = True
-
-                        return ('error', file_path, driver, str(e))
-
-                # Submit all tasks
-                with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    futures = []
-                    for file_path in files:
-                        for driver in drivers:
-                            future = executor.submit(process_task, file_path, driver)
-                            futures.append(future)
-
-                    # Wait for all tasks to complete
-                    for future in as_completed(futures):
-                        result = future.result()
-
-                        if should_stop:
-                            # Cancel remaining futures
-                            for f in futures:
-                                f.cancel()
+                        if stop_on_failure:
                             console.newline()
-                            console.info('Stopping')
+                            console.info(
+                                'Stopping due to error (--stop-on-failure flag is set)'
+                            )
                             raise typer.Exit(1)
+
+                    progress.update(task, advance=1)
             else:
                 # Sequential processing
                 for file_path in files:

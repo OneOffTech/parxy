@@ -1,6 +1,8 @@
 from abc import ABC
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import List, Optional, Any
+from io import BytesIO
+from typing import List, Optional, Any, Union
 
 from pydantic import BaseModel
 
@@ -207,6 +209,68 @@ class Document(BaseModel):
                 markdown_parts.append('\n\n'.join(page_parts))
 
         return '\n\n'.join(markdown_parts)
+
+
+@dataclass
+class BatchTask:
+    """Configuration for a single batch parsing task.
+
+    Allows specifying per-file configuration including drivers and extraction level.
+
+    Attributes
+    ----------
+    file : str | BytesIO | bytes
+        The file to parse (path, URL, or binary data)
+    drivers : List[str] | None
+        Driver(s) to use for this file. If None, uses batch-level default
+    level : str | None
+        Extraction level for this file. If None, uses batch-level default
+
+    Example
+    -------
+    >>> tasks = [
+    ...     BatchTask(file='simple.pdf'),  # Uses defaults
+    ...     BatchTask(file='complex.pdf', drivers=['llamaparse'], level='line'),
+    ...     BatchTask(file=pdf_bytes, drivers=['pymupdf', 'pdfact']),
+    ... ]
+    >>> results = Parxy.batch(tasks)
+    """
+
+    file: Union[str, BytesIO, bytes]
+    drivers: Optional[List[str]] = None
+    level: Optional[str] = None
+
+
+@dataclass
+class BatchResult:
+    """Result of a single batch parsing task.
+
+    Attributes
+    ----------
+    file : str | BytesIO | bytes
+        The input file that was processed
+    driver : str
+        The driver name used for parsing
+    document : Document | None
+        The parsed document, or None if an error occurred
+    error : str | None
+        Error message if parsing failed, None otherwise
+    """
+
+    file: Union[str, BytesIO, bytes]
+    driver: str
+    document: Optional['Document']
+    error: Optional[str]
+
+    @property
+    def success(self) -> bool:
+        """Return True if parsing succeeded."""
+        return self.document is not None
+
+    @property
+    def failed(self) -> bool:
+        """Return True if parsing failed."""
+        return self.error is not None
 
 
 class HierarchyLevel(IntEnum):
