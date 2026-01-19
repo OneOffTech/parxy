@@ -110,6 +110,19 @@ def landingaiade_to_parxy(parsed_data: ParseResponse) -> Document:
                 page_chunks[page_num] = []
             page_chunks[page_num].append(chunk)
 
+    # Determine total page count from metadata
+    total_pages = (
+        parsed_data.metadata.page_count
+        if parsed_data.metadata and parsed_data.metadata.page_count
+        else 0
+    )
+
+    # Insert empty pages for any gaps in page_chunks
+    existing_pages = set(page_chunks.keys())
+    for page_num in range(total_pages):
+        if page_num not in existing_pages:
+            page_chunks[page_num] = []
+
     # Convert to pages
     pages = []
     for page_num in sorted(page_chunks.keys()):
