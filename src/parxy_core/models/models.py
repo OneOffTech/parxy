@@ -60,17 +60,16 @@ class Line(BaseModel):
 
 class Block(BaseModel, ABC):
     type: str
-    bbox: Optional[BoundingBox] = None
-    page: Optional[int] = None
-    source_data: Optional[dict[str, Any]] = None
-
-
-class TextBlock(BaseModel):
-    type: str
+    role: Optional[str] = 'generic'
+    """Document Structure role recognized for this block"""
     bbox: Optional[BoundingBox] = None
     page: Optional[int] = None
     source_data: Optional[dict[str, Any]] = None
     category: Optional[str] = None
+    """Category attributed to this block by the parser"""
+
+
+class TextBlock(Block):
     style: Optional[Style] = None
     level: Optional[int] = None
     lines: Optional[List[Line]] = None
