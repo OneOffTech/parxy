@@ -26,6 +26,41 @@ from parxy_core.exceptions import (
     FileNotFoundException,
 )
 
+# Mapping from LlamaParse types to WAI-ARIA document structure roles
+# See docs/explanation/document-roles.md for role definitions
+LLAMAPARSE_TO_ROLE: dict[str, str] = {
+    'text': 'paragraph',
+    'table': 'table',
+    'tables': 'table',
+    'figure': 'figure',
+    'figures': 'figure',
+    'list': 'list',
+    'lists': 'list',
+    # Footer variants
+    'footer': 'doc-pagefooter',
+    'page-footer': 'doc-pagefooter',
+    'page_footer': 'doc-pagefooter',
+    'page-number': 'doc-pagefooter',
+    # Footnote variants
+    'footnote': 'doc-footnote',
+    'note': 'doc-footnote',
+    'endnote': 'doc-endnotes',
+    'annotation': 'doc-footnote',
+    'footer-note': 'doc-footnote',
+    # Heading variants
+    'heading': 'heading',
+    'title': 'doc-title',
+    'titles': 'heading',
+    'subtitle': 'doc-subtitle',
+    'section': 'heading',
+    'chapter': 'doc-chapter',
+    # Header variants
+    'page-header': 'doc-pageheader',
+    'page_header': 'doc-pageheader',
+    'page-heading': 'doc-pageheader',
+    'header': 'doc-pageheader',
+}
+
 _credits_per_parsing_mode = {
     # Minimum credits per parsing mode as deduced from https://developers.llamaindex.ai/python/cloud/general/pricing/
     'accurate': 3,  # equivalent to Parse page with LLM as observed in their dashboard
@@ -453,9 +488,12 @@ def _convert_text_block(text_block: PageItem, page_number: int) -> TextBlock:
     text_value = text_block.value if text_block.value else ''
     if text_value == 'NO_CONTENT_HERE':
         text_value = ''
+    category = text_block.type
+    role = LLAMAPARSE_TO_ROLE.get(category, 'generic') if category else 'generic'
     return TextBlock(
         type='text',
-        category=text_block.type,
+        role=role,
+        category=category,
         level=text_block.lvl,
         text=text_value,
         bbox=bbox,
