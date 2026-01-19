@@ -449,11 +449,15 @@ def _convert_text_block(text_block: PageItem, page_number: int) -> TextBlock:
         x1=text_block.bBox.x + text_block.bBox.w,
         y1=text_block.bBox.y + text_block.bBox.h,
     )
+    # Handle empty page marker
+    text_value = text_block.value if text_block.value else ''
+    if text_value == 'NO_CONTENT_HERE':
+        text_value = ''
     return TextBlock(
         type='text',
         category=text_block.type,
         level=text_block.lvl,
-        text=text_block.value if text_block.value else '',
+        text=text_value,
         bbox=bbox,
         page=page_number,
         source_data=text_block.model_dump(exclude={'bBox', 'value', 'type', 'lvl'}),
@@ -485,7 +489,7 @@ def _convert_page(
         number=page.page - 1,
         width=page.width,
         height=page.height,
-        text=page.text,
+        text=page.text if page.text != 'NO_CONTENT_HERE' else '',
         blocks=text_blocks,
         source_data=page.model_dump(
             exclude={'page', 'text', 'items', 'width', 'height'}
