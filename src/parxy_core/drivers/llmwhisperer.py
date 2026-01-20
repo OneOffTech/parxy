@@ -21,6 +21,9 @@ from parxy_core.exceptions import (
     FileNotFoundException,
     ParsingException,
     AuthenticationException,
+    RateLimitException,
+    QuotaExceededException,
+    InputValidationException,
 )
 from parxy_core.models import Document, Page
 from parxy_core.utils import safe_json_dumps
@@ -150,18 +153,35 @@ class LlmWhispererDriver(Driver):
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.SERVICE_NAME) from fex
         except LLMWhispererClientException as wex:
-            if wex.value['status_code'] in (401, 403):
+            status_code = wex.value.get('status_code')
+            error_message = (
+                str(wex.error_message()) if callable(wex.error_message) else str(wex)
+            )
+
+            if status_code in (401, 403):
                 raise AuthenticationException(
-                    message=str(wex.error_message()),
+                    message=error_message,
                     service=self.SERVICE_NAME,
                     details=wex.value,
-                )  # from wex
-            else:
-                raise ParsingException(
-                    wex.error_message if hasattr(wex, 'error_message') else str(wex),
-                    self.SERVICE_NAME,
+                ) from wex
+
+            status_code_exceptions = {
+                429: RateLimitException,
+                402: QuotaExceededException,
+                422: InputValidationException,
+            }
+            if exc_class := status_code_exceptions.get(status_code):
+                raise exc_class(
+                    message=error_message,
+                    service=self.SERVICE_NAME,
                     details=wex.value,
                 ) from wex
+
+            raise ParsingException(
+                error_message,
+                self.SERVICE_NAME,
+                details=wex.value,
+            ) from wex
 
         doc = llmwhisperer_to_parxy(res)
         doc.filename = filename

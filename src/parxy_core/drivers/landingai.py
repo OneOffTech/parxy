@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from parxy_core.exceptions.authentication_exception import AuthenticationException
+from parxy_core.exceptions.rate_limit_exception import RateLimitException
+from parxy_core.exceptions.quota_exceeded_exception import QuotaExceededException
+from parxy_core.exceptions.input_validation_exception import InputValidationException
 from parxy_core.tracing.utils import trace_with_output
 
 # Type hints that will be available at runtime when unstructured is installed
@@ -77,7 +80,7 @@ class LandingAIADEDriver(Driver):
         level: str = 'page',
         **kwargs,
     ) -> Document:
-        from landingai_ade import AuthenticationError
+        from landingai_ade import AuthenticationError, RateLimitError, APIStatusError
 
         try:
             filename, stream = self.handle_file_input(file)
@@ -90,8 +93,25 @@ class LandingAIADEDriver(Driver):
         except AuthenticationError as aex:
             raise AuthenticationException(
                 message=str(aex),
-                service=self.__class__,
+                service=self.__class__.__name__,
             ) from aex
+        except RateLimitError as rlex:
+            raise RateLimitException(
+                message=str(rlex),
+                service=self.__class__.__name__,
+            ) from rlex
+        except APIStatusError as ase:
+            status_code_exceptions = {
+                429: RateLimitException,
+                402: QuotaExceededException,
+                422: InputValidationException,
+            }
+            if exc_class := status_code_exceptions.get(ase.status_code):
+                raise exc_class(
+                    message=str(ase),
+                    service=self.__class__.__name__,
+                ) from ase
+            raise
 
         doc = landingaiade_to_parxy(parse_response)
 

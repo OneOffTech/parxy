@@ -14,6 +14,9 @@ from parxy_core.exceptions import (
     FileNotFoundException,
     ParsingException,
     AuthenticationException,
+    RateLimitException,
+    QuotaExceededException,
+    InputValidationException,
 )
 from parxy_core.models.config import BaseConfig
 from parxy_core.logging import create_null_logger
@@ -152,7 +155,14 @@ class Driver(ABC):
                     parxy_exc = FileNotFoundException(ex, self.__class__)
                 elif isinstance(
                     ex,
-                    (FileNotFoundException, AuthenticationException, ParsingException),
+                    (
+                        FileNotFoundException,
+                        AuthenticationException,
+                        ParsingException,
+                        RateLimitException,
+                        QuotaExceededException,
+                        InputValidationException,
+                    ),
                 ):
                     parxy_exc = ex
                 else:
