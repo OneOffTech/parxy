@@ -8,3 +8,12 @@ from parxy_core.exceptions.file_not_found_exception import (
 from parxy_core.exceptions.unsupported_format_exception import (
     UnsupportedFormatException as UnsupportedFormatException,
 )
+from parxy_core.exceptions.rate_limit_exception import (
+    RateLimitException as RateLimitException,
+)
+from parxy_core.exceptions.quota_exceeded_exception import (
+    QuotaExceededException as QuotaExceededException,
+)
+from parxy_core.exceptions.input_validation_exception import (
+    InputValidationException as InputValidationException,
+)

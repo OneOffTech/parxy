@@ -6,6 +6,9 @@ from unittest.mock import Mock, patch, MagicMock
 from parxy_core.exceptions import (
     AuthenticationException,
     FileNotFoundException,
+    RateLimitException,
+    QuotaExceededException,
+    InputValidationException,
 )
 from parxy_core.models import TextBlock, Page
 
@@ -267,3 +270,178 @@ class TestLandingAIADEDriver:
         assert ade_details['job_id'] == 'td8wu72tq2g9l9tfgkwn3q3kp'
         assert ade_details['page_count'] == 2
         assert ade_details['version'] == 'dpt-2-20251103'
+
+    @patch('parxy_core.drivers.landingai.LandingAIADEDriver.handle_file_input')
+    @patch('landingai_ade.LandingAIADE')
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_landingai_driver_handles_rate_limit_error(
+        self, mock_tracer, mock_client_class, mock_handle_file
+    ):
+        """Test that RateLimitError from the client raises RateLimitException"""
+        from landingai_ade import RateLimitError
+        from httpx import Response, Request
+
+        # Setup tracing mocks
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.error = Mock()
+
+        # Setup file input mock
+        mock_handle_file.return_value = ('test.pdf', b'fake content')
+
+        # Setup client to raise RateLimitError
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        mock_response = Response(
+            status_code=429,
+            request=Request('POST', 'https://api.landing.ai/parse'),
+        )
+        mock_client.parse.side_effect = RateLimitError(
+            'Rate limit exceeded',
+            response=mock_response,
+            body={'error': 'Rate limit exceeded'},
+        )
+
+        driver = LandingAIADEDriver(LandingAIConfig())
+
+        with pytest.raises(RateLimitException) as excinfo:
+            driver.parse('test.pdf')
+
+        assert 'Rate limit' in str(excinfo.value)
+        assert excinfo.value.service == 'LandingAIADEDriver'
+
+    @patch('parxy_core.drivers.landingai.LandingAIADEDriver.handle_file_input')
+    @patch('landingai_ade.LandingAIADE')
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_landingai_driver_handles_api_status_error_429(
+        self, mock_tracer, mock_client_class, mock_handle_file
+    ):
+        """Test that APIStatusError with 429 status raises RateLimitException"""
+        from landingai_ade import APIStatusError
+        from httpx import Response, Request
+
+        # Setup tracing mocks
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.error = Mock()
+
+        # Setup file input mock
+        mock_handle_file.return_value = ('test.pdf', b'fake content')
+
+        # Setup client to raise APIStatusError with 429
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        mock_response = Response(
+            status_code=429,
+            request=Request('POST', 'https://api.landing.ai/parse'),
+        )
+        mock_client.parse.side_effect = APIStatusError(
+            "Error code: 429 - {'error': 'Rate limit exceeded'}",
+            response=mock_response,
+            body={'error': 'Rate limit exceeded'},
+        )
+
+        driver = LandingAIADEDriver(LandingAIConfig())
+
+        with pytest.raises(RateLimitException) as excinfo:
+            driver.parse('test.pdf')
+
+        assert '429' in str(excinfo.value)
+        assert excinfo.value.service == 'LandingAIADEDriver'
+
+    @patch('parxy_core.drivers.landingai.LandingAIADEDriver.handle_file_input')
+    @patch('landingai_ade.LandingAIADE')
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_landingai_driver_handles_api_status_error_402(
+        self, mock_tracer, mock_client_class, mock_handle_file
+    ):
+        """Test that APIStatusError with 402 status raises QuotaExceededException"""
+        from landingai_ade import APIStatusError
+        from httpx import Response, Request
+
+        # Setup tracing mocks
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.error = Mock()
+
+        # Setup file input mock
+        mock_handle_file.return_value = ('test.pdf', b'fake content')
+
+        # Setup client to raise APIStatusError with 402
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        mock_response = Response(
+            status_code=402,
+            request=Request('POST', 'https://api.landing.ai/parse'),
+        )
+        mock_client.parse.side_effect = APIStatusError(
+            "Error code: 402 - {'error': 'Payment Required. User balance is insufficient (including pending jobs).'}",
+            response=mock_response,
+            body={
+                'error': 'Payment Required. User balance is insufficient (including pending jobs).'
+            },
+        )
+
+        driver = LandingAIADEDriver(LandingAIConfig())
+
+        with pytest.raises(QuotaExceededException) as excinfo:
+            driver.parse('test.pdf')
+
+        assert '402' in str(excinfo.value)
+        assert excinfo.value.service == 'LandingAIADEDriver'
+
+    @patch('parxy_core.drivers.landingai.LandingAIADEDriver.handle_file_input')
+    @patch('landingai_ade.LandingAIADE')
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_landingai_driver_handles_api_status_error_422(
+        self, mock_tracer, mock_client_class, mock_handle_file
+    ):
+        """Test that APIStatusError with 422 status raises InputValidationException"""
+        from landingai_ade import APIStatusError
+        from httpx import Response, Request
+
+        # Setup tracing mocks
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.error = Mock()
+
+        # Setup file input mock
+        mock_handle_file.return_value = ('test.pdf', b'fake content')
+
+        # Setup client to raise APIStatusError with 422
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        mock_response = Response(
+            status_code=422,
+            request=Request('POST', 'https://api.landing.ai/parse'),
+        )
+        mock_client.parse.side_effect = APIStatusError(
+            "Error code: 422 - {'error': 'PDF must not exceed 100 pages.'}",
+            response=mock_response,
+            body={'error': 'PDF must not exceed 100 pages.'},
+        )
+
+        driver = LandingAIADEDriver(LandingAIConfig())
+
+        with pytest.raises(InputValidationException) as excinfo:
+            driver.parse('test.pdf')
+
+        assert '422' in str(excinfo.value)
+        assert 'PDF must not exceed 100 pages' in str(excinfo.value)
+        assert excinfo.value.service == 'LandingAIADEDriver'

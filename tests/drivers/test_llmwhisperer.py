@@ -5,6 +5,9 @@ from unittest.mock import Mock, patch, MagicMock
 from parxy_core.exceptions import (
     AuthenticationException,
     FileNotFoundException,
+    RateLimitException,
+    QuotaExceededException,
+    InputValidationException,
 )
 from parxy_core.models import Page
 
@@ -368,3 +371,117 @@ class TestLlmWhispererDriver:
         assert 'processing_started_at' not in whisper_details
         assert 'requested_pages' not in whisper_details
         assert 'tag' not in whisper_details
+
+    @patch('unstract.llmwhisperer.LLMWhispererClientV2')
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_llmwhisperer_driver_handles_quota_exceeded_402(
+        self, mock_tracer, mock_client_class
+    ):
+        """Test that 402 status code raises QuotaExceededException"""
+        from unstract.llmwhisperer.client_v2 import LLMWhispererClientException
+
+        # Setup tracing mocks
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.error = Mock()
+
+        # Setup client mock
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # Create exception with 402 status code
+        exception_value = {
+            'message': 'Extraction failed since you breached your free processing limit of 100 pages max per day.',
+            'status_code': 402,
+            'extraction': {},
+        }
+        mock_exception = LLMWhispererClientException(exception_value)
+        mock_client.whisper.side_effect = mock_exception
+
+        driver = LlmWhispererDriver(LlmWhispererConfig())
+
+        with pytest.raises(QuotaExceededException) as excinfo:
+            driver.parse(b'%PDF-1.4 test content')
+
+        assert 'breached your free processing limit' in str(excinfo.value)
+        assert excinfo.value.service == 'llmwhisperer'
+        assert excinfo.value.details['status_code'] == 402
+
+    @patch('unstract.llmwhisperer.LLMWhispererClientV2')
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_llmwhisperer_driver_handles_rate_limit_429(
+        self, mock_tracer, mock_client_class
+    ):
+        """Test that 429 status code raises RateLimitException"""
+        from unstract.llmwhisperer.client_v2 import LLMWhispererClientException
+
+        # Setup tracing mocks
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.error = Mock()
+
+        # Setup client mock
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # Create exception with 429 status code
+        exception_value = {
+            'message': 'Rate limit exceeded. Please try again later.',
+            'status_code': 429,
+            'extraction': {},
+        }
+        mock_exception = LLMWhispererClientException(exception_value)
+        mock_client.whisper.side_effect = mock_exception
+
+        driver = LlmWhispererDriver(LlmWhispererConfig())
+
+        with pytest.raises(RateLimitException) as excinfo:
+            driver.parse(b'%PDF-1.4 test content')
+
+        assert 'Rate limit' in str(excinfo.value)
+        assert excinfo.value.service == 'llmwhisperer'
+        assert excinfo.value.details['status_code'] == 429
+
+    @patch('unstract.llmwhisperer.LLMWhispererClientV2')
+    @patch('parxy_core.drivers.abstract_driver.tracer')
+    def test_llmwhisperer_driver_handles_validation_error_422(
+        self, mock_tracer, mock_client_class
+    ):
+        """Test that 422 status code raises InputValidationException"""
+        from unstract.llmwhisperer.client_v2 import LLMWhispererClientException
+
+        # Setup tracing mocks
+        mock_span = MagicMock()
+        mock_span.__enter__ = Mock(return_value=mock_span)
+        mock_span.__exit__ = Mock(return_value=False)
+        mock_tracer.span = Mock(return_value=mock_span)
+        mock_tracer.count = Mock()
+        mock_tracer.error = Mock()
+
+        # Setup client mock
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # Create exception with 422 status code
+        exception_value = {
+            'message': 'Invalid document format or constraints not met.',
+            'status_code': 422,
+            'extraction': {},
+        }
+        mock_exception = LLMWhispererClientException(exception_value)
+        mock_client.whisper.side_effect = mock_exception
+
+        driver = LlmWhispererDriver(LlmWhispererConfig())
+
+        with pytest.raises(InputValidationException) as excinfo:
+            driver.parse(b'%PDF-1.4 test content')
+
+        assert 'Invalid document' in str(excinfo.value)
+        assert excinfo.value.service == 'llmwhisperer'
+        assert excinfo.value.details['status_code'] == 422
