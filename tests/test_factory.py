@@ -97,10 +97,6 @@ class TestDriverFactory:
         driver = DriverFactory.build().driver('pdfact')
         assert isinstance(driver, PdfActDriver)
 
-    @pytest.mark.skipif(
-        os.getenv('GITHUB_ACTIONS') == 'true',
-        reason='External service required, skipping tests in GitHub Actions.',
-    )
     def test_llamaparse_driver_instantiated(self):
         DriverFactory.reset()
         driver = DriverFactory.build().driver('llamaparse')
@@ -116,10 +112,6 @@ class TestDriverFactory:
         driver = DriverFactory.build().driver('unstructured_local')
         assert isinstance(driver, UnstructuredLocalDriver)
 
-    @pytest.mark.skipif(
-        os.getenv('GITHUB_ACTIONS') == 'true',
-        reason='External service required, skipping tests in GitHub Actions.',
-    )
     def test_landingai_driver_instantiated(self):
         DriverFactory.reset()
         driver = DriverFactory.build().driver('landingai')

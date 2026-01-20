@@ -21,6 +21,12 @@ jobs:
       fail-fast: true
       matrix:
         python: [3.12, 3.13]
+
+    services:
+      pdfact:
+        image: ghcr.io/data-house/pdfact:main
+        ports:
+          - 4567:4567
     
     steps:
     - uses: actions/checkout@v6
@@ -35,6 +41,13 @@ jobs:
     
     - name: Pull dependencies
       run: uv sync --all-extras --all-groups
-    
+
+    - name: Create .env file with fake API keys
+      run: |
+        echo "PARXY_LANDINGAI_API_KEY=$(openssl rand -hex 16)" >> .env
+        echo "PARXY_LLAMAPARSE_API_KEY=$(openssl rand -hex 16)" >> .env
+
     - name: Execute tests
+      env:
+        PARXY_PDFACT_BASE_URL: 'http://127.0.0.1:4567/'
       run: uv run pytest
