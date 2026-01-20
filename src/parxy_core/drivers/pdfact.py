@@ -21,6 +21,50 @@ from parxy_core.models import (
 from parxy_core.models.config import PdfActConfig
 from parxy_core.tracing.utils import trace_with_output
 
+# Mapping from PdfAct categories to WAI-ARIA document structure roles
+# See docs/explanation/document-roles.md for role definitions
+PDFACT_TO_ROLE: dict[str, str] = {
+    'abstract': 'doc-abstract',
+    'acknowledgments': 'doc-acknowledgments',
+    'affiliation': 'generic',
+    'appendix': 'doc-appendix',
+    'authors': 'generic',
+    'body': 'paragraph',
+    'caption': 'caption',
+    'categories': 'generic',
+    'figure': 'figure',
+    'formula': 'math',
+    'general-terms': 'generic',
+    'itemize-item': 'listitem',
+    'keywords': 'generic',
+    'other': 'generic',
+    'reference': 'doc-biblioref',
+    'table': 'table',
+    'toc': 'doc-toc',
+    # Footer variants
+    'footer': 'doc-pagefooter',
+    'page-footer': 'doc-pagefooter',
+    'page_footer': 'doc-pagefooter',
+    'page-number': 'doc-pagefooter',
+    # Footnote variants
+    'footnote': 'doc-footnote',
+    'note': 'doc-footnote',
+    'endnote': 'doc-endnotes',
+    'annotation': 'doc-footnote',
+    'footer-note': 'doc-footnote',
+    # Heading variants
+    'heading': 'heading',
+    'title': 'doc-title',
+    'subtitle': 'doc-subtitle',
+    'section': 'heading',
+    'chapter': 'doc-chapter',
+    # Header variants
+    'page-header': 'doc-pageheader',
+    'page_header': 'doc-pageheader',
+    'page-heading': 'doc-pageheader',
+    'header': 'doc-pageheader',
+}
+
 
 class PdfActDriver(Driver):
     """PdfAct service driver.
@@ -287,6 +331,7 @@ def _convert_text_block(
     data = text_block.get('paragraph')
     text = data.get('text', '')
     category = data.get('role') if 'role' in data else None
+    role = PDFACT_TO_ROLE.get(category, 'generic') if category else 'generic'
     positions = data.get('positions', [])
 
     # Convert font and color
@@ -308,6 +353,7 @@ def _convert_text_block(
     bbox = _convert_bbox([pos for pos in positions if pos['page'] == page])
     return TextBlock(
         type='text',
+        role=role,
         bbox=bbox,
         style=style,
         page=page,

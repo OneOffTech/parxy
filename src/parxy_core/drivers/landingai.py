@@ -18,6 +18,41 @@ from parxy_core.drivers import Driver
 from parxy_core.models import Document, Metadata, TextBlock, Page, BoundingBox
 from parxy_core.utils import safe_json_dumps
 
+# Mapping from LandingAI ADE chunk types to WAI-ARIA document structure roles
+# See docs/explanation/document-roles.md for role definitions
+LANDINGAI_TO_ROLE: dict[str, str] = {
+    'text': 'paragraph',
+    'table': 'table',
+    'marginalia': 'generic',  # Mixed content in margins - too generic to map precisely
+    'figure': 'figure',
+    'logo': 'figure',  # DPT-2 only: logos are visual elements
+    'card': 'figure',  # DPT-2 only: ID cards, driver licenses
+    'attestation': 'figure',  # DPT-2 only: signatures, stamps, seals
+    'scan_code': 'figure',  # DPT-2 only: QR codes, barcodes
+    # Footer variants
+    'page-footer': 'doc-pagefooter',
+    'page_footer': 'doc-pagefooter',
+    'footer': 'doc-pagefooter',
+    'page-number': 'doc-pagefooter',
+    # Footnote variants
+    'footnote': 'doc-footnote',
+    'note': 'doc-footnote',
+    'endnote': 'doc-endnotes',
+    'annotation': 'doc-footnote',
+    'footer-note': 'doc-footnote',
+    # Heading variants
+    'heading': 'heading',
+    'title': 'doc-title',
+    'subtitle': 'doc-subtitle',
+    'section': 'heading',
+    'chapter': 'doc-chapter',
+    # Header variants
+    'page-header': 'doc-pageheader',
+    'page_header': 'doc-pageheader',
+    'page-heading': 'doc-pageheader',
+    'header': 'doc-pageheader',
+}
+
 
 class LandingAIADEDriver(Driver):
     def _initialize_driver(self):
@@ -134,7 +169,8 @@ def landingaiade_to_parxy(parsed_data: ParseResponse) -> Document:
             chunk_text = chunk.markdown
 
             page_text_parts.append(chunk_text)
-            chunk_type = chunk.type
+            category = chunk.type
+            role = LANDINGAI_TO_ROLE.get(category, 'generic') if category else 'generic'
 
             # Get bounding box from first grounding
             bbox = None
@@ -147,9 +183,10 @@ def landingaiade_to_parxy(parsed_data: ParseResponse) -> Document:
             # Create the appropriate block type
             block = TextBlock(
                 type='text',
+                role=role,
                 bbox=bbox,
                 page=page,
-                category=chunk_type,
+                category=category,
                 text=chunk_text,
                 source_data=chunk.model_dump(),
             )
