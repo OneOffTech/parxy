@@ -26,7 +26,7 @@ jobs:
       pdfact:
         image: ghcr.io/data-house/pdfact:main
         ports:
-          - 4567
+          - 4567:4567
     
     steps:
     - uses: actions/checkout@v6
@@ -44,5 +44,5 @@ jobs:
     
     - name: Execute tests
       env:
-        PARXY_PDFACT_BASE_URL: 'http://pdfact:4567/'
+        PARXY_PDFACT_BASE_URL: 'http://127.0.0.1:4567/'
       run: uv run pytest
