@@ -28,7 +28,7 @@ dependencies = [
 parxy = "parxy_cli.cli:main"
 
 [tool.setuptools.package-data]
-parxy_cli = [".env.example", "compose.example.yaml", "otel-collector-config.example.yaml"]
+parxy_cli = [".env.example", "compose.example.yaml", "otel-collector-config.example.yaml", "agents.template.md"]
 
 [project.optional-dependencies]
 llama = [
