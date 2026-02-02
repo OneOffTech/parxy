@@ -22,3 +22,12 @@ wheels/
 
 compose.yaml
 otel-collector-config.yaml
+
+# Agents configuration
+.agents/skills/*
+.claude/skills/*
+
+# Testing data folders
+
+workspace/
+data/
