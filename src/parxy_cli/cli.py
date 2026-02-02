@@ -19,6 +19,7 @@ from parxy_cli.commands.markdown import app as markdown_command
 from parxy_cli.commands.pdf import app as pdf_command
 from parxy_cli.commands.attach import app as attach_command
 from parxy_cli.commands.tui import app as tui_command
+from parxy_cli.commands.agents import app as agents_command
 
 
 # Create typer app
@@ -77,6 +78,7 @@ app.add_typer(markdown_command)
 app.add_typer(pdf_command)
 app.add_typer(attach_command)
 app.add_typer(tui_command)
+app.add_typer(agents_command)
 
 
 def main():
