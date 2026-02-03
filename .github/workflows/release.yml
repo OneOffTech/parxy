@@ -20,7 +20,7 @@ jobs:
         fetch-depth: 1
 
     - name: Install the latest version of uv and set the python version
-      uses: astral-sh/setup-uv@v7.2.0
+      uses: astral-sh/setup-uv@v7.2.1
       with:
         python-version: "3.12"
 
@@ -52,7 +52,7 @@ jobs:
       id-token: write
     steps:
       - name: Install the latest version of uv and set the python version
-        uses: astral-sh/setup-uv@v7.2.0
+        uses: astral-sh/setup-uv@v7.2.1
         if: github.event_name == 'release'
         with:
           enable-cache: false
