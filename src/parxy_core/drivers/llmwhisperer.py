@@ -183,6 +183,24 @@ class LlmWhispererDriver(Driver):
                 details=wex.value,
             ) from wex
 
+        # Check if the whisper processing failed server-side.
+        # The client may return the response without raising an exception,
+        # but the extraction data will be missing.
+        status = res.get('status', '')
+        if (
+            status == 'failed'
+            or 'extraction' not in res
+            or 'result_text' not in res.get('extraction', {})
+        ):
+            error_msg = res.get(
+                'message', 'Document processing failed on LLMWhisperer.'
+            )
+            raise ParsingException(
+                error_msg,
+                self.SERVICE_NAME,
+                details=res,
+            )
+
         doc = llmwhisperer_to_parxy(res)
         doc.filename = filename
 
