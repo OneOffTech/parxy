@@ -18,7 +18,7 @@ else:
     LlamaPage = object
 
 from parxy_core.drivers import Driver
-from parxy_core.models import Document, Page, BoundingBox, TextBlock, HierarchyLevel
+from parxy_core.models import Document, Page, BoundingBox, TextBlock, TableBlock, ImageBlock, HierarchyLevel
 from parxy_core.utils import safe_json_dumps
 from parxy_core.exceptions import (
     ParsingException,
@@ -502,6 +502,94 @@ def _convert_text_block(text_block: PageItem, page_number: int) -> TextBlock:
     )
 
 
+def _convert_table_block(text_block: PageItem, page_number: int) -> TableBlock:
+    """Convert a LlamaParse `PageItem` with table type to a `TableBlock`.
+
+    Parameters
+    ----
+    text_block : PageItem
+        The LlamaParse page item containing table data.
+    page_number : int
+        The page number (0-based).
+
+    Returns
+    -------
+    TableBlock
+        The converted `TableBlock` object with markdown table content.
+    """
+    bbox = BoundingBox(
+        x0=text_block.bBox.x,
+        y0=text_block.bBox.y,
+        x1=text_block.bBox.x + text_block.bBox.w,
+        y1=text_block.bBox.y + text_block.bBox.h,
+    )
+    # Use markdown representation as the text content for tables
+    text_value = getattr(text_block, 'md', '') or ''
+    category = text_block.type
+    role = LLAMAPARSE_TO_ROLE.get(category, 'table') if category else 'table'
+    return TableBlock(
+        type='table',
+        role=role,
+        category=category,
+        text=text_value,
+        bbox=bbox,
+        page=page_number,
+        source_data=text_block.model_dump(exclude={'bBox', 'value', 'type', 'lvl'}),
+    )
+
+
+def _convert_image_block(image_data, page_number: int) -> ImageBlock:
+    """Convert a LlamaParse image entry to an `ImageBlock`.
+
+    Parameters
+    ----
+    image_data
+        Image data from the LlamaParse page (model object or dict).
+    page_number : int
+        The page number (0-based).
+
+    Returns
+    -------
+    ImageBlock
+        The converted `ImageBlock` object.
+    """
+    # Normalise to dict so we can handle both Pydantic models and plain dicts
+    if isinstance(image_data, dict):
+        img = image_data
+    elif hasattr(image_data, 'model_dump'):
+        img = image_data.model_dump()
+    else:
+        img = vars(image_data)
+
+    bbox = BoundingBox(
+        x0=img.get('x', 0),
+        y0=img.get('y', 0),
+        x1=img.get('x', 0) + img.get('width', 0),
+        y1=img.get('y', 0) + img.get('height', 0),
+    )
+
+    # Build alt_text from OCR entries when available
+    ocr_entries = img.get('ocr') or []
+    alt_text = (
+        ' '.join(
+            entry.get('text', '') if isinstance(entry, dict) else getattr(entry, 'text', '')
+            for entry in ocr_entries
+        ).strip()
+        or None
+    )
+
+    return ImageBlock(
+        type='image',
+        role='figure',
+        category='figure',
+        name=img.get('name'),
+        alt_text=alt_text,
+        bbox=bbox,
+        page=page_number,
+        source_data=img,
+    )
+
+
 def _convert_page(
     page: LlamaPage,
     level: str,
@@ -520,15 +608,25 @@ def _convert_page(
     Page
         The converted `Page` object.
     """
-    text_blocks = None
+    blocks = None
     if HierarchyLevel[level] >= HierarchyLevel.BLOCK:
-        text_blocks = [_convert_text_block(item, page.page - 1) for item in page.items]
+        blocks = []
+        for item in page.items:
+            if item.type in ('table', 'tables'):
+                blocks.append(_convert_table_block(item, page.page - 1))
+            else:
+                blocks.append(_convert_text_block(item, page.page - 1))
+
+        # Process page-level images into ImageBlocks
+        images = getattr(page, 'images', None) or []
+        for image_data in images:
+            blocks.append(_convert_image_block(image_data, page.page - 1))
     return Page(
         number=page.page - 1,
         width=page.width,
         height=page.height,
         text=page.text if page.text != 'NO_CONTENT_HERE' else '',
-        blocks=text_blocks,
+        blocks=blocks,
         source_data=page.model_dump(
             exclude={'page', 'text', 'items', 'width', 'height'}
         ),

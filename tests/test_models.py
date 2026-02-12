@@ -96,17 +96,30 @@ class TestModels:
 
     def test_image_block(self):
         bbox = BoundingBox(x0=0.0, y0=0.0, x1=300.0, y1=200.0)
-        image = ImageBlock(type='image', bbox=bbox, page=1)
+        image = ImageBlock(type='image', bbox=bbox, page=1, name='img_p1_1.jpg', alt_text='A photo')
         assert image.type == 'image'
         assert image.bbox == bbox
         assert image.page == 1
+        assert image.name == 'img_p1_1.jpg'
+        assert image.alt_text == 'A photo'
+
+    def test_image_block_defaults(self):
+        image = ImageBlock(type='image', page=1)
+        assert image.name is None
+        assert image.alt_text is None
 
     def test_table_block(self):
         bbox = BoundingBox(x0=0.0, y0=0.0, x1=400.0, y1=300.0)
-        table = TableBlock(type='table', bbox=bbox, page=1)
+        table = TableBlock(type='table', bbox=bbox, page=1, text='| A | B |\n| 1 | 2 |')
         assert table.type == 'table'
         assert table.bbox == bbox
         assert table.page == 1
+        assert table.text == '| A | B |\n| 1 | 2 |'
+        assert not table.isEmpty()
+
+    def test_table_block_empty(self):
+        table = TableBlock(type='table', page=1, text='')
+        assert table.isEmpty()
 
     def test_page(self):
         text_block = TextBlock(type='text', text='Sample text', page=1)
@@ -161,3 +174,122 @@ class TestModels:
         assert len(doc.pages) == 1
         assert doc.outline == ['Chapter 1', 'Chapter 2']
         assert not doc.isEmpty()
+
+
+class TestDocumentMarkdown:
+    def test_markdown_empty_document(self):
+        doc = Document(pages=[])
+        assert doc.markdown() == ''
+
+    def test_markdown_page_without_blocks(self):
+        page = Page(number=0, text='Plain page text')
+        doc = Document(pages=[page])
+        assert doc.markdown() == 'Plain page text'
+
+    def test_markdown_page_with_empty_text_and_no_blocks(self):
+        page = Page(number=0, text='   ')
+        doc = Document(pages=[page])
+        assert doc.markdown() == ''
+
+    def test_markdown_text_block_paragraph(self):
+        block = TextBlock(type='text', text='Hello world', page=0, category='paragraph')
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == 'Hello world'
+
+    def test_markdown_text_block_heading_with_level(self):
+        block = TextBlock(type='text', text='My Title', page=0, category='heading', level=1)
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == '# My Title'
+
+    def test_markdown_text_block_heading_default_level(self):
+        block = TextBlock(type='text', text='Subtitle', page=0, category='title')
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == '## Subtitle'
+
+    def test_markdown_text_block_heading_capped_at_h6(self):
+        block = TextBlock(type='text', text='Deep heading', page=0, category='header', level=9)
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == '###### Deep heading'
+
+    def test_markdown_text_block_list(self):
+        block = TextBlock(type='text', text='Item 1\nItem 2\nItem 3', page=0, category='list')
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == '- Item 1\n\n- Item 2\n\n- Item 3'
+
+    def test_markdown_text_block_empty_skipped(self):
+        block = TextBlock(type='text', text='   ', page=0)
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == ''
+
+    def test_markdown_image_block_with_name_and_alt(self):
+        block = ImageBlock(type='image', page=0, name='photo.jpg', alt_text='A sunset')
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == '```image:jpg\nA sunset\n```'
+
+    def test_markdown_image_block_with_name_no_alt(self):
+        block = ImageBlock(type='image', page=0, name='diagram.png')
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == '```image:png\n\n```'
+
+    def test_markdown_image_block_no_name(self):
+        block = ImageBlock(type='image', page=0, alt_text='Some text')
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == '```image\nSome text\n```'
+
+    def test_markdown_image_block_no_name_no_alt(self):
+        block = ImageBlock(type='image', page=0)
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == '```image\n\n```'
+
+    def test_markdown_table_block(self):
+        block = TableBlock(type='table', page=0, text='| A | B |\n| 1 | 2 |')
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == '| A | B |\n| 1 | 2 |'
+
+    def test_markdown_table_block_empty_skipped(self):
+        block = TableBlock(type='table', page=0, text='  ')
+        page = Page(number=0, text='', blocks=[block])
+        doc = Document(pages=[page])
+        assert doc.markdown() == ''
+
+    def test_markdown_mixed_blocks(self):
+        blocks = [
+            TextBlock(type='text', text='Introduction', page=0, category='heading', level=1),
+            TextBlock(type='text', text='Some paragraph.', page=0),
+            ImageBlock(type='image', page=0, name='fig.png', alt_text='Figure 1'),
+            TableBlock(type='table', page=0, text='| X | Y |'),
+        ]
+        page = Page(number=0, text='', blocks=blocks)
+        doc = Document(pages=[page])
+        expected = (
+            '# Introduction\n\n'
+            'Some paragraph.\n\n'
+            '```image:png\nFigure 1\n```\n\n'
+            '| X | Y |'
+        )
+        assert doc.markdown() == expected
+
+    def test_markdown_multiple_pages(self):
+        page1 = Page(
+            number=0,
+            text='',
+            blocks=[TextBlock(type='text', text='Page one', page=0)],
+        )
+        page2 = Page(
+            number=1,
+            text='',
+            blocks=[TextBlock(type='text', text='Page two', page=1)],
+        )
+        doc = Document(pages=[page1, page2])
+        assert doc.markdown() == 'Page one\n\nPage two'
