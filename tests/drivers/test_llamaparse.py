@@ -96,6 +96,7 @@ class TestLlamaParseDriver:
         assert document.metadata is None
         assert len(document.pages) == 1
         assert isinstance(document.pages[0], Page)
+        assert document.pages[0].number == 1
         assert (
             document.pages[0].text
             == 'This is the header\n\nThis is a test PDF to be used as input in unit\ntests\n\nThis is a heading 1\nThis is a paragraph below heading 1\n\n1'

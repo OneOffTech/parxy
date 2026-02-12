@@ -79,10 +79,16 @@ class TextBlock(Block):
         return not self.text or self.text.strip() == ''
 
 
-class ImageBlock(Block): ...
+class ImageBlock(Block):
+    name: Optional[str] = None
+    alt_text: Optional[str] = None
 
 
-class TableBlock(Block): ...
+class TableBlock(Block):
+    text: str
+
+    def isEmpty(self) -> bool:
+        return not self.text or self.text.strip() == ''
 
 
 class Page(BaseModel):
@@ -197,12 +203,18 @@ class Document(BaseModel):
                             page_parts.append(block.text.strip())
 
                 elif isinstance(block, ImageBlock):
-                    # Placeholder for images - could be enhanced with actual image data
-                    page_parts.append('![Image]')
+                    ext = (
+                        block.name.rsplit('.', 1)[-1]
+                        if block.name and '.' in block.name
+                        else ''
+                    )
+                    lang = f'image:{ext}' if ext else 'image'
+                    alt = block.alt_text or ''
+                    page_parts.append(f'```{lang}\n{alt}\n```')
 
                 elif isinstance(block, TableBlock):
-                    # Placeholder for tables - could be enhanced with actual table data
-                    page_parts.append('| Table content |')
+                    if block.text.strip():
+                        page_parts.append(block.text.strip())
 
             if page_parts:
                 markdown_parts.append('\n\n'.join(page_parts))
