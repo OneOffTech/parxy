@@ -76,6 +76,28 @@ class TestBatchResult:
 
         assert result.failed is False
 
+    def test_exception_preserved_on_failure(self):
+        exc = ValueError('Invalid format')
+        result = BatchResult(
+            file='test.pdf',
+            driver='pymupdf',
+            document=None,
+            error=str(exc),
+            exception=exc,
+        )
+
+        assert result.exception is exc
+        assert isinstance(result.exception, ValueError)
+        assert str(result.exception) == 'Invalid format'
+
+    def test_exception_defaults_to_none(self):
+        doc = Document(pages=[Page(number=1, text='test')])
+        result = BatchResult(
+            file='test.pdf', driver='pymupdf', document=doc, error=None
+        )
+
+        assert result.exception is None
+
 
 class TestBatchTask:
     def test_batch_task_with_file_only(self):

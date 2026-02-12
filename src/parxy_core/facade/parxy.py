@@ -239,7 +239,11 @@ class Parxy:
                 )
             except Exception as e:
                 return BatchResult(
-                    file=file, driver=driver_name, document=None, error=str(e)
+                    file=file,
+                    driver=driver_name,
+                    document=None,
+                    error=str(e),
+                    exception=e,
                 )
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
