@@ -8,6 +8,7 @@ from typing import Optional, Dict, Callable, List, Union, Iterator
 from pathlib import Path
 
 from parxy_core.drivers import DriverFactory, Driver
+from parxy_core.facade.circuit_breaker import CircuitBreakerState
 from parxy_core.models import Document, BatchTask, BatchResult
 from parxy_core.models.config import ParxyConfig
 from parxy_core.services.pdf_service import PdfService
@@ -232,15 +233,28 @@ class Parxy:
             (t.file, t.drivers[0], t.level) for t in normalized_tasks
         ]
 
+        breaker = CircuitBreakerState()
+
         def process_task(
             file: Union[str, io.BytesIO, bytes], driver_name: str, task_level: str
         ) -> BatchResult:
+            trip_exc = breaker.get_trip_exception(driver_name)
+            if trip_exc is not None:
+                return BatchResult(
+                    file=file,
+                    driver=driver_name,
+                    document=None,
+                    error=str(trip_exc),
+                    exception=trip_exc,
+                )
+
             try:
                 doc = cls.parse(file=file, level=task_level, driver_name=driver_name)
                 return BatchResult(
                     file=file, driver=driver_name, document=doc, error=None
                 )
             except Exception as e:
+                breaker.record_failure(driver_name, e)
                 return BatchResult(
                     file=file,
                     driver=driver_name,
