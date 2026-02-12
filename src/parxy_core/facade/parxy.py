@@ -212,22 +212,25 @@ class Parxy:
         # Determine number of workers
         max_workers = workers if workers else (os.cpu_count() or 2)
 
-        # Normalize tasks to BatchTask objects
+        # Normalize tasks into single-driver BatchTask objects.
+        # When a BatchTask specifies multiple drivers it is split into
+        # one BatchTask per driver so each unit of work targets exactly
+        # one driver.
         normalized_tasks: List[BatchTask] = []
         for task in tasks:
-            if isinstance(task, BatchTask):
-                normalized_tasks.append(task)
-            else:
-                # Simple file reference - wrap in BatchTask
-                normalized_tasks.append(BatchTask(file=task))
-
-        # Build list of (file, driver, level) work items
-        work_items: List[tuple] = []
-        for task in normalized_tasks:
+            if not isinstance(task, BatchTask):
+                task = BatchTask(file=task)
             task_drivers = task.drivers if task.drivers else default_drivers
             task_level = task.level if task.level else level
             for driver_name in task_drivers:
-                work_items.append((task.file, driver_name, task_level))
+                normalized_tasks.append(
+                    BatchTask(file=task.file, drivers=[driver_name], level=task_level)
+                )
+
+        # Build list of (file, driver, level) work items
+        work_items: List[tuple] = [
+            (t.file, t.drivers[0], t.level) for t in normalized_tasks
+        ]
 
         def process_task(
             file: Union[str, io.BytesIO, bytes], driver_name: str, task_level: str
