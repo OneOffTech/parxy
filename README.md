@@ -39,7 +39,7 @@ uvx parxy --help
 Use all supported drivers:
 
 ```bash
-uvx parxy[all] --help
+uvx --from 'parxy[all]' parxy --help
 ```
 
 See [Supported services](#supported-services) for the list of included drivers and their extras for the installation.
@@ -49,17 +49,17 @@ See [Supported services](#supported-services) for the list of included drivers a
 You can install Parxy globally using either pip or uv. If you prefer you can execute without installation using [uvx](https://docs.astral.sh/uv/guides/tools/).
 
 ```bash
-# Using pip
+# Install via pip
 pip install parxy       # Basic installation
 pip install parxy[all]  # All drivers included
 
-# Using uv
-uv pip install parxy       # Basic installation
-uv pip install parxy[all]  # All drivers included
+# Install via uv
+uv add parxy       # Basic installation
+uv add parxy --extra all  # All drivers included
 
 # Using uvx
 uvx parxy       # Basic installation
-uvx parxy[all]  # All drivers included
+uvx --from 'parxy[all]' parxy  # All drivers included
 ```
 
 Once installed, you can use the `parxy` command to:
@@ -116,7 +116,7 @@ See [Using the Parxy Command Line Interface](./docs/tutorials/using_cli.md) or r
 pip install parxy[all]
 
 # add to your project using when using UV
-uv add parxy[all]
+uv add parxy --extra all
 ```
 
 You can also install [optional parser backends](#supported-services) depending on your needs (e.g. PyMuPDF, Unstructured, LlamaParse):
