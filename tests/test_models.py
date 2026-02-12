@@ -96,7 +96,9 @@ class TestModels:
 
     def test_image_block(self):
         bbox = BoundingBox(x0=0.0, y0=0.0, x1=300.0, y1=200.0)
-        image = ImageBlock(type='image', bbox=bbox, page=1, name='img_p1_1.jpg', alt_text='A photo')
+        image = ImageBlock(
+            type='image', bbox=bbox, page=1, name='img_p1_1.jpg', alt_text='A photo'
+        )
         assert image.type == 'image'
         assert image.bbox == bbox
         assert image.page == 1
@@ -198,7 +200,9 @@ class TestDocumentMarkdown:
         assert doc.markdown() == 'Hello world'
 
     def test_markdown_text_block_heading_with_level(self):
-        block = TextBlock(type='text', text='My Title', page=0, category='heading', level=1)
+        block = TextBlock(
+            type='text', text='My Title', page=0, category='heading', level=1
+        )
         page = Page(number=0, text='', blocks=[block])
         doc = Document(pages=[page])
         assert doc.markdown() == '# My Title'
@@ -210,13 +214,17 @@ class TestDocumentMarkdown:
         assert doc.markdown() == '## Subtitle'
 
     def test_markdown_text_block_heading_capped_at_h6(self):
-        block = TextBlock(type='text', text='Deep heading', page=0, category='header', level=9)
+        block = TextBlock(
+            type='text', text='Deep heading', page=0, category='header', level=9
+        )
         page = Page(number=0, text='', blocks=[block])
         doc = Document(pages=[page])
         assert doc.markdown() == '###### Deep heading'
 
     def test_markdown_text_block_list(self):
-        block = TextBlock(type='text', text='Item 1\nItem 2\nItem 3', page=0, category='list')
+        block = TextBlock(
+            type='text', text='Item 1\nItem 2\nItem 3', page=0, category='list'
+        )
         page = Page(number=0, text='', blocks=[block])
         doc = Document(pages=[page])
         assert doc.markdown() == '- Item 1\n\n- Item 2\n\n- Item 3'
@@ -265,7 +273,9 @@ class TestDocumentMarkdown:
 
     def test_markdown_mixed_blocks(self):
         blocks = [
-            TextBlock(type='text', text='Introduction', page=0, category='heading', level=1),
+            TextBlock(
+                type='text', text='Introduction', page=0, category='heading', level=1
+            ),
             TextBlock(type='text', text='Some paragraph.', page=0),
             ImageBlock(type='image', page=0, name='fig.png', alt_text='Figure 1'),
             TableBlock(type='table', page=0, text='| X | Y |'),

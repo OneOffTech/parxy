@@ -84,7 +84,7 @@ class ImageBlock(Block):
     alt_text: Optional[str] = None
 
 
-class TableBlock(Block): 
+class TableBlock(Block):
     text: str
 
     def isEmpty(self) -> bool:
@@ -203,7 +203,11 @@ class Document(BaseModel):
                             page_parts.append(block.text.strip())
 
                 elif isinstance(block, ImageBlock):
-                    ext = block.name.rsplit('.', 1)[-1] if block.name and '.' in block.name else ''
+                    ext = (
+                        block.name.rsplit('.', 1)[-1]
+                        if block.name and '.' in block.name
+                        else ''
+                    )
                     lang = f'image:{ext}' if ext else 'image'
                     alt = block.alt_text or ''
                     page_parts.append(f'```{lang}\n{alt}\n```')
