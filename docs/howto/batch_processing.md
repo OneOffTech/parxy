@@ -101,6 +101,40 @@ When `stop_on_error=True`:
 - Only completed results (including the failed one) are returned
 
 
+## Circuit Breaker
+
+Batch processing includes a built-in circuit breaker that detects systemic driver failures and short-circuits remaining tasks for the affected driver. This prevents wasting API calls and time when a driver is guaranteed to fail (e.g., invalid API key, exhausted quota).
+
+The circuit breaker trips immediately (after a single failure) for these exception types:
+
+| Exception | Meaning |
+|---|---|
+| `AuthenticationException` | API key or token is invalid |
+| `QuotaExceededException` | Account balance or credits exhausted |
+| `RateLimitException` | Rate limit hit |
+
+Per-file errors like `FileNotFoundException` or `ParsingException` do **not** trip the circuit, since they are specific to individual files and don't indicate a driver-wide problem.
+
+The circuit breaker is **per-driver**: if LlamaParse fails with an authentication error, PyMuPDF tasks continue unaffected. Short-circuited results carry the original tripping exception in `BatchResult.exception` and `BatchResult.error`.
+
+A new circuit breaker is created for each `batch()` / `batch_iter()` call, so previous failures do not carry over between calls.
+
+```python
+results = Parxy.batch(
+    tasks=['doc1.pdf', 'doc2.pdf', 'doc3.pdf'],
+    drivers=['llamaparse', 'pymupdf'],
+)
+
+for result in results:
+    if result.failed:
+        # If llamaparse auth fails on doc1, doc2 and doc3 are
+        # short-circuited immediately, i.e. no additional API calls.
+        print(f'{result.file} ({result.driver}): {result.error}')
+    else:
+        print(f'{result.file} ({result.driver}): OK')
+```
+
+
 ## Advanced: Per-File Configuration with BatchTask
 
 For more control, use `BatchTask` objects to specify per-file configuration:

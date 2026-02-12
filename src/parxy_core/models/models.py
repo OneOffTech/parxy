@@ -266,12 +266,15 @@ class BatchResult:
         The parsed document, or None if an error occurred
     error : str | None
         Error message if parsing failed, None otherwise
+    exception : Exception | None
+        The original exception if parsing failed, None otherwise
     """
 
     file: Union[str, BytesIO, bytes]
     driver: str
     document: Optional['Document']
     error: Optional[str]
+    exception: Optional[Exception] = None
 
     @property
     def success(self) -> bool:

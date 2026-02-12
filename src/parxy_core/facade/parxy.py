@@ -8,6 +8,7 @@ from typing import Optional, Dict, Callable, List, Union, Iterator
 from pathlib import Path
 
 from parxy_core.drivers import DriverFactory, Driver
+from parxy_core.facade.circuit_breaker import CircuitBreakerState
 from parxy_core.models import Document, BatchTask, BatchResult
 from parxy_core.models.config import ParxyConfig
 from parxy_core.services.pdf_service import PdfService
@@ -212,34 +213,54 @@ class Parxy:
         # Determine number of workers
         max_workers = workers if workers else (os.cpu_count() or 2)
 
-        # Normalize tasks to BatchTask objects
+        # Normalize tasks into single-driver BatchTask objects.
+        # When a BatchTask specifies multiple drivers it is split into
+        # one BatchTask per driver so each unit of work targets exactly
+        # one driver.
         normalized_tasks: List[BatchTask] = []
         for task in tasks:
-            if isinstance(task, BatchTask):
-                normalized_tasks.append(task)
-            else:
-                # Simple file reference - wrap in BatchTask
-                normalized_tasks.append(BatchTask(file=task))
-
-        # Build list of (file, driver, level) work items
-        work_items: List[tuple] = []
-        for task in normalized_tasks:
+            if not isinstance(task, BatchTask):
+                task = BatchTask(file=task)
             task_drivers = task.drivers if task.drivers else default_drivers
             task_level = task.level if task.level else level
             for driver_name in task_drivers:
-                work_items.append((task.file, driver_name, task_level))
+                normalized_tasks.append(
+                    BatchTask(file=task.file, drivers=[driver_name], level=task_level)
+                )
+
+        # Build list of (file, driver, level) work items
+        work_items: List[tuple] = [
+            (t.file, t.drivers[0], t.level) for t in normalized_tasks
+        ]
+
+        breaker = CircuitBreakerState()
 
         def process_task(
             file: Union[str, io.BytesIO, bytes], driver_name: str, task_level: str
         ) -> BatchResult:
+            trip_exc = breaker.get_trip_exception(driver_name)
+            if trip_exc is not None:
+                return BatchResult(
+                    file=file,
+                    driver=driver_name,
+                    document=None,
+                    error=str(trip_exc),
+                    exception=trip_exc,
+                )
+
             try:
                 doc = cls.parse(file=file, level=task_level, driver_name=driver_name)
                 return BatchResult(
                     file=file, driver=driver_name, document=doc, error=None
                 )
             except Exception as e:
+                breaker.record_failure(driver_name, e)
                 return BatchResult(
-                    file=file, driver=driver_name, document=None, error=str(e)
+                    file=file,
+                    driver=driver_name,
+                    document=None,
+                    error=str(e),
+                    exception=e,
                 )
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
