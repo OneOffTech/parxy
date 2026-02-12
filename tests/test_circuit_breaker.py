@@ -172,9 +172,7 @@ class TestBatchCircuitBreaker:
 
     @patch.object(Parxy, 'parse')
     def test_per_driver_isolation(self, mock_parse):
-        auth_exc = AuthenticationException(
-            'Invalid API key', service='llamaparse'
-        )
+        auth_exc = AuthenticationException('Invalid API key', service='llamaparse')
 
         def parse_side_effect(file, level, driver_name):
             if driver_name == 'llamaparse':
