@@ -18,7 +18,15 @@ else:
     LlamaPage = object
 
 from parxy_core.drivers import Driver
-from parxy_core.models import Document, Page, BoundingBox, TextBlock, TableBlock, ImageBlock, HierarchyLevel
+from parxy_core.models import (
+    Document,
+    Page,
+    BoundingBox,
+    TextBlock,
+    TableBlock,
+    ImageBlock,
+    HierarchyLevel,
+)
 from parxy_core.utils import safe_json_dumps
 from parxy_core.exceptions import (
     ParsingException,
@@ -572,7 +580,9 @@ def _convert_image_block(image_data, page_number: int) -> ImageBlock:
     ocr_entries = img.get('ocr') or []
     alt_text = (
         ' '.join(
-            entry.get('text', '') if isinstance(entry, dict) else getattr(entry, 'text', '')
+            entry.get('text', '')
+            if isinstance(entry, dict)
+            else getattr(entry, 'text', '')
             for entry in ocr_entries
         ).strip()
         or None
@@ -613,16 +623,16 @@ def _convert_page(
         blocks = []
         for item in page.items:
             if item.type in ('table', 'tables'):
-                blocks.append(_convert_table_block(item, page.page - 1))
+                blocks.append(_convert_table_block(item, page.page))
             else:
-                blocks.append(_convert_text_block(item, page.page - 1))
+                blocks.append(_convert_text_block(item, page.page))
 
         # Process page-level images into ImageBlocks
         images = getattr(page, 'images', None) or []
         for image_data in images:
-            blocks.append(_convert_image_block(image_data, page.page - 1))
+            blocks.append(_convert_image_block(image_data, page.page))
     return Page(
-        number=page.page - 1,
+        number=page.page,
         width=page.width,
         height=page.height,
         text=page.text if page.text != 'NO_CONTENT_HERE' else '',

@@ -285,7 +285,7 @@ def llmwhisperer_to_parxy(
     ):
         pages.append(
             Page(
-                number=page_number,
+                number=page_number + 1,
                 text=page_text,
                 source_data=doc['extraction']['metadata'].get(str(page_number), None),
             )
