@@ -1,6 +1,5 @@
 """Command line interface for Parxy document processing."""
 
-import os
 from datetime import timedelta
 from pathlib import Path
 from typing import Optional, List, Annotated
@@ -8,7 +7,7 @@ from typing import Optional, List, Annotated
 import typer
 
 from parxy_core.facade import Parxy
-from parxy_core.models import Document, BatchTask, BatchResult
+from parxy_core.models import Document, BatchResult
 
 from parxy_cli.models import Level, OutputMode
 from parxy_cli.console.console import Console
@@ -106,67 +105,6 @@ def get_content(doc: Document, mode: OutputMode) -> str:
         return doc.markdown()
     else:  # OutputMode.PLAIN
         return doc.text()
-
-
-def process_file_with_driver(
-    file_path: Path,
-    driver: str,
-    level: Level,
-    mode: OutputMode,
-    output_dir: Optional[Path],
-    show: bool,
-    use_driver_suffix: bool = False,
-) -> tuple[str, int]:
-    """
-    Process a single file with a single driver.
-
-    Args:
-        file_path: Path to file to process
-        driver: Driver name to use
-        level: Extraction level
-        mode: Output mode
-        output_dir: Optional output directory
-        show: Whether to show content in console
-        use_driver_suffix: Whether to append driver name to output filename
-
-    Returns:
-        Tuple of (output_path, page_count)
-    """
-    # Parse the document
-    doc = Parxy.parse(
-        file=str(file_path),
-        level=level.value,
-        driver_name=driver,
-    )
-
-    # Get content
-    content = get_content(doc, mode)
-
-    # Determine output path
-    if output_dir:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        base_name = file_path.stem
-    else:
-        # Save in same directory as source file
-        output_dir = file_path.parent
-        base_name = file_path.stem
-
-    # If multiple drivers, append driver name to filename
-    if use_driver_suffix and driver:
-        base_name = f'{base_name}-{driver}'
-
-    extension = get_output_extension(mode)
-    output_path = output_dir / f'{base_name}{extension}'
-
-    # Save to file
-    output_path.write_text(content, encoding='utf-8')
-
-    # Show in console if requested
-    if show:
-        console.print(content)
-        console.newline()
-
-    return str(output_path), len(doc.pages)
 
 
 def format_timedelta(td):
@@ -314,23 +252,15 @@ def parse(
             help='Stop processing files immediately if an error occurs with any file',
         ),
     ] = False,
-    parallel: Annotated[
-        bool,
-        typer.Option(
-            '--parallel',
-            '-p',
-            help='Process files in parallel using multiple workers',
-        ),
-    ] = False,
     workers: Annotated[
-        Optional[int],
+        int,
         typer.Option(
             '--workers',
             '-w',
-            help='Number of parallel workers to use (only applies with --parallel). Defaults to CPU count.',
+            help='Number of parallel workers to use. Defaults to 2.',
             min=1,
         ),
-    ] = None,
+    ] = 2,
 ):
     """
     Parse documents using one or more drivers.
@@ -361,8 +291,8 @@ def parse(
         # Output as JSON and show in console
         parxy parse document.pdf -m json --show
 
-        # Process files in parallel with 4 workers
-        parxy parse /path/to/folder --parallel --workers 4
+        # Process files with 4 workers
+        parxy parse /path/to/folder --workers 4
     """
     console.action('Parse files', space_after=False)
     # Collect all files
@@ -392,11 +322,6 @@ def parse(
 
     error_count = 0
 
-    # Determine number of workers for parallel processing
-    if parallel:
-        max_workers = workers if workers else (os.cpu_count() or 2)
-        console.info(f'Using parallel processing with {max_workers} workers')
-
     # Show info
     with console.shimmer(
         f'Processing {len(files)} file{"s" if len(files) > 1 else ""} with {len(drivers)} driver{"s" if len(drivers) > 1 else ""}...'
@@ -405,83 +330,45 @@ def parse(
         with console.progress('Processing documents') as progress:
             task = progress.add_task('', total=total_tasks)
 
-            if parallel:
-                # Parallel processing using batch_iter
-                batch_tasks = [str(f) for f in files]
+            batch_tasks = [str(f) for f in files]
 
-                for result in Parxy.batch_iter(
-                    tasks=batch_tasks,
-                    drivers=drivers,
-                    level=level.value,
-                    workers=max_workers,
-                ):
-                    file_name = (
-                        Path(result.file).name
-                        if isinstance(result.file, str)
-                        else 'document'
+            for result in Parxy.batch_iter(
+                tasks=batch_tasks,
+                drivers=drivers,
+                level=level.value,
+                workers=workers,
+            ):
+                file_name = (
+                    Path(result.file).name
+                    if isinstance(result.file, str)
+                    else 'document'
+                )
+
+                if result.success:
+                    output_file, page_count = save_batch_result(
+                        result=result,
+                        mode=mode,
+                        output_dir=output_path,
+                        show=show,
+                        use_driver_suffix=use_driver_suffix,
                     )
+                    console.print(
+                        f'[faint]⎿ [/faint] {file_name} via {result.driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
+                    )
+                else:
+                    console.print(
+                        f'[faint]⎿ [/faint] {file_name} via {result.driver} error. [error]{result.error}[/error]'
+                    )
+                    error_count += 1
 
-                    if result.success:
-                        output_file, page_count = save_batch_result(
-                            result=result,
-                            mode=mode,
-                            output_dir=output_path,
-                            show=show,
-                            use_driver_suffix=use_driver_suffix,
+                    if stop_on_failure:
+                        console.newline()
+                        console.info(
+                            'Stopping due to error (--stop-on-failure flag is set)'
                         )
-                        console.print(
-                            f'[faint]⎿ [/faint] {file_name} via {result.driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
-                        )
-                    else:
-                        console.print(
-                            f'[faint]⎿ [/faint] {file_name} via {result.driver} error. [error]{result.error}[/error]'
-                        )
-                        error_count += 1
+                        raise typer.Exit(1)
 
-                        if stop_on_failure:
-                            console.newline()
-                            console.info(
-                                'Stopping due to error (--stop-on-failure flag is set)'
-                            )
-                            raise typer.Exit(1)
-
-                    progress.update(task, advance=1)
-            else:
-                # Sequential processing
-                for file_path in files:
-                    for driver in drivers:
-                        try:
-                            output_file, page_count = process_file_with_driver(
-                                file_path=file_path,
-                                driver=driver,
-                                level=level,
-                                mode=mode,
-                                output_dir=output_path,
-                                show=show,
-                                use_driver_suffix=use_driver_suffix,
-                            )
-
-                            # Update progress
-                            console.print(
-                                f'[faint]⎿ [/faint] {file_path.name} via {driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
-                            )
-                            progress.update(task, advance=1)
-
-                        except Exception as e:
-                            console.print(
-                                f'[faint]⎿ [/faint] {file_path.name} via {driver} error. [error]{str(e)}[/error]'
-                            )
-                            progress.update(task, advance=1)
-                            error_count += 1
-
-                            if stop_on_failure:
-                                console.newline()
-                                console.info(
-                                    'Stopping due to error (--stop-on-failure flag is set)'
-                                )
-                                raise typer.Exit(1)
-
-                            continue
+                progress.update(task, advance=1)
 
             elapsed_time = format_timedelta(
                 timedelta(seconds=max(0, progress.tasks[0].elapsed))

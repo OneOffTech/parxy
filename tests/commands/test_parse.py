@@ -5,7 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from parxy_cli.commands.parse import app, collect_files, collect_files_with_depth
-from parxy_core.models import Document, Page
+from parxy_core.models import Document, Page, BatchResult
 
 
 @pytest.fixture
@@ -30,21 +30,27 @@ def test_parse_command_calls_facade_correctly(runner, mock_document, tmp_path):
     test_file.write_text('dummy pdf content')
 
     with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
-        # Setup the mock to return our test document
-        mock_parxy.parse.return_value = mock_document
         mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
 
-        # Run the command with a test file
         result = runner.invoke(app, [str(test_file)])
 
-        # Assert the command executed successfully
         assert result.exit_code == 0
 
-        # Assert Parxy.parse was called with the correct arguments
-        mock_parxy.parse.assert_called_once_with(
-            file=str(test_file),
-            level='block',  # default level
-            driver_name='pymupdf',  # default driver
+        mock_parxy.batch_iter.assert_called_once_with(
+            tasks=[str(test_file)],
+            drivers=['pymupdf'],
+            level='block',
+            workers=2,
         )
 
 
@@ -56,9 +62,17 @@ def test_parse_command_with_custom_options(runner, mock_document, tmp_path):
     test_file.write_text('dummy pdf content')
 
     with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
-        mock_parxy.parse.return_value = mock_document
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file),
+                    driver='llamaparse',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
 
-        # Run command with custom options
         result = runner.invoke(
             app,
             [
@@ -74,9 +88,11 @@ def test_parse_command_with_custom_options(runner, mock_document, tmp_path):
 
         assert result.exit_code == 0
 
-        # Assert Parxy.parse was called with custom options
-        mock_parxy.parse.assert_called_once_with(
-            file=str(test_file), level='block', driver_name='llamaparse'
+        mock_parxy.batch_iter.assert_called_once_with(
+            tasks=[str(test_file)],
+            drivers=['llamaparse'],
+            level='block',
+            workers=2,
         )
 
 
@@ -88,8 +104,17 @@ def test_parse_command_with_output_directory(runner, mock_document, tmp_path):
     test_file.write_text('dummy pdf content')
 
     with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
-        mock_parxy.parse.return_value = mock_document
         mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
 
         # Create output path using tmp_path fixture
         output_dir = tmp_path / 'output'
@@ -112,8 +137,17 @@ def test_parse_command_with_markdown_output(runner, mock_document, tmp_path):
     test_file.write_text('dummy pdf content')
 
     with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
-        mock_parxy.parse.return_value = mock_document
         mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
 
         # Create output path using tmp_path fixture
         output_dir = tmp_path / 'output'
@@ -138,14 +172,20 @@ def test_parse_command_handles_errors(runner, tmp_path):
     test_file.write_text('dummy pdf content')
 
     with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
-        # Setup the mock to raise an exception
-        mock_parxy.parse.side_effect = Exception('Test error')
         mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file),
+                    driver='pymupdf',
+                    document=None,
+                    error='Test error',
+                )
+            ]
+        )
 
-        # Run the command
         result = runner.invoke(app, [str(test_file)])
 
-        # Command should not exit with zero status (there was an error)
         # The command shows a warning but continues
         assert 'error' in result.stdout.lower()
 
@@ -158,7 +198,22 @@ def test_parse_command_with_multiple_drivers(runner, mock_document, tmp_path):
     test_file.write_text('dummy pdf content')
 
     with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
-        mock_parxy.parse.return_value = mock_document
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                ),
+                BatchResult(
+                    file=str(test_file),
+                    driver='llamaparse',
+                    document=mock_document,
+                    error=None,
+                ),
+            ]
+        )
 
         # Create output path
         output_dir = tmp_path / 'output'
@@ -182,9 +237,6 @@ def test_parse_command_with_multiple_drivers(runner, mock_document, tmp_path):
         # Verify that files with driver suffixes were created
         assert (output_dir / 'test-pymupdf.json').exists()
         assert (output_dir / 'test-llamaparse.json').exists()
-
-        # Assert Parxy.parse was called twice (once per driver)
-        assert mock_parxy.parse.call_count == 2
 
 
 def test_collect_files_non_recursive(tmp_path):
@@ -301,14 +353,22 @@ def test_parse_command_with_show_flag(runner, mock_document, tmp_path):
     test_file.write_text('dummy pdf content')
 
     with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
-        mock_parxy.parse.return_value = mock_document
         mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
 
         # Run command with --show flag
         result = runner.invoke(app, [str(test_file), '--mode', 'plain', '--show'])
 
         assert result.exit_code == 0
-        # Output should be shown in the console (the content would be empty in this case)
 
 
 def test_parse_command_with_stop_on_failure(runner, mock_document, tmp_path):
@@ -321,9 +381,23 @@ def test_parse_command_with_stop_on_failure(runner, mock_document, tmp_path):
     test_file2.write_text('dummy pdf content')
 
     with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
-        # First call fails, second would succeed
-        mock_parxy.parse.side_effect = [Exception('Test error'), mock_document]
         mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file1),
+                    driver='pymupdf',
+                    document=None,
+                    error='Test error',
+                ),
+                BatchResult(
+                    file=str(test_file2),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                ),
+            ]
+        )
 
         # Run command with --stop-on-failure
         result = runner.invoke(
@@ -335,8 +409,6 @@ def test_parse_command_with_stop_on_failure(runner, mock_document, tmp_path):
         # Should contain error message
         assert 'error' in result.stdout.lower()
         assert 'stopping due to error' in result.stdout.lower()
-        # Parxy.parse should only be called once (processing stopped after first error)
-        assert mock_parxy.parse.call_count == 1
 
 
 def test_parse_command_without_stop_on_failure_continues(
@@ -351,14 +423,26 @@ def test_parse_command_without_stop_on_failure_continues(
     test_file2.write_text('dummy pdf content')
 
     with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
-        # First call fails, second succeeds
-        mock_parxy.parse.side_effect = [Exception('Test error'), mock_document]
         mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file1),
+                    driver='pymupdf',
+                    document=None,
+                    error='Test error',
+                ),
+                BatchResult(
+                    file=str(test_file2),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                ),
+            ]
+        )
 
         # Run command without --stop-on-failure
         result = runner.invoke(app, [str(test_file1), str(test_file2)])
 
         # Should complete processing both files
         assert 'error' in result.stdout.lower()
-        # Parxy.parse should be called twice (both files processed)
-        assert mock_parxy.parse.call_count == 2
