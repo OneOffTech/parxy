@@ -26,13 +26,13 @@ The `parse` command is a powerful tool for extracting text from documents with e
 
 ### Basic Usage
 
-Parse a single document using the default settings (PyMuPDF driver, markdown output):
+Parse a single document using the default settings (PyMuPDF driver, json output):
 
 ```bash
 parxy parse document.pdf
 ```
 
-This creates a `document.md` file in the same directory as the source file.
+This creates a `pymupdf-document.json` file in the same directory as the source file. Parxy always prefix the output file with the driver name.
 
 ### Processing Multiple Files and Folders
 
@@ -103,29 +103,19 @@ Specify a driver with the `--driver` (`-d`) option:
 
 ```bash
 parxy parse --driver llamaparse document.pdf
+# output will be saved as llamaparse-document.json
 ```
 
 ### Using Multiple Drivers for Comparison
 
-Parse the same document(s) with multiple drivers by specifying `--driver` multiple times:
+Parse the same document(s) with multiple drivers by specifying `--driver` (or `-d` for short) multiple times:
 
 ```bash
 parxy parse document.pdf -d pymupdf -d llamaparse
 ```
 
-When using multiple drivers, Parxy automatically appends the driver name to the output filenames:
-- `document_pymupdf.md`
-- `document_llamaparse.md`
+When using multiple drivers, Parxy always prepend the driver name to the output filenames, e.g. `pymupdf-document.json`, `llamaparse-document.json`. This is particularly useful for comparing extraction quality across different parsers.
 
-This is particularly useful for comparing extraction quality across different parsers.
-
-### Showing Output in Console
-
-By default, output is only saved to files. To also display content in the console, use the `--show` (`-s`) flag:
-
-```bash
-parxy parse document.pdf --show
-```
 
 ### Progress Tracking
 

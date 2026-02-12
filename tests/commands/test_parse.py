@@ -125,7 +125,7 @@ def test_parse_command_with_output_directory(runner, mock_document, tmp_path):
         assert result.exit_code == 0
 
         # Verify the output file was created (default mode is JSON)
-        output_file = output_dir / 'test.json'
+        output_file = output_dir / 'pymupdf-test.json'
         assert output_file.exists()
 
 
@@ -160,7 +160,7 @@ def test_parse_command_with_markdown_output(runner, mock_document, tmp_path):
         assert result.exit_code == 0
 
         # Verify the output file was created with .md extension
-        output_file = output_dir / 'test.md'
+        output_file = output_dir / 'pymupdf-test.md'
         assert output_file.exists()
 
 
@@ -234,9 +234,9 @@ def test_parse_command_with_multiple_drivers(runner, mock_document, tmp_path):
 
         assert result.exit_code == 0
 
-        # Verify that files with driver suffixes were created
-        assert (output_dir / 'test-pymupdf.json').exists()
-        assert (output_dir / 'test-llamaparse.json').exists()
+        # Verify that files with driver prefixes were created
+        assert (output_dir / 'pymupdf-test.json').exists()
+        assert (output_dir / 'llamaparse-test.json').exists()
 
 
 def test_collect_files_non_recursive(tmp_path):

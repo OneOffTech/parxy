@@ -133,7 +133,7 @@ def save_batch_result(
     mode: OutputMode,
     output_dir: Optional[Path],
     show: bool,
-    use_driver_suffix: bool = False,
+    use_driver_prefix: bool = True,
 ) -> tuple[str, int]:
     """
     Save a BatchResult to file.
@@ -143,7 +143,7 @@ def save_batch_result(
         mode: Output mode
         output_dir: Optional output directory
         show: Whether to show content in console
-        use_driver_suffix: Whether to append driver name to output filename
+        use_driver_prefix: Whether to prepend driver name to output filename
 
     Returns:
         Tuple of (output_path, page_count)
@@ -164,8 +164,8 @@ def save_batch_result(
         base_name = file_path.stem
 
     # If multiple drivers, append driver name to filename
-    if use_driver_suffix and result.driver:
-        base_name = f'{base_name}-{result.driver}'
+    if use_driver_prefix and result.driver:
+        base_name = f'{result.driver}-{base_name}'
 
     extension = get_output_extension(mode)
     output_path = output_dir / f'{base_name}{extension}'
@@ -312,14 +312,6 @@ def parse(
     # Calculate total tasks
     total_tasks = len(files) * len(drivers)
 
-    # Determine if we should use driver suffix (when multiple drivers are used)
-    use_driver_suffix = len(drivers) > 1
-
-    if use_driver_suffix:
-        console.info(
-            'You have specified more than one driver. Driver name will be added as suffix to the file name while saving.'
-        )
-
     error_count = 0
 
     # Show info
@@ -350,7 +342,6 @@ def parse(
                         mode=mode,
                         output_dir=output_path,
                         show=show,
-                        use_driver_suffix=use_driver_suffix,
                     )
                     console.print(
                         f'[faint]⎿ [/faint] {file_name} via {result.driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
