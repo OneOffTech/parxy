@@ -14,7 +14,7 @@ Parxy is a document processing gateway providing a unified interface to interact
 
 **Requirements**
 
-- Python 3.12 or above (Python 3.10 and 3.11 are supported on best-effort).
+- Python 3.12 or 3.13 (Python 3.14 is under testing).
 
 
 **Next steps**
