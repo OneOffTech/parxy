@@ -2,6 +2,7 @@
 
 import io
 import os
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, Dict, Callable, List, Union, Iterator
 
@@ -234,10 +235,19 @@ class Parxy:
         ]
 
         breaker = CircuitBreakerState()
+        cancel_event = threading.Event()
 
         def process_task(
             file: Union[str, io.BytesIO, bytes], driver_name: str, task_level: str
         ) -> BatchResult:
+            if cancel_event.is_set():
+                return BatchResult(
+                    file=file,
+                    driver=driver_name,
+                    document=None,
+                    error='Cancelled',
+                )
+
             trip_exc = breaker.get_trip_exception(driver_name)
             if trip_exc is not None:
                 return BatchResult(
@@ -254,6 +264,13 @@ class Parxy:
                     file=file, driver=driver_name, document=doc, error=None
                 )
             except Exception as e:
+                if cancel_event.is_set():
+                    return BatchResult(
+                        file=file,
+                        driver=driver_name,
+                        document=None,
+                        error='Cancelled',
+                    )
                 breaker.record_failure(driver_name, e)
                 return BatchResult(
                     file=file,
@@ -263,7 +280,8 @@ class Parxy:
                     exception=e,
                 )
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        try:
             futures = []
             for file, driver_name, task_level in work_items:
                 future = executor.submit(process_task, file, driver_name, task_level)
@@ -271,6 +289,13 @@ class Parxy:
 
             for future in as_completed(futures):
                 yield future.result()
+        except KeyboardInterrupt:
+            cancel_event.set()
+            for future in futures:
+                future.cancel()
+            raise
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
     @classmethod
     def batch(

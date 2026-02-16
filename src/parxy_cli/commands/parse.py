@@ -315,55 +315,60 @@ def parse(
     error_count = 0
 
     # Show info
-    with console.shimmer(
-        f'Processing {len(files)} file{"s" if len(files) > 1 else ""} with {len(drivers)} driver{"s" if len(drivers) > 1 else ""}...'
-    ):
-        # Process files with progress bar
-        with console.progress('Processing documents') as progress:
-            task = progress.add_task('', total=total_tasks)
+    try:
+        with console.shimmer(
+            f'Processing {len(files)} file{"s" if len(files) > 1 else ""} with {len(drivers)} driver{"s" if len(drivers) > 1 else ""}...'
+        ):
+            # Process files with progress bar
+            with console.progress('Processing documents') as progress:
+                task = progress.add_task('', total=total_tasks)
 
-            batch_tasks = [str(f) for f in files]
+                batch_tasks = [str(f) for f in files]
 
-            for result in Parxy.batch_iter(
-                tasks=batch_tasks,
-                drivers=drivers,
-                level=level.value,
-                workers=workers,
-            ):
-                file_name = (
-                    Path(result.file).name
-                    if isinstance(result.file, str)
-                    else 'document'
-                )
-
-                if result.success:
-                    output_file, page_count = save_batch_result(
-                        result=result,
-                        mode=mode,
-                        output_dir=output_path,
-                        show=show,
+                for result in Parxy.batch_iter(
+                    tasks=batch_tasks,
+                    drivers=drivers,
+                    level=level.value,
+                    workers=workers,
+                ):
+                    file_name = (
+                        Path(result.file).name
+                        if isinstance(result.file, str)
+                        else 'document'
                     )
-                    console.print(
-                        f'[faint]⎿ [/faint] {file_name} via {result.driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
-                    )
-                else:
-                    console.print(
-                        f'[faint]⎿ [/faint] {file_name} via {result.driver} error. [error]{result.error}[/error]'
-                    )
-                    error_count += 1
 
-                    if stop_on_failure:
-                        console.newline()
-                        console.info(
-                            'Stopping due to error (--stop-on-failure flag is set)'
+                    if result.success:
+                        output_file, page_count = save_batch_result(
+                            result=result,
+                            mode=mode,
+                            output_dir=output_path,
+                            show=show,
                         )
-                        raise typer.Exit(1)
+                        console.print(
+                            f'[faint]⎿ [/faint] {file_name} via {result.driver} to [success]{output_file}[/success] [faint]({page_count} pages)[/faint]'
+                        )
+                    else:
+                        console.print(
+                            f'[faint]⎿ [/faint] {file_name} via {result.driver} error. [error]{result.error}[/error]'
+                        )
+                        error_count += 1
 
-                progress.update(task, advance=1)
+                        if stop_on_failure:
+                            console.newline()
+                            console.info(
+                                'Stopping due to error (--stop-on-failure flag is set)'
+                            )
+                            raise typer.Exit(1)
 
-            elapsed_time = format_timedelta(
-                timedelta(seconds=max(0, progress.tasks[0].elapsed))
-            )
+                    progress.update(task, advance=1)
+
+                elapsed_time = format_timedelta(
+                    timedelta(seconds=max(0, progress.tasks[0].elapsed))
+                )
+    except KeyboardInterrupt:
+        console.newline()
+        console.warning('Interrupted by user')
+        raise typer.Exit(130)
 
     console.newline()
     if error_count == len(files):
