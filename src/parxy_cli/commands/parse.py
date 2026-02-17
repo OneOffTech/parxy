@@ -257,10 +257,10 @@ def parse(
         typer.Option(
             '--workers',
             '-w',
-            help='Number of parallel workers to use. Defaults to 2.',
+            help='Number of parallel workers to use. Defaults to cpu count.',
             min=1,
         ),
-    ] = 2,
+    ] = None,
 ):
     """
     Parse documents using one or more drivers.
