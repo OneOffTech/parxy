@@ -50,7 +50,7 @@ def test_parse_command_calls_facade_correctly(runner, mock_document, tmp_path):
             tasks=[str(test_file)],
             drivers=['pymupdf'],
             level='block',
-            workers=2,
+            workers=None,
         )
 
 
@@ -92,7 +92,7 @@ def test_parse_command_with_custom_options(runner, mock_document, tmp_path):
             tasks=[str(test_file)],
             drivers=['llamaparse'],
             level='block',
-            workers=2,
+            workers=None,
         )
 
 

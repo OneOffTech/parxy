@@ -124,8 +124,10 @@ class LlamaParseDriver(Driver):
     def _initialize_driver(self):
         """Initialize the Llama Parse driver.
 
-        Validates that dependencies are installed and creates the default client.
-        Client creation is also available per-call to support configuration overrides.
+        Validates that dependencies are installed.
+        A fresh client is created per ``_handle`` call to avoid sharing asyncio
+        event-loop state across threads (LlamaParse uses ``asyncio.run``
+        internally, so a single client instance cannot be used concurrently).
 
         Raises
         ------
@@ -141,12 +143,6 @@ class LlamaParseDriver(Driver):
                 'LlamaParse dependencies not installed. '
                 "Install with 'pip install parxy[llama]'"
             ) from e
-
-        # Create default client for calls without overrides
-        self.__default_client = self._create_client(
-            self._config.model_dump() if self._config else {},
-            api_key=self._config.api_key if self._config else None,
-        )
 
     def _create_client(
         self, config_dict: dict, api_key: Optional['SecretStr'] = None
@@ -323,17 +319,17 @@ class LlamaParseDriver(Driver):
             k: v for k, v in kwargs.items() if k not in _PER_CALL_OPTIONS
         }
 
-        # Determine which client to use
+        # Always create a fresh client per call.  LlamaParse uses
+        # ``asyncio.run`` internally which binds objects to a thread-local
+        # event loop, so sharing a single client across threads causes
+        # "bound to a different event loop" errors.
+        merged_config = self._config.model_dump() if self._config else {}
         if overrides:
-            # Merge base config with overrides
-            merged_config = self._config.model_dump() if self._config else {}
             merged_config.update(overrides)
-            client = self._create_client(
-                merged_config,
-                api_key=self._config.api_key if self._config else None,
-            )
-        else:
-            client = self.__default_client
+        client = self._create_client(
+            merged_config,
+            api_key=self._config.api_key if self._config else None,
+        )
 
         try:
             filename, stream = self.handle_file_input(file)
