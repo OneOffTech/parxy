@@ -188,9 +188,30 @@ class Document(BaseModel):
         str
             The document content formatted as content-md.
         """
+        def _guess_title_from_first_page() -> Optional[str]:
+            if not self.pages:
+                return None
+            first_page = self.pages[0]
+            if not first_page.blocks:
+                return None
+            heading_categories = {'heading', 'title', 'header'}
+            # Pick the highest-ranking heading (lowest level number) on the first page
+            candidates = [
+                b
+                for b in first_page.blocks
+                if isinstance(b, TextBlock)
+                and b.category
+                and b.category.lower() in heading_categories
+                and b.text.strip()
+            ]
+            if not candidates:
+                return None
+            return min(candidates, key=lambda b: b.level or 1).text.strip()
+
         resolved_title = (
             title
             or (self.metadata.title if self.metadata else None)
+            or _guess_title_from_first_page()
             or self.filename
             or 'Untitled'
         )
