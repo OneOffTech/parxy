@@ -155,6 +155,106 @@ class Document(BaseModel):
 
         return '\n'.join(texts)
 
+    def contentmd(
+        self,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        date: Optional[str] = None,
+        license: Optional[str] = None,
+        author: Optional[str] = None,
+    ) -> str:
+        """Get the document content formatted as content-md.
+
+        Generates a content-md string: YAML frontmatter followed by Markdown.
+        Per the spec, all heading levels are shifted up by one so the document
+        title occupies the sole h1, and images use ``<figure>`` blocks.
+
+        Parameters
+        ----------
+        title : str, optional
+            Document title. Falls back to metadata.title, then filename.
+        description : str, optional
+            Short summary (~200 characters). Required by the spec; omitted from
+            frontmatter when not provided.
+        date : str, optional
+            Creation/publication date in ISO 8601. Falls back to metadata dates.
+        license : str, optional
+            License name or SPDX identifier.
+        author : str, optional
+            Author name. Falls back to metadata.author.
+
+        Returns
+        -------
+        str
+            The document content formatted as content-md.
+        """
+        resolved_title = (
+            title
+            or (self.metadata.title if self.metadata else None)
+            or self.filename
+            or 'Untitled'
+        )
+        resolved_date = date or (
+            (self.metadata.created_at or self.metadata.updated_at)
+            if self.metadata
+            else None
+        )
+        resolved_author = author or (self.metadata.author if self.metadata else None)
+
+        def _yaml_str(v: str) -> str:
+            return '"' + v.replace('\\', '\\\\').replace('"', '\\"') + '"'
+
+        fm = ['---', f'title: {_yaml_str(resolved_title)}']
+        if description:
+            fm.append(f'description: {_yaml_str(description)}')
+        if resolved_date:
+            fm.append(f'date: {_yaml_str(resolved_date)}')
+        if license:
+            fm.append(f'license: {_yaml_str(license)}')
+        if resolved_author:
+            fm.append(f'author: {_yaml_str(resolved_author)}')
+        fm.append('---')
+        frontmatter = '\n'.join(fm)
+
+        if not self.pages:
+            return f'{frontmatter}\n\n# {resolved_title}\n'
+
+        parts = [f'# {resolved_title}']
+
+        for page in self.pages:
+            if not page.blocks:
+                if page.text.strip():
+                    parts.append(page.text.strip())
+                continue
+
+            for block in page.blocks:
+                if isinstance(block, TextBlock):
+                    if block.category and block.category.lower() in [
+                        'heading',
+                        'title',
+                        'header',
+                    ]:
+                        # Shift all heading levels by +1 so h1 content becomes h2
+                        shifted = min((block.level or 1) + 1, 6)
+                        parts.append(f'{"#" * shifted} {block.text.strip()}')
+                    elif block.category and block.category.lower() == 'list':
+                        for line in block.text.splitlines():
+                            if line.strip():
+                                parts.append(f'- {line.strip()}')
+                    else:
+                        if block.text.strip():
+                            parts.append(block.text.strip())
+
+                elif isinstance(block, ImageBlock):
+                    alt = block.alt_text or ''
+                    parts.append(f'<figure>\n{alt}\n</figure>')
+
+                elif isinstance(block, TableBlock):
+                    if block.text.strip():
+                        parts.append(block.text.strip())
+
+        return f'{frontmatter}\n\n' + '\n\n'.join(parts) + '\n'
+
     def markdown(self) -> str:
         """Get the document content formatted as Markdown.
 
