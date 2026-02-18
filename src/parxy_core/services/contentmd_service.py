@@ -49,9 +49,7 @@ class ContentMdService:
             (
                 b
                 for b in first_page.blocks
-                if isinstance(b, TextBlock)
-                and b.role == 'doc-title'
-                and b.text.strip()
+                if isinstance(b, TextBlock) and b.role == 'doc-title' and b.text.strip()
             ),
             None,
         )
@@ -221,8 +219,8 @@ class ContentMdService:
             if document.metadata
             else None
         )
-        resolved_author = (
-            author or (document.metadata.author if document.metadata else None)
+        resolved_author = author or (
+            document.metadata.author if document.metadata else None
         )
 
         frontmatter = ContentMdService._build_frontmatter(
