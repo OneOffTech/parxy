@@ -194,19 +194,29 @@ class Document(BaseModel):
             first_page = self.pages[0]
             if not first_page.blocks:
                 return None
-            heading_categories = {'heading', 'title', 'header'}
-            # Pick the highest-ranking heading (lowest level number) on the first page
-            candidates = [
+            # Prefer an explicit doc-title block, then the highest-ranking heading
+            doc_title = next(
+                (
+                    b
+                    for b in first_page.blocks
+                    if isinstance(b, TextBlock)
+                    and b.role == 'doc-title'
+                    and b.text.strip()
+                ),
+                None,
+            )
+            if doc_title:
+                return doc_title.text.strip()
+            headings = [
                 b
                 for b in first_page.blocks
                 if isinstance(b, TextBlock)
-                and b.category
-                and b.category.lower() in heading_categories
+                and b.role == 'heading'
                 and b.text.strip()
             ]
-            if not candidates:
+            if not headings:
                 return None
-            return min(candidates, key=lambda b: b.level or 1).text.strip()
+            return min(headings, key=lambda b: b.level or 1).text.strip()
 
         resolved_title = (
             title
@@ -222,12 +232,31 @@ class Document(BaseModel):
         )
         resolved_author = author or (self.metadata.author if self.metadata else None)
 
+        def _infer_description() -> Optional[str]:
+            first_two_pages = self.pages[:2]
+            blocks = [
+                b
+                for page in first_two_pages
+                if page.blocks
+                for b in page.blocks
+                if isinstance(b, TextBlock) and b.text.strip()
+            ]
+            abstract = next((b for b in blocks if b.role == 'doc-abstract'), None)
+            if abstract:
+                return abstract.text.strip()
+            text_blocks = [b for b in blocks if b.role != 'doc-title']
+            if not text_blocks:
+                return None
+            return max(text_blocks, key=lambda b: len(b.text)).text.strip()
+
+        resolved_description = description or _infer_description()
+
         def _yaml_str(v: str) -> str:
             return '"' + v.replace('\\', '\\\\').replace('"', '\\"') + '"'
 
         fm = ['---', f'title: {_yaml_str(resolved_title)}']
-        if description:
-            fm.append(f'description: {_yaml_str(description)}')
+        if resolved_description:
+            fm.append(f'description: {_yaml_str(resolved_description)}')
         if resolved_date:
             fm.append(f'date: {_yaml_str(resolved_date)}')
         if license:
@@ -249,19 +278,25 @@ class Document(BaseModel):
                 continue
 
             for block in page.blocks:
+                role = (block.role or 'generic').lower()
+
                 if isinstance(block, TextBlock):
-                    if block.category and block.category.lower() in [
-                        'heading',
-                        'title',
-                        'header',
-                    ]:
+                    if role == 'doc-title':
+                        # Already rendered as the top-level # heading — skip
+                        pass
+                    elif role == 'heading':
                         # Shift all heading levels by +1 so h1 content becomes h2
                         shifted = min((block.level or 1) + 1, 6)
                         parts.append(f'{"#" * shifted} {block.text.strip()}')
-                    elif block.category and block.category.lower() == 'list':
+                    elif role in ('list', 'listitem'):
                         for line in block.text.splitlines():
                             if line.strip():
                                 parts.append(f'- {line.strip()}')
+                    elif role == 'doc-abstract':
+                        lang_attr = f' lang="{self.language}"' if self.language else ''
+                        parts.append(
+                            f'<abstract{lang_attr}>\n{block.text.strip()}\n</abstract>'
+                        )
                     else:
                         if block.text.strip():
                             parts.append(block.text.strip())
