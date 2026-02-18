@@ -171,27 +171,45 @@ class TestFrontmatter:
         result = ContentMdService.render(doc)
         assert 'description: "Abstract content here."' in result
 
-    def test_description_from_longest_textblock_when_no_abstract(self):
-        blocks = [
-            make_text_block('Short.', role='paragraph'),
-            make_text_block(
-                'This is a considerably longer paragraph block.', role='paragraph'
-            ),
-        ]
+    def test_description_from_first_five_body_blocks(self):
+        blocks = [make_text_block(f'Sentence {i}.', role='paragraph') for i in range(7)]
         doc = make_doc(pages=[make_page(text='', blocks=blocks)])
         result = ContentMdService.render(doc)
-        assert 'description: "This is a considerably longer paragraph block."' in result
+        # Only the first five contribute; the sixth and seventh are ignored
+        assert 'Sentence 5' not in result.split('---\n')[1].split('\n')[0]
+        assert 'Sentence 0' in result
 
-    def test_description_excludes_doc_title_from_longest_candidate(self):
+    def test_description_excludes_structural_roles(self):
         blocks = [
-            make_text_block(
-                'This is a very long doc-title block text.', role='doc-title'
-            ),
-            make_text_block('Shorter paragraph.', role='paragraph'),
+            make_text_block('Table of contents text.', role='doc-toc'),
+            make_text_block('Page header text.', role='doc-pageheader'),
+            make_text_block('A heading block.', role='heading'),
+            make_text_block('Body content.', role='paragraph'),
         ]
         doc = make_doc(pages=[make_page(text='', blocks=blocks)])
         result = ContentMdService.render(doc)
-        assert 'description: "Shorter paragraph."' in result
+        assert 'description: "Body content."' in result
+
+    def test_description_truncated_to_200_chars(self):
+        long_text = 'word ' * 60  # well over 200 chars
+        blocks = [make_text_block(long_text, role='paragraph')]
+        doc = make_doc(pages=[make_page(text='', blocks=blocks)])
+        result = ContentMdService.render(doc)
+        fm_end = result.index('---\n', 4)
+        frontmatter = result[:fm_end]
+        desc_line = next(l for l in frontmatter.splitlines() if l.startswith('description:'))
+        # Strip the YAML quoting to measure the actual value length
+        value = desc_line[len('description: "'):-1]
+        assert len(value) <= 200
+
+    def test_description_contains_no_newlines(self):
+        blocks = [make_text_block('Line one.\nLine two.\nLine three.', role='paragraph')]
+        doc = make_doc(pages=[make_page(text='', blocks=blocks)])
+        result = ContentMdService.render(doc)
+        fm_end = result.index('---\n', 4)
+        frontmatter = result[:fm_end]
+        desc_line = next(l for l in frontmatter.splitlines() if l.startswith('description:'))
+        assert '\n' not in desc_line
 
     def test_description_searches_first_two_pages(self):
         page1 = make_page(number=1, text='', blocks=[make_text_block('Page 1 text.')])

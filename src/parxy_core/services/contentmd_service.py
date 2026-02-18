@@ -20,6 +20,20 @@ class ContentMdService:
     # Private helpers
     # ------------------------------------------------------------------
 
+    # Roles that provide structure or navigation rather than readable body text
+    _STRUCTURAL_ROLES: frozenset[str] = frozenset(
+        {
+            'heading',
+            'doc-title',
+            'doc-subtitle',
+            'doc-abstract',
+            'doc-toc',
+            'doc-pageheader',
+            'doc-pagefooter',
+            'caption',
+        }
+    )
+
     @staticmethod
     def _normalize(text: str) -> str:
         """Collapse any run of whitespace to a single space and strip."""
@@ -71,8 +85,10 @@ class ContentMdService:
     def _infer_description(document: Document) -> Optional[str]:
         """Infer a description from document content.
 
-        Uses the ``doc-abstract`` block when present, otherwise the longest
-        :class:`TextBlock` across the first two pages.
+        Uses the ``doc-abstract`` block when present. Otherwise concatenates
+        the first five body :class:`TextBlock` objects (non-structural, across
+        the first two pages), normalises whitespace, and returns at most 200
+        characters.
         """
         from parxy_core.models.models import TextBlock
 
@@ -88,12 +104,16 @@ class ContentMdService:
         if abstract:
             return ContentMdService._normalize(abstract.text)
 
-        text_blocks = [b for b in blocks if b.role != 'doc-title']
-        if not text_blocks:
+        body_blocks = [
+            b
+            for b in blocks
+            if (b.role or 'generic') not in ContentMdService._STRUCTURAL_ROLES
+        ]
+        if not body_blocks:
             return None
-        return ContentMdService._normalize(
-            max(text_blocks, key=lambda b: len(b.text)).text
-        )
+
+        combined = ' '.join(b.text for b in body_blocks[:5])
+        return ContentMdService._normalize(combined)[:200]
 
     @staticmethod
     def _build_frontmatter(
