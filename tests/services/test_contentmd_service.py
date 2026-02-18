@@ -149,10 +149,10 @@ class TestFrontmatter:
         result = ContentMdService.render(doc)
         assert 'title: "my-report.pdf"' in result
 
-    def test_title_fallback_to_untitled(self):
+    def test_title_raises_when_unresolvable(self):
         doc = make_doc(pages=[make_page(text='body text')])
-        result = ContentMdService.render(doc)
-        assert 'title: "Untitled"' in result
+        with pytest.raises(ValueError, match='no title could be resolved'):
+            ContentMdService.render(doc)
 
     def test_description_from_explicit_param(self, minimal_doc):
         result = ContentMdService.render(
@@ -168,13 +168,13 @@ class TestFrontmatter:
             ),
         ]
         doc = make_doc(pages=[make_page(text='', blocks=blocks)])
-        result = ContentMdService.render(doc)
+        result = ContentMdService.render(doc, title='T')
         assert 'description: "Abstract content here."' in result
 
     def test_description_from_first_five_body_blocks(self):
         blocks = [make_text_block(f'Sentence {i}.', role='paragraph') for i in range(7)]
         doc = make_doc(pages=[make_page(text='', blocks=blocks)])
-        result = ContentMdService.render(doc)
+        result = ContentMdService.render(doc, title='T')
         # Only the first five contribute; the sixth and seventh are ignored
         assert 'Sentence 5' not in result.split('---\n')[1].split('\n')[0]
         assert 'Sentence 0' in result
@@ -194,21 +194,27 @@ class TestFrontmatter:
         long_text = 'word ' * 60  # well over 200 chars
         blocks = [make_text_block(long_text, role='paragraph')]
         doc = make_doc(pages=[make_page(text='', blocks=blocks)])
-        result = ContentMdService.render(doc)
+        result = ContentMdService.render(doc, title='T')
         fm_end = result.index('---\n', 4)
         frontmatter = result[:fm_end]
-        desc_line = next(l for l in frontmatter.splitlines() if l.startswith('description:'))
+        desc_line = next(
+            l for l in frontmatter.splitlines() if l.startswith('description:')
+        )
         # Strip the YAML quoting to measure the actual value length
-        value = desc_line[len('description: "'):-1]
+        value = desc_line[len('description: "') : -1]
         assert len(value) <= 200
 
     def test_description_contains_no_newlines(self):
-        blocks = [make_text_block('Line one.\nLine two.\nLine three.', role='paragraph')]
+        blocks = [
+            make_text_block('Line one.\nLine two.\nLine three.', role='paragraph')
+        ]
         doc = make_doc(pages=[make_page(text='', blocks=blocks)])
-        result = ContentMdService.render(doc)
+        result = ContentMdService.render(doc, title='T')
         fm_end = result.index('---\n', 4)
         frontmatter = result[:fm_end]
-        desc_line = next(l for l in frontmatter.splitlines() if l.startswith('description:'))
+        desc_line = next(
+            l for l in frontmatter.splitlines() if l.startswith('description:')
+        )
         assert '\n' not in desc_line
 
     def test_description_searches_first_two_pages(self):
@@ -224,7 +230,7 @@ class TestFrontmatter:
             blocks=[make_text_block('Page 3 has the longest block of all by far.')],
         )
         doc = make_doc(pages=[page1, page2, page3])
-        result = ContentMdService.render(doc)
+        result = ContentMdService.render(doc, title='T')
         # Page 3 is out of the two-page window
         assert 'Page 3' not in result.split('---')[1]  # not in frontmatter
 
@@ -235,7 +241,7 @@ class TestFrontmatter:
     def test_date_from_metadata_updated_at_when_no_created_at(self):
         meta = Metadata(updated_at='2025-06-01')
         doc = make_doc(pages=[make_page(text='')], metadata=meta)
-        result = ContentMdService.render(doc)
+        result = ContentMdService.render(doc, title='T')
         assert 'date: "2025-06-01"' in result
 
     def test_explicit_date_overrides_metadata(self, metadata_doc):
@@ -472,3 +478,28 @@ class TestOutputStructure:
         via_service = ContentMdService.render(metadata_doc)
         via_method = metadata_doc.contentmd()
         assert via_service == via_method
+
+    def test_empty_document_without_args_raises(self):
+        """A document with no metadata, no blocks, no filename, and no user
+        arguments cannot satisfy the required title constraint."""
+        doc = Document(pages=[])
+        with pytest.raises(ValueError, match='no title could be resolved'):
+            ContentMdService.render(doc)
+
+    def test_empty_document_with_title_arg_returns_contentmd(self):
+        """Passing title= explicitly must succeed even when the document is
+        completely empty."""
+        doc = Document(pages=[])
+        result = ContentMdService.render(doc, title='Provided Title')
+        assert 'title: "Provided Title"' in result
+        assert '# Provided Title' in result
+
+    def test_empty_document_with_title_and_description_returns_contentmd(self):
+        """Both title= and description= passed explicitly on an empty document."""
+        doc = Document(pages=[])
+        result = ContentMdService.render(
+            doc, title='My Title', description='My description.'
+        )
+        assert 'title: "My Title"' in result
+        assert 'description: "My description."' in result
+        assert result.endswith('\n')

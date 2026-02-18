@@ -207,10 +207,11 @@ class ContentMdService:
             The document to render.
         title:
             Document title. Falls back to ``metadata.title``, a heading
-            inferred from the first page, ``filename``, then ``'Untitled'``.
+            inferred from the first page, then ``filename``. Raises
+            ``ValueError`` if no title can be resolved.
         description:
             Short summary (~200 characters). Falls back to a ``doc-abstract``
-            block, then the longest :class:`TextBlock` in the first two pages.
+            block, then the first five body blocks in the first two pages.
         date:
             Creation/publication date in ISO 8601. Falls back to
             ``metadata.created_at`` / ``metadata.updated_at``.
@@ -229,8 +230,13 @@ class ContentMdService:
             or (document.metadata.title if document.metadata else None)
             or ContentMdService._guess_title(document)
             or document.filename
-            or 'Untitled'
         )
+        if not resolved_title:
+            raise ValueError(
+                'Cannot render content-md: no title could be resolved. '
+                'Provide a title via metadata, a doc-title/heading block, '
+                'a filename, or pass title= explicitly.'
+            )
         resolved_description = description or ContentMdService._infer_description(
             document
         )
