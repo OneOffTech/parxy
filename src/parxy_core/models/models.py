@@ -206,7 +206,7 @@ class Document(BaseModel):
                 None,
             )
             if doc_title:
-                return doc_title.text.strip()
+                return _normalize(doc_title.text)
             headings = [
                 b
                 for b in first_page.blocks
@@ -216,7 +216,7 @@ class Document(BaseModel):
             ]
             if not headings:
                 return None
-            return min(headings, key=lambda b: b.level or 1).text.strip()
+            return _normalize(min(headings, key=lambda b: b.level or 1).text)
 
         resolved_title = (
             title
@@ -243,13 +243,17 @@ class Document(BaseModel):
             ]
             abstract = next((b for b in blocks if b.role == 'doc-abstract'), None)
             if abstract:
-                return abstract.text.strip()
+                return _normalize(abstract.text)
             text_blocks = [b for b in blocks if b.role != 'doc-title']
             if not text_blocks:
                 return None
-            return max(text_blocks, key=lambda b: len(b.text)).text.strip()
+            return _normalize(max(text_blocks, key=lambda b: len(b.text)).text)
 
         resolved_description = description or _infer_description()
+
+        def _normalize(text: str) -> str:
+            """Collapse runs of whitespace to a single space and strip."""
+            return ' '.join(text.split())
 
         def _yaml_str(v: str) -> str:
             return '"' + v.replace('\\', '\\\\').replace('"', '\\"') + '"'
@@ -274,7 +278,7 @@ class Document(BaseModel):
         for page in self.pages:
             if not page.blocks:
                 if page.text.strip():
-                    parts.append(page.text.strip())
+                    parts.append(_normalize(page.text))
                 continue
 
             for block in page.blocks:
@@ -287,19 +291,20 @@ class Document(BaseModel):
                     elif role == 'heading':
                         # Shift all heading levels by +1 so h1 content becomes h2
                         shifted = min((block.level or 1) + 1, 6)
-                        parts.append(f'{"#" * shifted} {block.text.strip()}')
+                        parts.append(f'{"#" * shifted} {_normalize(block.text)}')
                     elif role in ('list', 'listitem'):
                         for line in block.text.splitlines():
                             if line.strip():
-                                parts.append(f'- {line.strip()}')
+                                parts.append(f'- {_normalize(line)}')
                     elif role == 'doc-abstract':
                         lang_attr = f' lang="{self.language}"' if self.language else ''
                         parts.append(
-                            f'<abstract{lang_attr}>\n{block.text.strip()}\n</abstract>'
+                            f'<abstract{lang_attr}>\n{_normalize(block.text)}\n</abstract>'
                         )
                     else:
-                        if block.text.strip():
-                            parts.append(block.text.strip())
+                        normalized = _normalize(block.text)
+                        if normalized:
+                            parts.append(normalized)
 
                 elif isinstance(block, ImageBlock):
                     alt = block.alt_text or ''
