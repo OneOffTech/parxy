@@ -37,6 +37,12 @@ class ProcessedFileInfo:
 def find_processed_files(workspace: Path, pdf_filename: str) -> list[ProcessedFileInfo]:
     """Find all processed JSON files for a given PDF.
 
+    Supports two naming conventions:
+    - New (prefix): ``{driver}-{base_name}.json``  e.g. ``pymupdf-document.json``
+    - Old (suffix): ``{base_name}-{driver}.json``  e.g. ``document-pymupdf.json``
+
+    When both exist for the same driver the prefix file takes precedence.
+
     Args:
         workspace: Path to the workspace directory
         pdf_filename: Name of the PDF file (e.g., "km-f.pdf")
@@ -44,43 +50,48 @@ def find_processed_files(workspace: Path, pdf_filename: str) -> list[ProcessedFi
     Returns:
         List of ProcessedFileInfo for each driver that processed this file
     """
-    # Get the base name without extension
     base_name = Path(pdf_filename).stem
 
-    # Pattern: {base_name}-{driver}.json
-    pattern = re.compile(rf'^{re.escape(base_name)}-(.+)\.json$')
+    # Prefix pattern: {driver}-{base_name}.json
+    prefix_pattern = re.compile(rf'^(.+)-{re.escape(base_name)}\.json$')
+    # Suffix pattern: {base_name}-{driver}.json
+    suffix_pattern = re.compile(rf'^{re.escape(base_name)}-(.+)\.json$')
 
-    results = []
-    for json_file in workspace.glob(f'{base_name}-*.json'):
-        match = pattern.match(json_file.name)
+    # Collect (json_path, driver_name) candidates — prefix first so it wins dedup
+    candidates: list[tuple[Path, str]] = []
+    for json_file in workspace.glob(f'*-{base_name}.json'):
+        match = prefix_pattern.match(json_file.name)
         if match:
-            driver_name = match.group(1)
+            candidates.append((json_file, match.group(1)))
+    for json_file in workspace.glob(f'{base_name}-*.json'):
+        match = suffix_pattern.match(json_file.name)
+        if match:
+            candidates.append((json_file, match.group(1)))
 
-            # Load and parse the JSON file
-            try:
-                with open(json_file, encoding='utf-8') as f:
-                    data = json.load(f)
+    # Build results, deduplicating by driver name (first match wins)
+    results: dict[str, ProcessedFileInfo] = {}
+    for json_file, driver_name in candidates:
+        if driver_name in results:
+            continue
+        try:
+            with open(json_file, encoding='utf-8') as f:
+                data = json.load(f)
 
-                # Extract metadata
-                pages = data.get('pages', [])
-                parsing_metadata = data.get('parsing_metadata', {}) or {}
+            pages = data.get('pages', [])
+            parsing_metadata = data.get('parsing_metadata', {}) or {}
 
-                info = ProcessedFileInfo(
-                    driver_name=driver_name,
-                    json_path=json_file,
-                    page_count=len(pages),
-                    cost_estimation=parsing_metadata.get('cost_estimation'),
-                    cost_estimation_unit=parsing_metadata.get('cost_estimation_unit'),
-                    driver_elapsed_time=parsing_metadata.get('driver_elapsed_time'),
-                )
-                results.append(info)
-            except (json.JSONDecodeError, OSError):
-                # Skip files that can't be read or parsed
-                continue
+            results[driver_name] = ProcessedFileInfo(
+                driver_name=driver_name,
+                json_path=json_file,
+                page_count=len(pages),
+                cost_estimation=parsing_metadata.get('cost_estimation'),
+                cost_estimation_unit=parsing_metadata.get('cost_estimation_unit'),
+                driver_elapsed_time=parsing_metadata.get('driver_elapsed_time'),
+            )
+        except (json.JSONDecodeError, OSError):
+            continue
 
-    # Sort by driver name for consistent display
-    results.sort(key=lambda x: x.driver_name)
-    return results
+    return sorted(results.values(), key=lambda x: x.driver_name)
 
 
 def load_document(json_path: Path) -> Optional[Document]:
