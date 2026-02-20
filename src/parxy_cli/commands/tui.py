@@ -6,7 +6,6 @@ from typing import Annotated
 import typer
 
 from parxy_cli.console.console import Console
-from parxy_cli.tui.app import run_tui
 
 app = typer.Typer(
     name='tui', help='Launch the Parxy TUI for interactive parser comparison'
@@ -33,6 +32,8 @@ def tui(
     - View parsing results side-by-side
     - See JSON and Markdown diffs between parsers
 
+    Requires the tui extra: pip install 'parxy[tui]'
+
     Examples:
 
         # Launch TUI with current directory
@@ -49,6 +50,15 @@ def tui(
 
     if not workspace_path.is_dir():
         console.error(f'Workspace path is not a directory: {workspace_path}')
+        raise typer.Exit(1)
+
+    try:
+        from parxy_cli.tui.app import run_tui
+    except ImportError:
+        console.error(
+            "The TUI requires the 'tui' extra. Install it with:\n\n"
+            "    pip install 'parxy[tui]'"
+        )
         raise typer.Exit(1)
 
     console.info(f'Starting Parxy TUI with workspace: {workspace_path}')
