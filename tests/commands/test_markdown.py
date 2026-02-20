@@ -1,12 +1,13 @@
 """Test suite for the markdown command."""
 
-from unittest.mock import patch, MagicMock
+from pathlib import Path
+from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 from click.utils import strip_ansi
 
 from parxy_cli.commands.markdown import app
-from parxy_core.models import Document, Page
+from parxy_core.models import Document, Page, BatchResult
 
 
 @pytest.fixture
@@ -21,117 +22,259 @@ def mock_document():
     return Document(pages=[Page(number=0, text='# Test heading\n\nTest content')])
 
 
-def test_markdown_command_calls_facade_correctly(runner, mock_document):
-    """Test that the markdown command correctly invokes the Parxy facade."""
+@pytest.fixture
+def pdf_file(tmp_path):
+    """Fixture providing a real temporary PDF file."""
+    pdf = tmp_path / 'test.pdf'
+    pdf.write_bytes(b'%PDF-1.4 fake content')
+    return pdf
+
+
+def test_markdown_command_saves_file_with_driver_prefix(
+    runner, mock_document, pdf_file
+):
+    """Test that output file is named with driver prefix, saved next to source file."""
 
     with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
-        # Setup the mock to return our test document
-        mock_parxy.parse.return_value = mock_document
-
-        # Run the command with a test file
-        result = runner.invoke(app, ['test.pdf'])
-
-        # Assert the command executed successfully
-        assert result.exit_code == 0
-
-        # Assert Parxy.parse was called with the correct arguments
-        mock_parxy.parse.assert_called_once_with(
-            file='test.pdf',
-            level='block',  # default level
-            driver_name=None,  # default driver
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(pdf_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
         )
 
-        # Clean ANSI color codes from output and verify content
-        cleaned_output = strip_ansi(result.stdout)
-        assert 'test.pdf' in cleaned_output
-        assert 'pages: 1' in cleaned_output
-        assert '# Test heading' in cleaned_output
+        result = runner.invoke(app, [str(pdf_file)])
+
+        assert result.exit_code == 0
+
+        mock_parxy.batch_iter.assert_called_once_with(
+            tasks=[str(pdf_file)],
+            drivers=['pymupdf'],
+            level='block',
+            workers=None,
+        )
+
+        expected_output = pdf_file.parent / 'pymupdf-test.md'
+        assert expected_output.exists()
+        assert '# Test heading' in expected_output.read_text()
 
 
-def test_markdown_command_with_custom_options(runner, mock_document):
-    """Test that the markdown command correctly handles custom options."""
+def test_markdown_command_with_output_directory(
+    runner, mock_document, pdf_file, tmp_path
+):
+    """Test that files are saved in the specified output directory with driver prefix."""
+
+    output_dir = tmp_path / 'output'
 
     with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
-        mock_parxy.parse.return_value = mock_document
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(pdf_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
 
-        # Run command with custom options
+        result = runner.invoke(app, [str(pdf_file), '--output', str(output_dir)])
+
+        assert result.exit_code == 0
+
+        expected_output = output_dir / 'pymupdf-test.md'
+        assert expected_output.exists()
+        assert '# Test heading' in expected_output.read_text()
+
+
+def test_markdown_command_with_custom_level(runner, mock_document, pdf_file):
+    """Test that the --level option is passed through to batch_iter."""
+
+    with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(pdf_file),
+                    driver='llamaparse',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
+
         result = runner.invoke(
-            app, ['test.pdf', '--driver', 'pymupdf', '--level', 'page']
+            app, [str(pdf_file), '--driver', 'llamaparse', '--level', 'page']
         )
 
         assert result.exit_code == 0
 
-        # Assert Parxy.parse was called with custom options
-        mock_parxy.parse.assert_called_once_with(
-            file='test.pdf', level='page', driver_name='pymupdf'
+        mock_parxy.batch_iter.assert_called_once_with(
+            tasks=[str(pdf_file)],
+            drivers=['llamaparse'],
+            level='page',
+            workers=None,
         )
 
 
-def test_markdown_command_with_output_directory(runner, mock_document, tmp_path):
-    """Test that the markdown command correctly handles file output."""
+def test_markdown_command_with_multiple_drivers(
+    runner, mock_document, pdf_file, tmp_path
+):
+    """Test that multiple drivers produce separate output files."""
+
+    output_dir = tmp_path / 'output'
 
     with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
-        mock_parxy.parse.return_value = mock_document
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(pdf_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                ),
+                BatchResult(
+                    file=str(pdf_file),
+                    driver='llamaparse',
+                    document=mock_document,
+                    error=None,
+                ),
+            ]
+        )
 
-        # Create output path using tmp_path fixture
-        output_dir = tmp_path / 'output'
-
-        # Run command with output directory
-        result = runner.invoke(app, ['test.pdf', '--output', str(output_dir)])
-
-        assert result.exit_code == 0
-
-        # Verify the output file was created
-        output_file = output_dir / 'test.md'
-        assert output_file.exists()
-        # Verify file content contains markdown
-        content = output_file.read_text()
-        assert 'file: "test.pdf"' in content
-        assert 'pages: 1' in content
-        assert '# Test heading' in content
-
-
-def test_markdown_command_with_combine_option(runner, mock_document, tmp_path):
-    """Test that the markdown command correctly handles combining multiple files."""
-
-    with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
-        mock_parxy.parse.return_value = mock_document
-
-        # Create output path using tmp_path fixture
-        output_dir = tmp_path / 'output'
-
-        # Run command with combine option and multiple files
         result = runner.invoke(
-            app, ['test1.pdf', 'test2.pdf', '--output', str(output_dir), '--combine']
+            app,
+            [
+                str(pdf_file),
+                '--driver',
+                'pymupdf',
+                '--driver',
+                'llamaparse',
+                '--output',
+                str(output_dir),
+            ],
         )
 
         assert result.exit_code == 0
-
-        # Verify the combined output file was created
-        output_file = output_dir / 'combined_output.md'
-        assert output_file.exists()
-
-        # Verify file contains both documents
-        content = output_file.read_text()
-        assert '# test1.pdf' in content
-        assert '# test2.pdf' in content
-        assert content.count('# Test heading') == 2  # One for each input file
+        assert (output_dir / 'pymupdf-test.md').exists()
+        assert (output_dir / 'llamaparse-test.md').exists()
 
 
-def test_markdown_command_handles_errors(runner):
-    """Test that the markdown command properly handles and displays errors."""
+def test_markdown_command_inline_outputs_to_stdout(runner, mock_document, pdf_file):
+    """Test that --inline prints YAML-frontmattered markdown to stdout without saving a file."""
 
     with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
-        # Setup the mock to raise an exception
-        mock_parxy.parse.side_effect = Exception('Test error')
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(pdf_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
 
-        # Run the command
-        result = runner.invoke(app, ['test.pdf'])
+        result = runner.invoke(app, [str(pdf_file), '--inline'])
 
-        # Clean ANSI codes and verify error message
-        cleaned_output = strip_ansi(result.stdout)
-        assert 'Error processing test.pdf' in cleaned_output
-        assert 'Test error' in cleaned_output
-
-        # Unlike parse command, markdown continues on individual file errors
         assert result.exit_code == 0
+
+        cleaned = strip_ansi(result.stdout)
+        assert '---' in cleaned
+        assert 'file:' in cleaned
+        assert 'pages: 1' in cleaned
+        assert '# Test heading' in cleaned
+
+        # No output file should be written
+        assert not (pdf_file.parent / 'pymupdf-test.md').exists()
+
+
+def test_markdown_command_inline_rejected_with_multiple_files(runner, tmp_path):
+    """Test that --inline exits with an error when more than one file is provided."""
+
+    pdf1 = tmp_path / 'a.pdf'
+    pdf2 = tmp_path / 'b.pdf'
+    pdf1.write_bytes(b'%PDF fake')
+    pdf2.write_bytes(b'%PDF fake')
+
+    with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter([])
+
+        result = runner.invoke(app, [str(pdf1), str(pdf2), '--inline'])
+
+        assert result.exit_code == 1
+        assert '--inline' in strip_ansi(result.stdout)
+
+
+def test_markdown_command_handles_errors(runner, pdf_file):
+    """Test that per-file errors are reported and processing continues."""
+
+    with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(pdf_file),
+                    driver='pymupdf',
+                    document=None,
+                    error='Parse failed',
+                )
+            ]
+        )
+
+        result = runner.invoke(app, [str(pdf_file)])
+
+        cleaned = strip_ansi(result.stdout)
+        assert 'Parse failed' in cleaned
+
+
+def test_markdown_command_stop_on_failure(runner, mock_document, tmp_path):
+    """Test that --stop-on-failure exits immediately on first error."""
+
+    pdf1 = tmp_path / 'a.pdf'
+    pdf2 = tmp_path / 'b.pdf'
+    pdf1.write_bytes(b'%PDF fake')
+    pdf2.write_bytes(b'%PDF fake')
+
+    with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(pdf1),
+                    driver='pymupdf',
+                    document=None,
+                    error='Parse failed',
+                ),
+                BatchResult(
+                    file=str(pdf2),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                ),
+            ]
+        )
+
+        result = runner.invoke(app, [str(pdf1), str(pdf2), '--stop-on-failure'])
+
+        assert result.exit_code == 1
+        assert 'stopping due to error' in strip_ansi(result.stdout).lower()
+
+
+def test_markdown_command_no_files_found(runner, tmp_path):
+    """Test that the command exits with an error when no PDF files are found."""
+
+    empty_dir = tmp_path / 'empty'
+    empty_dir.mkdir()
+
+    with patch('parxy_cli.commands.markdown.Parxy'):
+        result = runner.invoke(app, [str(empty_dir)])
+
+        assert result.exit_code == 1
