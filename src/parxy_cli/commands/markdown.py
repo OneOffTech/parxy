@@ -1,12 +1,16 @@
-import os
-import time
+"""Markdown export command for Parxy document processing."""
+
+from datetime import timedelta
+from pathlib import Path
 from typing import Optional, List, Annotated
 
 import typer
 
 from parxy_core.facade import Parxy
+
 from parxy_cli.models import Level
 from parxy_cli.console.console import Console
+from parxy_cli.commands.parse import collect_files, format_timedelta
 
 app = typer.Typer()
 
@@ -15,22 +19,18 @@ console = Console()
 
 @app.command()
 def markdown(
-    files: Annotated[
+    inputs: Annotated[
         List[str],
         typer.Argument(
-            help='One or more files to parse',
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
+            help='One or more files or folders to parse. Use --recursive to search subdirectories.',
         ),
     ],
-    driver: Annotated[
-        Optional[str],
+    drivers: Annotated[
+        Optional[List[str]],
         typer.Option(
             '--driver',
             '-d',
-            help='Driver to use for parsing (default: pymupdf or PARXY_DEFAULT_DRIVER)',
+            help='Driver(s) to use for parsing. Can be specified multiple times. (default: pymupdf or PARXY_DEFAULT_DRIVER)',
         ),
     ] = None,
     level: Annotated[
@@ -41,99 +41,189 @@ def markdown(
             help='Extraction level',
         ),
     ] = Level.BLOCK,
-    env_file: Annotated[
-        str,
-        typer.Option(
-            '--env',
-            '-e',
-            help='Path to .env file with configuration',
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
-        ),
-    ] = '.env',
     output_dir: Annotated[
         Optional[str],
         typer.Option(
             '--output',
             '-o',
-            help='Directory to save markdown files. If not specified, output will be printed to console',
+            help='Directory to save markdown files. If not specified, files are saved next to the source files.',
             dir_okay=True,
             file_okay=False,
         ),
     ] = None,
-    combine: Annotated[
+    inline: Annotated[
         bool,
         typer.Option(
-            '--combine',
-            '-c',
-            help='Combine all documents into a single markdown file',
+            '--inline',
+            '-i',
+            help='Output markdown to stdout with file name as YAML frontmatter. Only valid with a single file.',
         ),
     ] = False,
+    recursive: Annotated[
+        bool,
+        typer.Option(
+            '--recursive',
+            '-r',
+            help='Recursively search subdirectories when processing folders',
+        ),
+    ] = False,
+    max_depth: Annotated[
+        Optional[int],
+        typer.Option(
+            '--max-depth',
+            help='Maximum depth to recurse into subdirectories (only applies with --recursive). 0 = current directory only, 1 = one level down, etc.',
+            min=0,
+        ),
+    ] = None,
+    stop_on_failure: Annotated[
+        bool,
+        typer.Option(
+            '--stop-on-failure',
+            help='Stop processing files immediately if an error occurs with any file',
+        ),
+    ] = False,
+    workers: Annotated[
+        int,
+        typer.Option(
+            '--workers',
+            '-w',
+            help='Number of parallel workers to use. Defaults to cpu count.',
+            min=1,
+        ),
+    ] = None,
 ):
-    """Parse documents to Markdown."""
+    """Parse documents to Markdown.
+
+    Examples:
+
+        # Parse a single file
+        parxy markdown document.pdf
+
+        # Parse with a specific driver and output to a folder
+        parxy markdown document.pdf -d pymupdf -o output/
+
+        # Parse all PDFs in a folder (non-recursive by default)
+        parxy markdown /path/to/folder
+
+        # Parse recursively with multiple drivers
+        parxy markdown /path/to/folder --recursive -d pymupdf -d llamaparse
+
+        # Output to stdout as YAML-frontmattered markdown (single file only)
+        parxy markdown document.pdf --inline
+    """
+    console.action('Markdown export', space_after=False)
+
+    # Collect all files
+    files = collect_files(inputs, recursive=recursive, max_depth=max_depth)
+
+    if not files:
+        console.warning('No suitable files found to process.', panel=True)
+        raise typer.Exit(1)
+
+    if inline and len(files) > 1:
+        console.error('--inline can only be used with a single file')
+        raise typer.Exit(1)
+
+    # Use default driver if none specified
+    if not drivers:
+        drivers = [Parxy.default_driver()]
+
+    output_path = Path(output_dir) if output_dir else None
+
+    total_tasks = len(files) * len(drivers)
+    error_count = 0
+
     try:
-        # Create output directory if specified
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
+        with console.shimmer(
+            f'Processing {len(files)} file{"s" if len(files) > 1 else ""} with {len(drivers)} driver{"s" if len(drivers) > 1 else ""}...'
+        ):
+            with console.progress('Processing documents') as progress:
+                task = progress.add_task('', total=total_tasks)
 
-        # For combined output
-        combined_content = []
+                batch_tasks = [str(f) for f in files]
 
-        # Process each file
-        for file_path in files:
-            try:
-                with console.shimmer(f'Processing {file_path}...'):
-                    # Parse the document
-                    doc = Parxy.parse(
-                        file=file_path,
-                        level=level.value,
-                        driver_name=driver,
+                for result in Parxy.batch_iter(
+                    tasks=batch_tasks,
+                    drivers=drivers,
+                    level=level.value,
+                    workers=workers,
+                ):
+                    file_name = (
+                        Path(result.file).name
+                        if isinstance(result.file, str)
+                        else 'document'
                     )
 
-                console.action(file_path)
-                console.faint(f'{len(doc.pages)} pages extracted.')
+                    if result.success:
+                        doc = result.document
+                        file_path = (
+                            Path(result.file)
+                            if isinstance(result.file, str)
+                            else Path('document')
+                        )
 
-                # Prepare markdown content
-                file_info = f"""```yaml
-file: "{file_path}"
-pages: {len(doc.pages)}
-```"""
-                header = f'# {os.path.basename(file_path)}\n'
-                content = doc.markdown()
+                        content = doc.markdown()
 
-                markdown_content = f'{file_info}\n{header}\n{content}'
+                        if inline:
+                            frontmatter = f'---\nfile: "{result.file}"\npages: {len(doc.pages)}\n---\n\n'
+                            console.print(frontmatter + content)
+                        else:
+                            if output_path:
+                                output_path.mkdir(parents=True, exist_ok=True)
+                                save_dir = output_path
+                            else:
+                                save_dir = file_path.parent
 
-                if output_dir and not combine:
-                    # Generate output filename
-                    base_name = os.path.splitext(os.path.basename(file_path))[0]
-                    output_path = os.path.join(output_dir, f'{base_name}.md')
+                            base_name = file_path.stem
+                            if result.driver:
+                                base_name = f'{result.driver}-{base_name}'
 
-                    # Save to file
-                    with open(output_path, 'w', encoding='utf-8') as f:
-                        f.write(markdown_content)
-                    console.success(f'Saved to: {output_path}.')
+                            out_file = save_dir / f'{base_name}.md'
+                            out_file.write_text(content, encoding='utf-8')
 
-                elif not output_dir:
-                    # Print to console
-                    console.markdown(markdown_content)
-                    console.rule()
-                    console.newline()
+                            console.print(
+                                f'[faint]⎿ [/faint] {file_name} via {result.driver} to [success]{out_file}[/success] [faint]({len(doc.pages)} pages)[/faint]'
+                            )
+                    else:
+                        console.print(
+                            f'[faint]⎿ [/faint] {file_name} via {result.driver} error. [error]{result.error}[/error]'
+                        )
+                        error_count += 1
 
-                if combine:
-                    combined_content.append(markdown_content)
+                        if stop_on_failure:
+                            console.newline()
+                            console.info(
+                                'Stopping due to error (--stop-on-failure flag is set)'
+                            )
+                            raise typer.Exit(1)
 
-            except Exception as e:
-                console.error(f'Error processing {file_path}: {str(e)}')
+                    progress.update(task, advance=1)
 
-        # Save combined content if requested
-        if combine and output_dir and combined_content:
-            output_path = os.path.join(output_dir, 'combined_output.md')
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write('\n\n---\n\n'.join(combined_content))
-            console.success(f'Combined output saved to: {output_path}')
+                elapsed_time = format_timedelta(
+                    timedelta(seconds=max(0, progress.tasks[0].elapsed))
+                )
+    except KeyboardInterrupt:
+        console.newline()
+        console.warning('Interrupted by user')
+        raise typer.Exit(130)
 
-    except Exception as e:
-        console.error(f'Error: {str(e)}')
-        raise typer.Exit()
+    if not inline:
+        console.newline()
+
+    if error_count == len(files) * len(drivers):
+        console.error('All files were not processed due to errors')
+        return
+
+    if error_count > 0:
+        console.warning(
+            f'Processed {len(files)} file{"s" if len(files) > 1 else ""} with warnings using {len(drivers)} driver{"s" if len(drivers) > 1 else ""}'
+        )
+        console.print(
+            f'[faint]⎿ [/faint] [highlight]{error_count} files errored[/highlight]'
+        )
+        return
+
+    if not inline:
+        console.success(
+            f'Processed {len(files)} file{"s" if len(files) > 1 else ""} using {len(drivers)} driver{"s" if len(drivers) > 1 else ""} (took {elapsed_time})'
+        )

@@ -12,7 +12,7 @@ The Parxy CLI lets you:
 |------------------|-------------------------------------------------------------------------------------------------------------|
 | `parxy parse`    | Extract text content from documents with customizable detail levels and output formats. Process files or folders with multiple drivers. |
 | `parxy preview`  | Interactive document viewer with metadata, table of contents, and scrollable content preview                |
-| `parxy markdown` | Convert parsed documents into Markdown format (optionally combine multiple files)                           |
+| `parxy markdown` | Convert documents to Markdown files, with support for multiple drivers and folder processing                |
 | `parxy pdf:merge`| Merge multiple PDF files into one, with support for page ranges                                            |
 | `parxy pdf:split`| Split a PDF file into individual pages                                                                      |
 | `parxy drivers`  | List available document processing drivers                                                                  |
@@ -176,27 +176,68 @@ This is ideal for quick document inspection before running a full parsing operat
 
 ## Converting to Markdown
 
-The `markdown` command converts parsed documents into Markdown format, preserving structure such as headings and lists.
+The `markdown` command converts documents to Markdown format, preserving structure such as headings and lists. It follows the same conventions as the `parse` command: output files are prefixed with the driver name and saved next to the source file by default.
+
+### Basic Usage
 
 ```bash
 parxy markdown document.pdf
 ```
 
-Output is printed to the console by default. To save Markdown files to disk:
+This creates a `pymupdf-document.md` file in the same directory as the source file.
+
+### Processing Multiple Files and Folders
 
 ```bash
-parxy markdown -o output/ document1.pdf document2.pdf
+# Parse multiple files
+parxy markdown doc1.pdf doc2.pdf doc3.pdf
+
+# Parse all PDFs in a folder (non-recursive by default)
+parxy markdown /path/to/folder
+
+# Parse recursively
+parxy markdown /path/to/folder --recursive
+
+# Limit recursion depth
+parxy markdown /path/to/folder --recursive --max-depth 2
 ```
 
-Each document will be saved as a `.md` file.
-
-To combine multiple documents into a single Markdown file:
+### Output Directory
 
 ```bash
-parxy markdown --combine -o output/ doc1.pdf doc2.pdf doc3.pdf
+parxy markdown document.pdf -o output/
 ```
 
-This will generate a file named `combined_output.md` in the output directory.
+### Using Multiple Drivers
+
+Run the same documents through multiple drivers for comparison:
+
+```bash
+parxy markdown document.pdf -d pymupdf -d llamaparse
+```
+
+This produces `pymupdf-document.md` and `llamaparse-document.md`.
+
+### Inline Output
+
+Use `--inline` with a single file to print markdown directly to stdout with a YAML frontmatter header — useful for shell pipelines:
+
+```bash
+parxy markdown document.pdf --inline
+parxy markdown document.pdf --inline | your-tool
+```
+
+Output format:
+
+```markdown
+---
+file: "document.pdf"
+pages: 10
+---
+
+# Document heading
+...
+```
 
 
 ## Manipulating PDFs
@@ -317,7 +358,7 @@ With the CLI, you can use Parxy as a **standalone document parsing tool** — id
 |------------------|--------------------------------------------------------------|
 | `parxy parse`    | Extract text from documents with multiple formats & drivers  |
 | `parxy preview`  | Interactive document viewer with metadata and TOC            |
-| `parxy markdown` | Generate Markdown output                                     |
+| `parxy markdown` | Generate Markdown files with driver prefix naming            |
 | `parxy pdf:merge`| Merge multiple PDF files with page range support             |
 | `parxy pdf:split`| Split PDF files into individual pages                        |
 | `parxy drivers`  | List supported drivers                                       |
