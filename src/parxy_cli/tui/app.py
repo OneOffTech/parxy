@@ -122,7 +122,7 @@ class ParxyTUI(App):
         Binding('ctrl+n', 'new_parse', 'New parse', key_display='Ctrl+N'),
         Binding('ctrl+s', 'start_parse', 'Start parsing', key_display='Ctrl+S'),
         Binding('ctrl+b', 'toggle_sidebar', 'Toggle sidebar', key_display='Ctrl+B'),
-        Binding('ctrl+v', 'view_processed', 'View processed', key_display='Ctrl+V'),
+        Binding('ctrl+k', 'view_processed', 'View processed', key_display='Ctrl+K'),
         Binding(
             'ctrl+c',
             'request_quit',
@@ -184,7 +184,7 @@ class ParxyTUI(App):
             driver_names = ', '.join(info.driver_name for info in processed_files)
             status_bar.update(
                 f'File: {self.current_file.name} | '
-                f'Processed: {driver_names} (Ctrl+V to view)'
+                f'Processed: {driver_names} (Ctrl+K to view)'
             )
         else:
             status_bar.update(f'File selected: {self.current_file.name}')
@@ -328,7 +328,7 @@ class ParxyTUI(App):
                 driver_names = ', '.join(info.driver_name for info in processed_files)
                 status_bar.update(
                     f'File: {self.current_file.name} | '
-                    f'Processed: {driver_names} (Ctrl+V to view)'
+                    f'Processed: {driver_names} (Ctrl+K to view)'
                 )
             else:
                 status_bar.update(
