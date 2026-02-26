@@ -155,6 +155,49 @@ class Document(BaseModel):
 
         return '\n'.join(texts)
 
+    def contentmd(
+        self,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        date: Optional[str] = None,
+        license: Optional[str] = None,
+        author: Optional[str] = None,
+    ) -> str:
+        """Get the document content formatted as content-md.
+
+        Delegates to :class:`~parxy_core.services.ContentMdService`.
+
+        Parameters
+        ----------
+        title : str, optional
+            Document title. Falls back to metadata.title, a heading inferred
+            from the first page, filename, then 'Untitled'.
+        description : str, optional
+            Short summary (~200 characters). Falls back to a doc-abstract block,
+            then the longest TextBlock across the first two pages.
+        date : str, optional
+            Creation/publication date in ISO 8601. Falls back to metadata dates.
+        license : str, optional
+            License name or SPDX identifier.
+        author : str, optional
+            Author name. Falls back to metadata.author.
+
+        Returns
+        -------
+        str
+            The document content formatted as content-md.
+        """
+        from parxy_core.services.contentmd_service import ContentMdService
+
+        return ContentMdService.render(
+            self,
+            title=title,
+            description=description,
+            date=date,
+            license=license,
+            author=author,
+        )
+
     def markdown(self) -> str:
         """Get the document content formatted as Markdown.
 
