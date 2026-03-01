@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 
 import logging
 
@@ -78,6 +78,9 @@ class ParxyConfig(BaseConfig):
 
     tracing: ParxyTracingConfig = ParxyTracingConfig()
     """Tracing configuration"""
+
+    middleware: Optional[List[str]] = None
+    """List of middleware class paths to load automatically."""
 
     model_config = SettingsConfigDict(
         env_prefix='parxy_',

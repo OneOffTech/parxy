@@ -239,6 +239,47 @@ def test_parse_command_with_multiple_drivers(runner, mock_document, tmp_path):
         assert (output_dir / 'llamaparse-test.json').exists()
 
 
+def test_parse_command_with_default_middleware_profile(runner, mock_document, tmp_path):
+    """Test middleware profile selection with builtin default profile."""
+
+    test_file = tmp_path / 'test.pdf'
+    test_file.write_text('dummy pdf content')
+
+    with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
+        mock_parxy.parse.return_value = mock_document
+        mock_parxy.default_driver.return_value = 'pymupdf'
+
+        result = runner.invoke(
+            app,
+            [str(test_file), '--middleware-profile', 'default'],
+        )
+
+        assert result.exit_code == 0
+        mock_parxy.clear_middleware.assert_called_once()
+        mock_parxy.with_middleware.assert_not_called()
+
+
+def test_parse_command_with_unknown_middleware_profile_fails(
+    runner, mock_document, tmp_path
+):
+    """Test unknown middleware profile returns a CLI validation error."""
+
+    test_file = tmp_path / 'test.pdf'
+    test_file.write_text('dummy pdf content')
+
+    with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
+        mock_parxy.parse.return_value = mock_document
+        mock_parxy.default_driver.return_value = 'pymupdf'
+
+        result = runner.invoke(
+            app,
+            [str(test_file), '--middleware-profile', 'does_not_exist'],
+        )
+
+        assert result.exit_code != 0
+        mock_parxy.parse.assert_not_called()
+
+
 def test_collect_files_non_recursive(tmp_path):
     """Test that collect_files only finds files in the given directory when not recursive."""
 

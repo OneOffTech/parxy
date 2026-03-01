@@ -1,8 +1,11 @@
 """Command line interface for Parxy document processing."""
 
+import json
+import os
+import tomllib
 from datetime import timedelta
 from pathlib import Path
-from typing import Optional, List, Annotated
+from typing import Optional, List, Annotated, Dict
 
 import typer
 
@@ -15,6 +18,102 @@ from parxy_cli.console.console import Console
 app = typer.Typer()
 
 console = Console()
+
+
+DEFAULT_MIDDLEWARE_PROFILES: Dict[str, List[str]] = {
+    'default': [],
+}
+
+
+def _load_middleware_profiles(config_path: Optional[Path]) -> Dict[str, List[str]]:
+    """Load middleware profiles from optional config file.
+
+    Supports JSON, TOML, YAML and YML. The expected structure is either:
+    - ``{"middleware_profiles": {"profile": ["path.to.Middleware"]}}``
+    - ``{"profiles": {"profile": ["path.to.Middleware"]}}``
+    """
+    profiles = dict(DEFAULT_MIDDLEWARE_PROFILES)
+    if config_path is None:
+        return profiles
+
+    if not config_path.exists():
+        raise typer.BadParameter(f'Middleware config file not found: {config_path}')
+
+    suffix = config_path.suffix.lower()
+    raw_data = None
+
+    if suffix in {'.json'}:
+        raw_data = json.loads(config_path.read_text(encoding='utf-8'))
+    elif suffix in {'.toml'}:
+        raw_data = tomllib.loads(config_path.read_text(encoding='utf-8'))
+    elif suffix in {'.yaml', '.yml'}:
+        try:
+            import yaml
+        except ImportError as exc:
+            raise typer.BadParameter(
+                'YAML config requires PyYAML. Install pyyaml or use JSON/TOML config.'
+            ) from exc
+        raw_data = yaml.safe_load(config_path.read_text(encoding='utf-8'))
+    else:
+        raise typer.BadParameter(
+            'Unsupported middleware config format. Use .json, .toml, .yaml or .yml'
+        )
+
+    if not isinstance(raw_data, dict):
+        raise typer.BadParameter(
+            'Middleware config must be an object/map at top level.'
+        )
+
+    custom_profiles = raw_data.get('middleware_profiles') or raw_data.get('profiles')
+    if custom_profiles is None:
+        return profiles
+
+    if not isinstance(custom_profiles, dict):
+        raise typer.BadParameter(
+            'middleware_profiles must be a map of profile names to middleware paths.'
+        )
+
+    for name, middleware_list in custom_profiles.items():
+        if not isinstance(name, str) or not isinstance(middleware_list, list):
+            raise typer.BadParameter(
+                'Each profile must map to a list of middleware class paths.'
+            )
+        if not all(isinstance(item, str) for item in middleware_list):
+            raise typer.BadParameter('Middleware class paths must be strings.')
+        profiles[name] = middleware_list
+
+    return profiles
+
+
+def configure_middleware_profile(
+    profile: Optional[str],
+    config_path: Optional[Path],
+) -> None:
+    """Configure global middleware registry from a selected profile."""
+    selected_profile = profile or os.getenv('PARXY_MIDDLEWARE_PROFILE')
+    if not selected_profile:
+        return
+
+    env_config_path = os.getenv('PARXY_MIDDLEWARE_CONFIG')
+    effective_config = config_path or (
+        Path(env_config_path) if env_config_path else None
+    )
+    profiles = _load_middleware_profiles(effective_config)
+
+    if selected_profile not in profiles:
+        available = ', '.join(sorted(profiles.keys()))
+        raise typer.BadParameter(
+            f'Unknown middleware profile: {selected_profile}. Available profiles: {available}'
+        )
+
+    middleware_paths = profiles[selected_profile]
+    Parxy.clear_middleware()
+    if middleware_paths:
+        Parxy.with_middleware(middleware_paths)
+
+    console.info(
+        f"Using middleware profile '{selected_profile}' ({len(middleware_paths)} middleware)."
+    )
 
 
 def collect_files_with_depth(
@@ -261,6 +360,22 @@ def parse(
             min=1,
         ),
     ] = None,
+    middleware_profile: Annotated[
+        Optional[str],
+        typer.Option(
+            '--middleware-profile',
+            envvar='PARXY_MIDDLEWARE_PROFILE',
+            help='Middleware profile name to activate. Built-in: default. Additional profiles can be loaded via --middleware-config.',
+        ),
+    ] = None,
+    middleware_config: Annotated[
+        Optional[str],
+        typer.Option(
+            '--middleware-config',
+            envvar='PARXY_MIDDLEWARE_CONFIG',
+            help='Path to a .json/.toml/.yaml config file defining custom middleware profiles.',
+        ),
+    ] = None,
 ):
     """
     Parse documents using one or more drivers.
@@ -311,6 +426,12 @@ def parse(
 
     # Calculate total tasks
     total_tasks = len(files) * len(drivers)
+
+
+    configure_middleware_profile(
+        profile=middleware_profile,
+        config_path=Path(middleware_config) if middleware_config else None,
+    )
 
     error_count = 0
 

@@ -1,6 +1,7 @@
+import importlib
 import logging
 
-from typing import Dict, Optional, Callable, Self, List
+from typing import Dict, Optional, Callable, Self, List, Union
 
 from parxy_core.drivers.abstract_driver import Driver
 from parxy_core.drivers.landingai import LandingAIADEDriver
@@ -19,6 +20,7 @@ from parxy_core.models import (
 )
 from parxy_core.logging import create_isolated_logger
 from parxy_core.tracing import tracer
+from parxy_core.middleware import Middleware
 
 
 class DriverFactory:
@@ -46,6 +48,9 @@ class DriverFactory:
     __custom_creators: Dict[str, Callable[[], Driver]] = {}
     """The custom drivers"""
 
+    __middleware: List[Middleware] = []
+    """The global middleware registry"""
+
     _config: Optional[ParxyConfig] = None
 
     _logger: logging.Logger = None
@@ -68,7 +73,15 @@ class DriverFactory:
 
     @classmethod
     def reset(cls):
+        """Reset the factory instance and clear all state.
+
+        This clears middleware, drivers, and custom creators.
+        Useful for testing and isolation between test cases.
+        """
         cls.__instance = None
+        cls.__middleware = []
+        cls.__drivers = {}
+        cls.__custom_creators = {}
 
     def initialize(self, config: ParxyConfig) -> Self:
         self._config = config
@@ -89,7 +102,61 @@ class DriverFactory:
             or self._config.tracing.verbose,
         )
 
+        # Load middleware from configuration
+        self._load_middleware_from_config()
+
         return self
+
+    def _load_middleware_from_config(self) -> None:
+        """Load middleware from ParxyConfig.middleware.
+
+        Middleware specified in config are automatically registered
+        in the factory's global middleware registry.
+        """
+        if not self._config.middleware:
+            return
+
+        for middleware_path in self._config.middleware:
+            try:
+                middleware = self._import_middleware(middleware_path)
+                self.__middleware.append(middleware)
+                self._logger.info(f'Loaded middleware from config: {middleware_path}')
+            except (ImportError, ValueError) as e:
+                self._logger.warning(
+                    f'Failed to load middleware from config: {middleware_path} - {e}'
+                )
+
+    def _import_middleware(self, middleware_path: str) -> Middleware:
+        """Import a middleware class from a string path.
+
+        Parameters
+        ----------
+        middleware_path : str
+            Dot-notation path to the middleware class (e.g., 'parxy_core.middleware.PIIScanner')
+
+        Returns
+        -------
+        Middleware
+            An instance of the middleware class
+
+        Raises
+        ------
+        ImportError
+            If the module or class cannot be imported
+        ValueError
+            If the imported object is not a Middleware subclass
+        """
+        try:
+            module_path, class_name = middleware_path.rsplit('.', 1)
+            module = importlib.import_module(module_path)
+            middleware_class = getattr(module, class_name)
+
+            if not issubclass(middleware_class, Middleware):
+                raise ValueError(f'{middleware_path} is not a Middleware subclass')
+
+            return middleware_class()
+        except (ImportError, AttributeError) as e:
+            raise ImportError(f'Failed to import middleware: {middleware_path}') from e
 
     def driver(self, name: str = None) -> Driver:
         """Get a driver instance.
@@ -244,6 +311,57 @@ class DriverFactory:
         self.__custom_creators[name] = callback
 
         return self
+
+    def with_middleware(
+        self, middleware: Union[Middleware, List[Middleware]]
+    ) -> 'DriverFactory':
+        """Add middleware to the global middleware registry.
+
+        Middleware added here will be applied to all drivers.
+
+        Parameters
+        ----------
+        middleware : Union[Middleware, List[Middleware]]
+            A middleware instance or list of middleware instances to add
+
+        Returns
+        -------
+        DriverFactory
+            Returns self for chaining
+
+        Example
+        -------
+        >>> factory = DriverFactory.build()
+        >>> factory.with_middleware([LoggingMiddleware(), PIIScannerMiddleware()])
+        """
+        if isinstance(middleware, list):
+            self.__middleware.extend(middleware)
+        else:
+            self.__middleware.append(middleware)
+
+        return self
+
+    def clear_middleware(self) -> 'DriverFactory':
+        """Clear all global middleware.
+
+        Returns
+        -------
+        DriverFactory
+            Returns self for chaining
+        """
+        self.__middleware.clear()
+
+        return self
+
+    def get_middleware(self) -> List[Middleware]:
+        """Get the list of global middleware.
+
+        Returns
+        -------
+        List[Middleware]
+            Copy of the current global middleware list
+        """
+        return list(self.__middleware)
 
     def get_drivers(self) -> Dict[str, Driver]:
         """Get all of the created "drivers".
