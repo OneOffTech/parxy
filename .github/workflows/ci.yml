@@ -34,7 +34,7 @@ jobs:
         fetch-depth: 1
 
     - name: Install the latest version of uv and set the python version
-      uses: astral-sh/setup-uv@v7.3.0
+      uses: astral-sh/setup-uv@v7.3.1
       with:
         enable-cache: true
         python-version: ${{ matrix.python }}
