@@ -99,6 +99,9 @@ class UnstructuredLocalDriver(Driver):
                 details=wex.value,
             ) from wex
 
+        if not res:
+            return Document(filename=filename, language='en', pages=[])
+
         return unstructured_to_parxy(doc=res, level=level)
 
 
