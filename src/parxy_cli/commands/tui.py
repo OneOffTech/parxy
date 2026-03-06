@@ -1,7 +1,7 @@
 """Command to launch the Parxy TUI."""
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 
@@ -17,14 +17,16 @@ console = Console()
 @app.callback(invoke_without_command=True)
 def tui(
     workspace: Annotated[
-        str,
+        Optional[str],
         typer.Argument(
-            help='Path to the workspace folder containing documents to process',
+            help='Path to the workspace folder (optional — can be selected inside the TUI)',
         ),
-    ],
+    ] = None,
 ):
     """
     Launch the Parxy TUI for interactive parser comparison.
+
+    If no workspace is provided, the TUI opens a folder selection screen.
 
     The TUI provides an interactive interface to:
     - Browse files in your workspace
@@ -36,21 +38,27 @@ def tui(
 
     Examples:
 
+        # Launch TUI and select a folder interactively
+        parxy tui
+
         # Launch TUI with current directory
         parxy tui .
 
         # Launch TUI with specific folder
         parxy tui /path/to/documents
     """
-    workspace_path = Path(workspace).resolve()
+    workspace_path: Optional[Path] = None
 
-    if not workspace_path.exists():
-        console.error(f'Workspace path does not exist: {workspace_path}')
-        raise typer.Exit(1)
+    if workspace is not None:
+        workspace_path = Path(workspace).resolve()
 
-    if not workspace_path.is_dir():
-        console.error(f'Workspace path is not a directory: {workspace_path}')
-        raise typer.Exit(1)
+        if not workspace_path.exists():
+            console.error(f'Workspace path does not exist: {workspace_path}')
+            raise typer.Exit(1)
+
+        if not workspace_path.is_dir():
+            console.error(f'Workspace path is not a directory: {workspace_path}')
+            raise typer.Exit(1)
 
     try:
         from parxy_cli.tui.app import run_tui
@@ -61,7 +69,8 @@ def tui(
         )
         raise typer.Exit(1)
 
-    console.info(f'Starting Parxy TUI with workspace: {workspace_path}')
+    if workspace_path:
+        console.info(f'Starting Parxy TUI with workspace: {workspace_path}')
 
     try:
         run_tui(workspace_path)

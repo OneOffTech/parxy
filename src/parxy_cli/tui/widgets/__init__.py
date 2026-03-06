@@ -4,6 +4,7 @@ from parxy_cli.tui.widgets.file_tree_selector import (
     FileTreeSelector,
     FilteredDirectoryTree,
 )
+from parxy_cli.tui.widgets.file_list import FileList
 from parxy_cli.tui.widgets.parser_selector import ParserSelector
 from parxy_cli.tui.widgets.results_viewer import (
     ResultsViewer,
@@ -25,6 +26,7 @@ from parxy_cli.tui.widgets.workspace_viewer import (
 __all__ = [
     'FileTreeSelector',
     'FilteredDirectoryTree',
+    'FileList',
     'ParserSelector',
     'ResultsViewer',
     'DiffViewer',
