@@ -483,12 +483,16 @@ def _convert_text_block(text_block: PageItem, page_number: int) -> TextBlock:
         The converted `TextBlock` object.
     """
     ## Note: Bounding Box (bBox) can be None, it is still to be evaluated if that is a sign of hallucination or not
-    bbox = BoundingBox(
-        x0=text_block.bBox.x,
-        y0=text_block.bBox.y,
-        x1=text_block.bBox.x + text_block.bBox.w,
-        y1=text_block.bBox.y + text_block.bBox.h,
-    ) if text_block.bBox is not None else None
+    bbox = (
+        BoundingBox(
+            x0=text_block.bBox.x,
+            y0=text_block.bBox.y,
+            x1=text_block.bBox.x + text_block.bBox.w,
+            y1=text_block.bBox.y + text_block.bBox.h,
+        )
+        if text_block.bBox is not None
+        else None
+    )
     # Handle empty page marker
     text_value = text_block.value if text_block.value else ''
     if text_value == 'NO_CONTENT_HERE':
