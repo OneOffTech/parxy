@@ -31,7 +31,9 @@ def save_to_history(path: Path) -> None:
     entries = load_history()
     # Remove existing entry for same path so it bubbles to top.
     entries = [e for e in entries if e.get('path') != str(path)]
-    entries.insert(0, {'path': str(path), 'date': datetime.now().strftime('%Y-%m-%d %H:%M')})
+    entries.insert(
+        0, {'path': str(path), 'date': datetime.now().strftime('%Y-%m-%d %H:%M')}
+    )
     entries = entries[:_MAX_ENTRIES]
     _HISTORY_PATH.write_text(json.dumps(entries, indent=2), encoding='utf-8')
 
@@ -95,13 +97,16 @@ class HistoryModal(ModalScreen):
         table = self.query_one('#history-table', DataTable)
         table.clear()
         for entry in entries:
-            table.add_row(entry.get('date', ''), entry.get('path', ''), key=entry.get('path', ''))
+            table.add_row(
+                entry.get('date', ''), entry.get('path', ''), key=entry.get('path', '')
+            )
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == 'history-search':
             q = event.value.lower()
             filtered = [
-                e for e in self._all_entries
+                e
+                for e in self._all_entries
                 if q in e.get('path', '').lower() or q in e.get('date', '').lower()
             ]
             self._populate(filtered)

@@ -83,9 +83,7 @@ class BrowseScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.query_one('#status-bar', Static).update(
-            f'Browsing {self.workspace.name}/'
-        )
+        self.query_one('#status-bar', Static).update(f'Browsing {self.workspace.name}/')
 
     def on_directory_tree_directory_selected(
         self, event: DirectoryTree.DirectorySelected
@@ -113,4 +111,3 @@ class BrowseScreen(Screen):
             self.query_one('#status-bar', Static).update(
                 'No file selected — use arrow keys to highlight a file first'
             )
-

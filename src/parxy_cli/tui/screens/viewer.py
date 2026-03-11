@@ -34,9 +34,23 @@ class ViewerScreen(Screen):
     """
 
     BINDINGS = [
-        Binding('ctrl+e', 'pop_screen', 'Back to browse', key_display='Ctrl+E', priority=True),
-        Binding('ctrl+n', 'new_parse', 'New parse', key_display='Ctrl+N', priority=True),
-        Binding('ctrl+s', 'start_parse', 'Start parsing', key_display='Ctrl+S', priority=True),
+        Binding(
+            'ctrl+e',
+            'pop_screen',
+            'Back to browse',
+            key_display='Ctrl+E',
+            priority=True,
+        ),
+        Binding(
+            'ctrl+n', 'new_parse', 'New parse', key_display='Ctrl+N', priority=True
+        ),
+        Binding(
+            'ctrl+s',
+            'start_parse',
+            'Start parsing',
+            key_display='Ctrl+S',
+            priority=True,
+        ),
         Binding('ctrl+p', 'command_palette', 'Commands', show=False),
     ]
 
@@ -47,7 +61,9 @@ class ViewerScreen(Screen):
         super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
-        yield ParxyHeader(breadcrumb=f'{self.workspace.name} / {self.current_file.name}')
+        yield ParxyHeader(
+            breadcrumb=f'{self.workspace.name} / {self.current_file.name}'
+        )
         with Vertical(id='viewer-main'):
             yield WelcomeContainer(id='welcome-container')
             yield ResultsViewer(self.results, id='results-viewer')
@@ -80,7 +96,9 @@ class ViewerScreen(Screen):
         await self._refresh_results_viewer()
 
         drivers = ', '.join(p.driver_name for p in processed)
-        status.update(f'File: {self.current_file.name} | Drivers: {drivers} — Ctrl+N to re-parse')
+        status.update(
+            f'File: {self.current_file.name} | Drivers: {drivers} — Ctrl+N to re-parse'
+        )
 
     # ------------------------------------------------------------------
     # Button presses (delegated from WelcomeContainer / ParserSelector)

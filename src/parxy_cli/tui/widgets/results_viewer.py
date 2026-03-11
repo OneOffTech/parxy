@@ -43,7 +43,6 @@ class ParserResults:
         return ''
 
 
-
 class ResultsViewer(Container):
     """Widget for displaying parser results."""
 
