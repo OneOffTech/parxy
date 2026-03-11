@@ -6,14 +6,19 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Label, Static
+from textual.widgets import Button, Static
 
 from parxy_core.facade import Parxy
 from parxy_cli.tui.widgets.footer import Footer
+from parxy_cli.tui.widgets.header import ParxyHeader
 from parxy_cli.tui.widgets.parser_selector import ParserSelector
 from parxy_cli.tui.widgets.results_viewer import ParserResults, ResultsViewer
 from parxy_cli.tui.widgets.welcome_container import WelcomeContainer
-from parxy_cli.tui.widgets.workspace_viewer import WorkspaceViewer, find_processed_files
+from parxy_cli.tui.widgets.workspace_viewer import (
+    WorkspaceViewer,
+    find_processed_files,
+    load_document,
+)
 
 
 class ViewerScreen(Screen):
@@ -22,13 +27,6 @@ class ViewerScreen(Screen):
     DEFAULT_CSS = """
     ViewerScreen {
         layout: vertical;
-    }
-
-    #viewer-breadcrumb {
-        height: auto;
-        padding: 0 1;
-        color: $text-muted;
-        background: $surface;
     }
 
     #viewer-main {
@@ -54,10 +52,7 @@ class ViewerScreen(Screen):
         super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
-        yield Label(
-            f'[$primary]▣[/$primary] {self.workspace.name} / {self.current_file.name}',
-            id='viewer-breadcrumb',
-        )
+        yield ParxyHeader(breadcrumb=f'{self.workspace.name} / {self.current_file.name}')
         with Vertical(id='viewer-main'):
             # Keep these IDs so app.tcss rules apply without changes.
             yield WelcomeContainer(id='welcome-container')
@@ -66,19 +61,32 @@ class ViewerScreen(Screen):
             yield Footer()
 
     def on_mount(self) -> None:
-        self._refresh_status()
-
-    def _refresh_status(self) -> None:
         processed = find_processed_files(self.workspace, self.current_file.name)
-        status = self.query_one('#status-bar', Static)
         if processed:
-            drivers = ', '.join(p.driver_name for p in processed)
-            status.update(
-                f'File: {self.current_file.name} | '
-                f'Processed: {drivers} (Ctrl+K to view)'
-            )
+            self.run_worker(self._load_processed_results(processed))
         else:
-            status.update(f'File: {self.current_file.name} — select parsers and press Ctrl+S')
+            self.query_one('#status-bar', Static).update(
+                f'File: {self.current_file.name} — select parsers and press Ctrl+S'
+            )
+
+    async def _load_processed_results(self, processed) -> None:
+        """Load pre-processed JSON results and display them immediately."""
+        status = self.query_one('#status-bar', Static)
+        status.update(f'Loading results for {self.current_file.name}...')
+
+        for info in processed:
+            doc = load_document(info.json_path)
+            if doc is not None:
+                self.results.add_result(info.driver_name, doc)
+
+        self.query_one('#welcome-container').display = False
+        await self._refresh_results_viewer()
+
+        drivers = ', '.join(p.driver_name for p in processed)
+        status.update(
+            f'File: {self.current_file.name} | '
+            f'Drivers: {drivers} — Ctrl+K for details, Ctrl+N to re-parse'
+        )
 
     # ------------------------------------------------------------------
     # Button presses (delegated from WelcomeContainer / ParserSelector)
@@ -155,11 +163,11 @@ class ViewerScreen(Screen):
                 f'{total} parser{"s" if total > 1 else ""}'
             )
 
-    async def _refresh_results_viewer(self) -> None:
+    async def _refresh_results_viewer(self, initial_tab: str = '') -> None:
         old = self.query_one('#results-viewer', ResultsViewer)
         await old.remove()
         main = self.query_one('#viewer-main', Vertical)
-        new = ResultsViewer(self.results, id='results-viewer')
+        new = ResultsViewer(self.results, initial_tab=initial_tab, id='results-viewer')
         new.display = True
         await main.mount(new, before=self.query_one(Footer))
 
@@ -176,7 +184,9 @@ class ViewerScreen(Screen):
         self.query_one('#workspace-viewer').display = False
         self.results.clear()
         self.query_one('#parse-button', Button).disabled = False
-        self._refresh_status()
+        self.query_one('#status-bar', Static).update(
+            f'File: {self.current_file.name} — select parsers and press Ctrl+S'
+        )
 
     def action_view_processed(self) -> None:
         processed = find_processed_files(self.workspace, self.current_file.name)

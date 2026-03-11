@@ -11,6 +11,7 @@ from textual.widgets import DirectoryTree, Input, Label, Static
 from parxy_cli.tui.widgets.file_list import FileList
 from parxy_cli.tui.widgets.file_tree_selector import FilteredDirectoryTree
 from parxy_cli.tui.widgets.footer import Footer
+from parxy_cli.tui.widgets.header import ParxyHeader
 
 
 class FolderNavTree(FilteredDirectoryTree):
@@ -72,6 +73,7 @@ class BrowseScreen(Screen):
         super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
+        yield ParxyHeader(breadcrumb=self.workspace.name)
         with Horizontal(id='browse-content'):
             with Vertical(id='browse-nav-panel'):
                 yield Label(self.workspace.name, classes='section-title')
@@ -95,6 +97,7 @@ class BrowseScreen(Screen):
     ) -> None:
         """Update the file list when the user navigates to a sub-folder."""
         self.query_one('#file-list', FileList).refresh_files(event.path)
+        self.query_one(ParxyHeader).update_breadcrumb(event.path.name)
         self.query_one('#status-bar', Static).update(f'Browsing {event.path.name}/')
 
     def on_file_list_file_selected(self, event: FileList.FileSelected) -> None:

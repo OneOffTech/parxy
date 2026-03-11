@@ -26,14 +26,6 @@ Footer {
     height: 1;
     scrollbar-size: 0 0;
 
-    .command-palette  {
-        width: auto;
-        height: auto;
-        content-align: right middle;
-        color: $text-muted;
-        padding: 0 1;
-    }
-
     &:ansi {
         background: ansi_default;
         .footer-key--key {
@@ -45,6 +37,14 @@ Footer {
             color: ansi_default;
         }
     }
+}
+
+#footer-hints {
+    width: auto;
+    height: 1;
+    content-align: right middle;
+    color: $text-muted;
+    padding: 0 1;
 }
 
 

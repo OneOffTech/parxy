@@ -10,6 +10,7 @@ from textual.containers import Vertical
 
 from parxy_cli.tui.widgets.logo import Logo
 from parxy_cli.tui.widgets.footer import Footer
+from parxy_cli.tui.widgets.header import ParxyHeader
 
 
 class FolderOnlyTree(DirectoryTree):
@@ -56,6 +57,7 @@ class FolderSelectionScreen(Screen):
         super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
+        yield ParxyHeader()
         with Vertical(id='folder-selection-body'):
             yield Logo()
             yield Label('Select a workspace folder', id='folder-selection-title')

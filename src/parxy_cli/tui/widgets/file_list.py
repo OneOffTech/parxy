@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Vertical
 from textual.message import Message
 from textual.widgets import DataTable, Input, Label
@@ -13,6 +14,10 @@ from parxy_cli.tui.widgets.workspace_viewer import find_processed_files
 
 class FileList(Vertical):
     """Shows PDF files in a directory with their processing status."""
+
+    BINDINGS = [
+        Binding('space', 'open_focused', 'Open file', show=False),
+    ]
 
     class FileSelected(Message):
         """Emitted when the user activates a file row (Enter or double-click)."""
@@ -113,3 +118,7 @@ class FileList(Vertical):
             path = Path(str(event.row_key.value))
             self.focused_file = path
             self.post_message(self.FileSelected(path))
+
+    def action_open_focused(self) -> None:
+        if self.focused_file:
+            self.post_message(self.FileSelected(self.focused_file))
