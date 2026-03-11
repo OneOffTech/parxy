@@ -43,11 +43,7 @@ class BrowseScreen(Screen):
         background: $surface;
     }
 
-    BrowseScreen.nav-hidden #browse-nav-panel {
-        display: none;
-    }
-
-    #browse-file-panel {
+#browse-file-panel {
         width: 2fr;
         height: 100%;
     }
@@ -64,7 +60,6 @@ class BrowseScreen(Screen):
     BINDINGS = [
         Binding('ctrl+e', 'pop_screen', 'Folder selection', key_display='Ctrl+E'),
         Binding('ctrl+k', 'open_viewer', 'View file', key_display='Ctrl+K'),
-        Binding('ctrl+i', 'toggle_nav', 'Toggle folders', key_display='Ctrl+I'),
         Binding('ctrl+p', 'command_palette', 'Commands', show=False),
     ]
 
@@ -89,7 +84,7 @@ class BrowseScreen(Screen):
 
     def on_mount(self) -> None:
         self.query_one('#status-bar', Static).update(
-            f'Browsing {self.workspace.name}/ — Ctrl+K to open file, Ctrl+I to toggle folders'
+            f'Browsing {self.workspace.name}/'
         )
 
     def on_directory_tree_directory_selected(
@@ -119,9 +114,3 @@ class BrowseScreen(Screen):
                 'No file selected — use arrow keys to highlight a file first'
             )
 
-    def action_toggle_nav(self) -> None:
-        self.toggle_class('nav-hidden')
-        visible = 'nav-hidden' not in self.classes
-        self.query_one('#status-bar', Static).update(
-            'Folders panel shown' if visible else 'Folders panel hidden'
-        )
