@@ -155,13 +155,64 @@ class Document(BaseModel):
 
         return '\n'.join(texts)
 
-    def markdown(self) -> str:
+    def contentmd(
+        self,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        date: Optional[str] = None,
+        license: Optional[str] = None,
+        author: Optional[str] = None,
+        page_separators: bool = False,
+    ) -> str:
+        """Get the document content formatted as content-md.
+
+        Delegates to :class:`~parxy_core.services.ContentMdService`.
+
+        Parameters
+        ----------
+        title : str, optional
+            Document title. Falls back to metadata.title, a heading inferred
+            from the first page, filename, then 'Untitled'.
+        description : str, optional
+            Short summary (~200 characters). Falls back to a doc-abstract block,
+            then the longest TextBlock across the first two pages.
+        date : str, optional
+            Creation/publication date in ISO 8601. Falls back to metadata dates.
+        license : str, optional
+            License name or SPDX identifier.
+        author : str, optional
+            Author name. Falls back to metadata.author.
+
+        Returns
+        -------
+        str
+            The document content formatted as content-md.
+        """
+        from parxy_core.services.contentmd_service import ContentMdService
+
+        return ContentMdService.render(
+            self,
+            title=title,
+            description=description,
+            date=date,
+            license=license,
+            author=author,
+            page_separators=page_separators,
+        )
+
+    def markdown(self, page_separators: bool = False) -> str:
         """Get the document content formatted as Markdown.
 
         The method attempts to preserve the document structure by:
         1. Converting TextBlocks to paragraphs based on their category
         2. Preserving line breaks where meaningful
         3. Adding section headers based on block levels
+
+        Parameters
+        ----------
+        page_separators : bool, optional
+            When True, inserts an HTML comment ``<!-- page: N -->`` before
+            each page's content, by default False
 
         Returns
         -------
@@ -174,47 +225,49 @@ class Document(BaseModel):
         markdown_parts = []
 
         for page in self.pages:
-            if not page.blocks:
-                if page.text.strip():
-                    markdown_parts.append(page.text.strip())
-                continue
-
             page_parts = []
 
-            for block in page.blocks:
-                if isinstance(block, TextBlock):
-                    # Handle different block categories
-                    if block.category and block.category.lower() in [
-                        'heading',
-                        'title',
-                        'header',
-                    ]:
-                        # Determine heading level (h1-h6) based on block level or default to h2
-                        level = min(block.level or 2, 6)
-                        page_parts.append(f'{"#" * level} {block.text.strip()}')
-                    elif block.category and block.category.lower() == 'list':
-                        # Convert to bullet points
-                        for line in block.text.splitlines():
-                            if line.strip():
-                                page_parts.append(f'- {line.strip()}')
-                    else:
-                        # Regular paragraph
+            if page_separators:
+                page_parts.append(f'<!-- page: {page.number} -->')
+
+            if not page.blocks:
+                if page.text.strip():
+                    page_parts.append(page.text.strip())
+            else:
+                for block in page.blocks:
+                    if isinstance(block, TextBlock):
+                        # Handle different block categories
+                        if block.category and block.category.lower() in [
+                            'heading',
+                            'title',
+                            'header',
+                        ]:
+                            # Determine heading level (h1-h6) based on block level or default to h2
+                            level = min(block.level or 2, 6)
+                            page_parts.append(f'{"#" * level} {block.text.strip()}')
+                        elif block.category and block.category.lower() == 'list':
+                            # Convert to bullet points
+                            for line in block.text.splitlines():
+                                if line.strip():
+                                    page_parts.append(f'- {line.strip()}')
+                        else:
+                            # Regular paragraph
+                            if block.text.strip():
+                                page_parts.append(block.text.strip())
+
+                    elif isinstance(block, ImageBlock):
+                        ext = (
+                            block.name.rsplit('.', 1)[-1]
+                            if block.name and '.' in block.name
+                            else ''
+                        )
+                        lang = f'image:{ext}' if ext else 'image'
+                        alt = block.alt_text or ''
+                        page_parts.append(f'```{lang}\n{alt}\n```')
+
+                    elif isinstance(block, TableBlock):
                         if block.text.strip():
                             page_parts.append(block.text.strip())
-
-                elif isinstance(block, ImageBlock):
-                    ext = (
-                        block.name.rsplit('.', 1)[-1]
-                        if block.name and '.' in block.name
-                        else ''
-                    )
-                    lang = f'image:{ext}' if ext else 'image'
-                    alt = block.alt_text or ''
-                    page_parts.append(f'```{lang}\n{alt}\n```')
-
-                elif isinstance(block, TableBlock):
-                    if block.text.strip():
-                        page_parts.append(block.text.strip())
 
             if page_parts:
                 markdown_parts.append('\n\n'.join(page_parts))

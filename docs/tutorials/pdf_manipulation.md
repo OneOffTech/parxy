@@ -81,6 +81,44 @@ for page_path in pages:
 # ...
 ```
 
+You can limit splitting to a page range using 0-based `from_page` / `to_page` indices:
+
+```python
+# Split only pages 2–5 (0-based: indices 1–4)
+pages = Parxy.pdf.split(
+    input_path=Path("document.pdf"),
+    output_dir=Path("./pages"),
+    prefix="doc",
+    from_page=1,
+    to_page=4,
+)
+# Creates: doc_page_2.pdf, doc_page_3.pdf, doc_page_4.pdf, doc_page_5.pdf
+```
+
+### Extracting Pages into a Single PDF
+
+Use `extract_pages` to pull a page range from a PDF into a new single-file PDF without splitting each page individually:
+
+```python
+from pathlib import Path
+from parxy_core.services.pdf_service import PdfService
+
+# Extract pages 3–7 (0-based: indices 2–6)
+PdfService.extract_pages(
+    input_path=Path("report.pdf"),
+    output_path=Path("summary.pdf"),
+    from_page=2,
+    to_page=6,
+)
+```
+
+Omit `from_page` / `to_page` to copy all pages:
+
+```python
+# Equivalent to a copy
+PdfService.extract_pages(Path("original.pdf"), Path("copy.pdf"))
+```
+
 ### Optimizing PDFs
 
 Reduce PDF file size using compression techniques:
@@ -302,6 +340,12 @@ try:
 except FileNotFoundError as e:
     print(f"File not found: {e}")
 
+# ValueError for invalid page ranges
+try:
+    Parxy.pdf.split(Path("doc.pdf"), Path("./out"), "doc", from_page=100)
+except ValueError as e:
+    print(f"Invalid page range: {e}")
+
 # ValueError for invalid parameters
 try:
     Parxy.pdf.optimize(
@@ -332,7 +376,8 @@ except RuntimeError as e:
 In this tutorial you learned:
 
 - **`Parxy.pdf.merge()`** - Combine multiple PDFs with optional page ranges
-- **`Parxy.pdf.split()`** - Split a PDF into individual page files
+- **`Parxy.pdf.split()`** - Split a PDF into individual page files, with optional page range
+- **`PdfService.extract_pages()`** - Extract a page range into a single output PDF
 - **`Parxy.pdf.optimize()`** - Reduce file size with compression options
 - **`PdfService` context manager** - Work with attachments (add, list, extract, remove)
 
@@ -344,6 +389,7 @@ In this tutorial you learned:
 | Splitting into pages | Extracting attachment content |
 | Optimizing file size | Multiple operations on one file |
 | One-shot operations | Need fine-grained control |
+| Splitting a page range | Extracting a page range into one PDF (`extract_pages`) |
 
 ## Next Steps
 

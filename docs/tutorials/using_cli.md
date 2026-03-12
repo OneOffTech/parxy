@@ -14,7 +14,7 @@ The Parxy CLI lets you:
 | `parxy preview`  | Interactive document viewer with metadata, table of contents, and scrollable content preview                |
 | `parxy markdown` | Convert documents to Markdown files, with support for multiple drivers and folder processing                |
 | `parxy pdf:merge`| Merge multiple PDF files into one, with support for page ranges                                            |
-| `parxy pdf:split`| Split a PDF file into individual pages                                                                      |
+| `parxy pdf:split`| Split a PDF into individual pages, with optional page range and single-file extraction                      |
 | `parxy drivers`  | List available document processing drivers                                                                  |
 | `parxy env`      | Generate a default `.env` configuration file                                                                |
 | `parxy docker`   | Create a Docker Compose configuration for running Parxy-related services                                    |
@@ -218,6 +218,42 @@ parxy markdown document.pdf -d pymupdf -d llamaparse
 
 This produces `pymupdf-document.md` and `llamaparse-document.md`.
 
+### Converting Pre-parsed JSON Results
+
+If you have a JSON file produced by `parxy parse -m json`, you can convert it to Markdown directly without re-parsing:
+
+```bash
+parxy markdown result.json
+```
+
+This loads the `Document` model from the JSON and converts it immediately — no driver or API call required. You can mix JSON files and PDF files in the same invocation:
+
+```bash
+parxy markdown result.json document.pdf -d pymupdf -o output/
+```
+
+### Page Separator Comments
+
+Use `--page-separators` to insert HTML comments before each page's content:
+
+```bash
+parxy markdown document.pdf --page-separators
+```
+
+Output will contain markers like:
+
+```markdown
+<!-- page: 1 -->
+
+First page content...
+
+<!-- page: 2 -->
+
+Second page content...
+```
+
+This is useful for post-processing scripts that need to identify page boundaries.
+
 ### Inline Output
 
 Use `--inline` with a single file to print markdown directly to stdout with a YAML frontmatter header — useful for shell pipelines:
@@ -276,7 +312,7 @@ parxy pdf:merge cover.pdf /chapters doc.pdf[10:20] appendix.pdf -o book.pdf
 
 ### Splitting PDFs
 
-The `pdf:split` command divides a PDF file into individual pages, with each page becoming a separate PDF file.
+The `pdf:split` command divides a PDF file into individual pages, with optional page range extraction and single-file output.
 
 **Split into individual pages:**
 ```bash
@@ -290,7 +326,21 @@ This creates a `document_split/` folder containing `document_page_1.pdf`, `docum
 parxy pdf:split report.pdf -o ./pages -p page
 ```
 
-Creates `page_1.pdf`, `page_2.pdf`, etc. in the `./pages` directory.
+**Extract a page range as individual files:**
+```bash
+parxy pdf:split document.pdf --pages 2:5 -o ./pages
+```
+
+**Combine a page range into a single PDF:**
+```bash
+# Auto-named output next to the input file
+parxy pdf:split document.pdf --pages 2:5 --combine
+
+# Custom output path
+parxy pdf:split document.pdf --pages 2:5 --combine -o extracted.pdf
+```
+
+Page range formats (1-based): `3` · `2:5` · `:5` · `3:`
 
 For more detailed examples and use cases, see the [PDF Manipulation How-to Guide](../howto/pdf_manipulation.md).
 
@@ -358,9 +408,9 @@ With the CLI, you can use Parxy as a **standalone document parsing tool** — id
 |------------------|--------------------------------------------------------------|
 | `parxy parse`    | Extract text from documents with multiple formats & drivers  |
 | `parxy preview`  | Interactive document viewer with metadata and TOC            |
-| `parxy markdown` | Generate Markdown files with driver prefix naming            |
+| `parxy markdown` | Generate Markdown files; accepts JSON results and supports `--page-separators` |
 | `parxy pdf:merge`| Merge multiple PDF files with page range support             |
-| `parxy pdf:split`| Split PDF files into individual pages                        |
+| `parxy pdf:split`| Split PDF into individual pages; supports `--pages` and `--combine` |
 | `parxy drivers`  | List supported drivers                                       |
 | `parxy env`      | Create default configuration file                            |
 | `parxy docker`   | Generate Docker Compose setup                                |
