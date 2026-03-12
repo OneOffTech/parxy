@@ -278,3 +278,136 @@ def test_markdown_command_no_files_found(runner, tmp_path):
         result = runner.invoke(app, [str(empty_dir)])
 
         assert result.exit_code == 1
+
+
+def test_markdown_command_json_input_converts_directly(runner, mock_document, tmp_path):
+    """Test that a valid JSON parse result is loaded directly without re-parsing."""
+
+    json_file = tmp_path / 'result.json'
+    json_file.write_text(mock_document.model_dump_json(), encoding='utf-8')
+
+    with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
+        result = runner.invoke(app, [str(json_file)])
+
+        assert result.exit_code == 0
+        # batch_iter should NOT be called — no PDF to parse
+        mock_parxy.batch_iter.assert_not_called()
+
+        # Output file should be saved next to the JSON file, without driver prefix
+        expected_output = tmp_path / 'result.md'
+        assert expected_output.exists()
+        assert '# Test heading' in expected_output.read_text()
+
+
+def test_markdown_command_json_input_with_output_dir(runner, mock_document, tmp_path):
+    """Test that JSON input respects the --output directory."""
+
+    json_file = tmp_path / 'result.json'
+    json_file.write_text(mock_document.model_dump_json(), encoding='utf-8')
+    output_dir = tmp_path / 'out'
+
+    with patch('parxy_cli.commands.markdown.Parxy'):
+        result = runner.invoke(app, [str(json_file), '--output', str(output_dir)])
+
+        assert result.exit_code == 0
+        assert (output_dir / 'result.md').exists()
+
+
+def test_markdown_command_json_input_inline(runner, mock_document, tmp_path):
+    """Test that JSON input with --inline prints to stdout."""
+
+    json_file = tmp_path / 'result.json'
+    json_file.write_text(mock_document.model_dump_json(), encoding='utf-8')
+
+    with patch('parxy_cli.commands.markdown.Parxy'):
+        result = runner.invoke(app, [str(json_file), '--inline'])
+
+        assert result.exit_code == 0
+        cleaned = strip_ansi(result.stdout)
+        assert '---' in cleaned
+        assert 'pages:' in cleaned
+        assert '# Test heading' in cleaned
+        assert not (tmp_path / 'result.md').exists()
+
+
+def test_markdown_command_invalid_json_reports_error(runner, tmp_path):
+    """Test that a JSON file with invalid Document content reports an error."""
+
+    json_file = tmp_path / 'bad.json'
+    json_file.write_text('{"not": "a document"}', encoding='utf-8')
+
+    with patch('parxy_cli.commands.markdown.Parxy'):
+        result = runner.invoke(app, [str(json_file)])
+
+        cleaned = strip_ansi(result.stdout)
+        assert 'error' in cleaned.lower()
+
+
+def test_markdown_command_page_separators(runner, mock_document, pdf_file):
+    """Test that --page-separators injects HTML page comments into output."""
+
+    with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(pdf_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
+
+        result = runner.invoke(app, [str(pdf_file), '--page-separators'])
+
+        assert result.exit_code == 0
+        expected_output = pdf_file.parent / 'pymupdf-test.md'
+        assert expected_output.exists()
+        assert '<!-- page:' in expected_output.read_text()
+
+
+def test_markdown_command_page_separators_json_input(runner, tmp_path):
+    """Test that --page-separators works for JSON inputs."""
+
+    doc = Document(pages=[Page(number=1, text='Hello')])
+    json_file = tmp_path / 'result.json'
+    json_file.write_text(doc.model_dump_json(), encoding='utf-8')
+
+    with patch('parxy_cli.commands.markdown.Parxy'):
+        result = runner.invoke(app, [str(json_file), '--page-separators'])
+
+        assert result.exit_code == 0
+        output = (tmp_path / 'result.md').read_text()
+        assert '<!-- page: 1 -->' in output
+
+
+def test_markdown_command_mixed_json_and_pdf(runner, mock_document, tmp_path):
+    """Test that JSON files and PDF files can be processed together."""
+
+    json_file = tmp_path / 'result.json'
+    json_file.write_text(mock_document.model_dump_json(), encoding='utf-8')
+
+    pdf_file = tmp_path / 'doc.pdf'
+    pdf_file.write_bytes(b'%PDF fake')
+
+    with patch('parxy_cli.commands.markdown.Parxy') as mock_parxy:
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(pdf_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
+
+        result = runner.invoke(app, [str(json_file), str(pdf_file)])
+
+        assert result.exit_code == 0
+        # JSON converted directly
+        assert (tmp_path / 'result.md').exists()
+        # PDF parsed via driver
+        assert (tmp_path / 'pymupdf-doc.md').exists()
