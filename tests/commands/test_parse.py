@@ -239,6 +239,91 @@ def test_parse_command_with_multiple_drivers(runner, mock_document, tmp_path):
         assert (output_dir / 'llamaparse-test.json').exists()
 
 
+def test_parse_command_with_middleware(runner, mock_document, tmp_path):
+    """Test inline middleware class paths via --middleware."""
+
+    test_file = tmp_path / 'test.pdf'
+    test_file.write_text('dummy pdf content')
+
+    with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
+
+        result = runner.invoke(
+            app,
+            [str(test_file), '--middleware', 'parxy_core.middleware.SimpleMiddleware'],
+        )
+
+        assert result.exit_code == 0
+        mock_parxy.clear_middleware.assert_called_once()
+        mock_parxy.with_middleware.assert_called_once_with(
+            ['parxy_core.middleware.SimpleMiddleware']
+        )
+
+
+def test_parse_command_with_middleware_config(runner, mock_document, tmp_path):
+    """Test middleware loading from a JSON config file via --middleware-config."""
+
+    test_file = tmp_path / 'test.pdf'
+    test_file.write_text('dummy pdf content')
+
+    config_file = tmp_path / 'middleware.json'
+    config_file.write_text('["parxy_core.middleware.SimpleMiddleware"]')
+
+    with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
+        mock_parxy.default_driver.return_value = 'pymupdf'
+        mock_parxy.batch_iter.return_value = iter(
+            [
+                BatchResult(
+                    file=str(test_file),
+                    driver='pymupdf',
+                    document=mock_document,
+                    error=None,
+                )
+            ]
+        )
+
+        result = runner.invoke(
+            app,
+            [str(test_file), '--middleware-config', str(config_file)],
+        )
+
+        assert result.exit_code == 0
+        mock_parxy.clear_middleware.assert_called_once()
+        mock_parxy.with_middleware.assert_called_once_with(
+            ['parxy_core.middleware.SimpleMiddleware']
+        )
+
+
+def test_parse_command_with_middleware_config_missing_file_fails(
+    runner, mock_document, tmp_path
+):
+    """Test that a missing middleware config file returns a CLI error."""
+
+    test_file = tmp_path / 'test.pdf'
+    test_file.write_text('dummy pdf content')
+
+    with patch('parxy_cli.commands.parse.Parxy') as mock_parxy:
+        mock_parxy.default_driver.return_value = 'pymupdf'
+
+        result = runner.invoke(
+            app,
+            [str(test_file), '--middleware-config', str(tmp_path / 'nonexistent.json')],
+        )
+
+        assert result.exit_code != 0
+        mock_parxy.batch_iter.assert_not_called()
+
+
 def test_collect_files_non_recursive(tmp_path):
     """Test that collect_files only finds files in the given directory when not recursive."""
 

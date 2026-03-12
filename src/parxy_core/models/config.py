@@ -1,10 +1,11 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, List, Any
 
+import json
 import logging
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from pydantic import Field, SecretStr, BaseModel
+from pydantic import Field, SecretStr, BaseModel, field_validator
 
 
 class BaseConfig(BaseSettings):
@@ -78,6 +79,19 @@ class ParxyConfig(BaseConfig):
 
     tracing: ParxyTracingConfig = ParxyTracingConfig()
     """Tracing configuration"""
+
+    middleware: Optional[List[str]] = None
+    """List of middleware class paths to load automatically."""
+
+    @field_validator('middleware', mode='before')
+    @classmethod
+    def parse_middleware(cls, v: Any) -> Any:
+        if not isinstance(v, str):
+            return v
+        stripped = v.strip()
+        if stripped.startswith('['):
+            return json.loads(stripped)
+        return [item.strip() for item in stripped.split(',') if item.strip()]
 
     model_config = SettingsConfigDict(
         env_prefix='parxy_',
