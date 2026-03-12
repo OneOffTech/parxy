@@ -300,11 +300,19 @@ def split(
                 if combined_output.suffix.lower() != '.pdf':
                     combined_output = combined_output.with_suffix('.pdf')
             else:
-                range_label = f'{effective_from}-{effective_to}' if effective_from != effective_to else str(effective_from)
-                combined_output = input_path.parent / f'{input_path.stem}_pages_{range_label}.pdf'
+                range_label = (
+                    f'{effective_from}-{effective_to}'
+                    if effective_from != effective_to
+                    else str(effective_from)
+                )
+                combined_output = (
+                    input_path.parent / f'{input_path.stem}_pages_{range_label}.pdf'
+                )
 
             with console.shimmer('Extracting pages into single PDF...'):
-                PdfService.extract_pages(input_path, combined_output, from_page, to_page)
+                PdfService.extract_pages(
+                    input_path, combined_output, from_page, to_page
+                )
 
             console.newline()
             console.success(
@@ -316,7 +324,9 @@ def split(
             )
 
             with console.shimmer('Splitting PDF...'):
-                output_files = PdfService.split_pdf(input_path, output_path, prefix, from_page, to_page)
+                output_files = PdfService.split_pdf(
+                    input_path, output_path, prefix, from_page, to_page
+                )
 
                 for output_file in output_files:
                     page_num = int(output_file.stem.rsplit('_', 1)[-1])

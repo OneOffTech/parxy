@@ -305,15 +305,21 @@ class PdfService:
 
         if start < 0 or start >= total_pages:
             pdf.close()
-            raise ValueError(f'Invalid page range: page {start + 1} does not exist (PDF has {total_pages} pages)')
+            raise ValueError(
+                f'Invalid page range: page {start + 1} does not exist (PDF has {total_pages} pages)'
+            )
 
         if end < 0 or end >= total_pages:
             pdf.close()
-            raise ValueError(f'Invalid page range: page {end + 1} does not exist (PDF has {total_pages} pages)')
+            raise ValueError(
+                f'Invalid page range: page {end + 1} does not exist (PDF has {total_pages} pages)'
+            )
 
         if start > end:
             pdf.close()
-            raise ValueError(f'Invalid page range: start page {start + 1} > end page {end + 1}')
+            raise ValueError(
+                f'Invalid page range: start page {start + 1} > end page {end + 1}'
+            )
 
         # Ensure output directory exists
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -368,15 +374,21 @@ class PdfService:
 
         if start < 0 or start >= total_pages:
             pdf.close()
-            raise ValueError(f'Invalid page range: page {start + 1} does not exist (PDF has {total_pages} pages)')
+            raise ValueError(
+                f'Invalid page range: page {start + 1} does not exist (PDF has {total_pages} pages)'
+            )
 
         if end < 0 or end >= total_pages:
             pdf.close()
-            raise ValueError(f'Invalid page range: page {end + 1} does not exist (PDF has {total_pages} pages)')
+            raise ValueError(
+                f'Invalid page range: page {end + 1} does not exist (PDF has {total_pages} pages)'
+            )
 
         if start > end:
             pdf.close()
-            raise ValueError(f'Invalid page range: start page {start + 1} > end page {end + 1}')
+            raise ValueError(
+                f'Invalid page range: start page {start + 1} > end page {end + 1}'
+            )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
