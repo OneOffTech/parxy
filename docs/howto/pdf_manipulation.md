@@ -102,7 +102,7 @@ parxy pdf:merge file1.pdf file2.pdf -o /output/dir/merged.pdf
 
 ## Splitting PDFs
 
-The `pdf:split` command divides a single PDF into individual pages, with each page becoming a separate PDF file.
+The `pdf:split` command divides a single PDF into individual pages, with each page becoming a separate PDF file. You can optionally limit which pages are extracted and combine them into a single output PDF.
 
 ### Basic Splitting
 
@@ -139,6 +139,51 @@ Creates files named:
 - `chapter_page_2.pdf`
 - etc.
 
+### Extracting a Page Range
+
+Use `--pages` to limit which pages are extracted (1-based indexing):
+
+**Single page:**
+```bash
+parxy pdf:split document.pdf --pages 3
+```
+
+**Page range:**
+```bash
+parxy pdf:split document.pdf --pages 2:5
+```
+
+**From start to page N:**
+```bash
+parxy pdf:split document.pdf --pages :5
+```
+
+**From page N to end:**
+```bash
+parxy pdf:split document.pdf --pages 3:
+```
+
+### Combining Pages into a Single PDF
+
+Use `--combine` to extract a page range into a single output PDF instead of one file per page:
+
+```bash
+# Extract pages 2–5 as a single PDF (auto-named)
+parxy pdf:split document.pdf --pages 2:5 --combine
+# Output: document_pages_2-5.pdf (next to the input file)
+
+# Specify a custom output path
+parxy pdf:split document.pdf --pages 2:5 --combine -o extracted.pdf
+
+# Extract a single page as a PDF
+parxy pdf:split document.pdf --pages 3 --combine -o page3.pdf
+
+# Combine all pages (equivalent to a copy)
+parxy pdf:split document.pdf --combine -o copy.pdf
+```
+
+> **Tip:** `--combine` pairs well with `--pages` to replace the `pdf:merge file.pdf[2:5]` pattern when working with a single source file.
+
 ### Complete Examples
 
 **Split with custom output directory:**
@@ -161,14 +206,25 @@ Creates:
 parxy pdf:split document.pdf -o ./individual_pages -p page
 ```
 
+**Extract pages 10–20 as individual files:**
+```bash
+parxy pdf:split document.pdf --pages 10:20 -o ./extracted_pages
+```
+
 ## Combining Merge and Split
 
 You can chain operations together using the CLI:
 
 **Example: Extract specific pages and split them:**
 ```bash
-# First, extract pages 10-20
-parxy pdf:merge document.pdf[10:20] -o extracted.pdf
+# Extract pages 10-20 as individual files
+parxy pdf:split document.pdf --pages 10:20 -o ./individual_pages
+```
+
+**Example: Extract a range into a single PDF, then split:**
+```bash
+# First, extract pages 10-20 into one PDF
+parxy pdf:split document.pdf --pages 10:20 --combine -o extracted.pdf
 
 # Then split into individual pages
 parxy pdf:split extracted.pdf -o ./individual_pages
@@ -232,17 +288,21 @@ parxy pdf:split INPUT_FILE [OPTIONS]
 ```
 
 **Arguments:**
-- `INPUT_FILE`: PDF file to split into individual pages
+- `INPUT_FILE`: PDF file to split
 
 **Options:**
-- `--output, -o`: Output directory (default: `{filename}_split/`)
-- `--prefix, -p`: Output filename prefix (default: input filename)
+- `--output, -o`: Without `--combine`: output directory (default: `{filename}_split/`). With `--combine`: output file path (default: `{filename}_pages_{from}-{to}.pdf` next to the input).
+- `--prefix, -p`: Output filename prefix for individual split files (default: input filename)
+- `--pages`: Page range to extract, 1-based. Formats: `3` (single page), `2:5` (range), `:5` (up to page 5), `3:` (from page 3 to end)
+- `--combine`: Combine extracted pages into a single PDF instead of one file per page
 
 **Examples:**
 ```bash
 parxy pdf:split document.pdf
 parxy pdf:split document.pdf -o ./pages
 parxy pdf:split document.pdf -o ./pages -p page
+parxy pdf:split document.pdf --pages 2:5
+parxy pdf:split document.pdf --pages 2:5 --combine -o extracted.pdf
 ```
 
 ## Getting Help
