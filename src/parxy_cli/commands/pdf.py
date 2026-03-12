@@ -156,7 +156,7 @@ def split(
         typer.Option(
             '--output',
             '-o',
-            help='Output directory for split files. If not specified, creates a folder next to the input file.',
+            help='Output path. Without --combine: output directory for split files (default: folder next to input). With --combine: output file path (default: {stem}_pages_{from}-{to}.pdf next to input).',
         ),
     ] = None,
     prefix: Annotated[
@@ -167,6 +167,20 @@ def split(
             help='Prefix for output filenames. If not specified, uses the input filename.',
         ),
     ] = None,
+    pages: Annotated[
+        Optional[str],
+        typer.Option(
+            '--pages',
+            help='Page range to extract (1-based). Examples: "1" (single page), "1:3" (pages 1-3), ":3" (up to page 3), "3:" (from page 3). If not specified, all pages are extracted.',
+        ),
+    ] = None,
+    combine: Annotated[
+        bool,
+        typer.Option(
+            '--combine',
+            help='Combine extracted pages into a single PDF instead of one file per page.',
+        ),
+    ] = False,
 ):
     """
     Split a PDF file into individual pages.
@@ -174,6 +188,12 @@ def split(
     Each page becomes a separate PDF file in the output directory.
 
     Output files are named: {prefix}_page_{number}.pdf
+
+    Page ranges use 1-based indexing:
+    - "1"   - only page 1
+    - "1:3" - pages 1 to 3 (inclusive)
+    - ":3"  - from first page to page 3
+    - "3:"  - from page 3 to the end
 
     Examples:
 
@@ -188,6 +208,18 @@ def split(
 
         # Split with custom output and prefix
         parxy pdf:split report.pdf -o ./pages -p page
+
+        # Extract only pages 2 to 5
+        parxy pdf:split document.pdf --pages 2:5
+
+        # Extract a single page
+        parxy pdf:split document.pdf --pages 3
+
+        # Combine pages 2-5 into a single PDF
+        parxy pdf:split document.pdf --pages 2:5 --combine
+
+        # Combine with custom output path
+        parxy pdf:split document.pdf --pages 2:5 --combine -o extracted.pdf
     """
     console.action('Split PDF file', space_after=False)
 
@@ -201,15 +233,35 @@ def split(
         console.error(f'Input file must be a PDF: {input_file}', panel=True)
         raise typer.Exit(1)
 
-    # Determine output directory
-    if output_dir is None:
-        # Create a folder next to the input file
-        output_path = input_path.parent / f'{input_path.stem}_split'
-    else:
-        output_path = Path(output_dir)
+    # Parse --pages option into 0-based from_page / to_page
+    from_page = None
+    to_page = None
+    if pages is not None:
+        try:
+            if ':' in pages:
+                start_str, end_str = pages.split(':', 1)
+                from_page = (int(start_str) - 1) if start_str.strip() else None
+                to_page = (int(end_str) - 1) if end_str.strip() else None
+            else:
+                page_num = int(pages) - 1
+                from_page = page_num
+                to_page = page_num
+        except ValueError:
+            console.error(
+                f'Invalid --pages value: "{pages}". Use formats like "1", "1:3", ":3", or "3:".',
+                panel=True,
+            )
+            raise typer.Exit(1)
 
-    # Create output directory
-    output_path.mkdir(parents=True, exist_ok=True)
+    # Determine output directory (only relevant when not combining)
+    if not combine:
+        if output_dir is None:
+            output_path = input_path.parent / f'{input_path.stem}_split'
+        else:
+            output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+    else:
+        output_path = None  # unused in combine mode
 
     # Determine filename prefix
     if prefix is None:
@@ -228,27 +280,64 @@ def split(
             console.error('PDF file is empty (no pages)', panel=True)
             raise typer.Exit(1)
 
+        # Determine effective range for display
+        effective_from = (from_page if from_page is not None else 0) + 1
+        effective_to = (to_page if to_page is not None else total_pages - 1) + 1
+        extract_count = effective_to - effective_from + 1
+
         console.info(
             f'Processing PDF with {total_pages} page{"s" if total_pages > 1 else ""}'
         )
-        console.info(
-            f'Splitting into {total_pages} file{"s" if total_pages > 1 else ""}'
-        )
+        if pages is not None:
+            console.info(
+                f'Extracting pages {effective_from}-{effective_to} ({extract_count} page{"s" if extract_count > 1 else ""})'
+            )
 
-        with console.shimmer(f'Splitting PDF...'):
-            # Use service to split PDF
-            output_files = PdfService.split_pdf(input_path, output_path, prefix)
-
-            # Display created files
-            for idx, output_file in enumerate(output_files):
-                console.print(
-                    f'[faint]⎿ [/faint] Created {output_file.name} (page {idx + 1})'
+        if combine:
+            # Determine output file path
+            if output_dir is not None:
+                combined_output = Path(output_dir)
+                if combined_output.suffix.lower() != '.pdf':
+                    combined_output = combined_output.with_suffix('.pdf')
+            else:
+                range_label = (
+                    f'{effective_from}-{effective_to}'
+                    if effective_from != effective_to
+                    else str(effective_from)
+                )
+                combined_output = (
+                    input_path.parent / f'{input_path.stem}_pages_{range_label}.pdf'
                 )
 
-        console.newline()
-        console.success(
-            f'Successfully split PDF into {len(output_files)} file{"s" if len(output_files) > 1 else ""} in {output_path}'
-        )
+            with console.shimmer('Extracting pages into single PDF...'):
+                PdfService.extract_pages(
+                    input_path, combined_output, from_page, to_page
+                )
+
+            console.newline()
+            console.success(
+                f'Successfully extracted {extract_count} page{"s" if extract_count > 1 else ""} into {combined_output}'
+            )
+        else:
+            console.info(
+                f'Splitting into {extract_count} file{"s" if extract_count > 1 else ""}'
+            )
+
+            with console.shimmer('Splitting PDF...'):
+                output_files = PdfService.split_pdf(
+                    input_path, output_path, prefix, from_page, to_page
+                )
+
+                for output_file in output_files:
+                    page_num = int(output_file.stem.rsplit('_', 1)[-1])
+                    console.print(
+                        f'[faint]⎿ [/faint] Created {output_file.name} (page {page_num})'
+                    )
+
+            console.newline()
+            console.success(
+                f'Successfully split PDF into {len(output_files)} file{"s" if len(output_files) > 1 else ""} in {output_path}'
+            )
 
     except (ValueError, FileNotFoundError) as e:
         console.error(f'Error during split: {str(e)}')

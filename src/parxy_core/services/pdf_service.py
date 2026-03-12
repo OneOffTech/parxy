@@ -266,7 +266,13 @@ class PdfService:
             merged_pdf.close()
 
     @staticmethod
-    def split_pdf(input_path: Path, output_dir: Path, prefix: str) -> List[Path]:
+    def split_pdf(
+        input_path: Path,
+        output_dir: Path,
+        prefix: str,
+        from_page: Optional[int] = None,
+        to_page: Optional[int] = None,
+    ) -> List[Path]:
         """
         Split a PDF file into individual pages.
 
@@ -274,13 +280,15 @@ class PdfService:
             input_path: Path to the PDF file to split
             output_dir: Directory where split PDFs should be saved
             prefix: Prefix for output filenames
+            from_page: First page to extract (0-based, inclusive). None means first page.
+            to_page: Last page to extract (0-based, inclusive). None means last page.
 
         Returns:
             List of paths to the created PDF files
 
         Raises:
             FileNotFoundError: If input PDF doesn't exist
-            ValueError: If PDF is empty or invalid
+            ValueError: If PDF is empty or page range is invalid
         """
         if not input_path.is_file():
             raise FileNotFoundError(f'PDF file not found: {input_path}')
@@ -292,14 +300,34 @@ class PdfService:
             pdf.close()
             raise ValueError('PDF file is empty (no pages)')
 
+        start = from_page if from_page is not None else 0
+        end = to_page if to_page is not None else total_pages - 1
+
+        if start < 0 or start >= total_pages:
+            pdf.close()
+            raise ValueError(
+                f'Invalid page range: page {start + 1} does not exist (PDF has {total_pages} pages)'
+            )
+
+        if end < 0 or end >= total_pages:
+            pdf.close()
+            raise ValueError(
+                f'Invalid page range: page {end + 1} does not exist (PDF has {total_pages} pages)'
+            )
+
+        if start > end:
+            pdf.close()
+            raise ValueError(
+                f'Invalid page range: start page {start + 1} > end page {end + 1}'
+            )
+
         # Ensure output directory exists
         output_dir.mkdir(parents=True, exist_ok=True)
 
         output_files = []
 
         try:
-            # Split into individual pages
-            for page_num in range(total_pages):
+            for page_num in range(start, end + 1):
                 output_file = output_dir / f'{prefix}_page_{page_num + 1}.pdf'
                 output_pdf = pymupdf.open()
                 output_pdf.insert_pdf(pdf, from_page=page_num, to_page=page_num)
@@ -310,6 +338,67 @@ class PdfService:
             pdf.close()
 
         return output_files
+
+    @staticmethod
+    def extract_pages(
+        input_path: Path,
+        output_path: Path,
+        from_page: Optional[int] = None,
+        to_page: Optional[int] = None,
+    ) -> None:
+        """
+        Extract a page range from a PDF into a single output PDF.
+
+        Args:
+            input_path: Path to the source PDF file
+            output_path: Path where the extracted PDF should be saved
+            from_page: First page to extract (0-based, inclusive). None means first page.
+            to_page: Last page to extract (0-based, inclusive). None means last page.
+
+        Raises:
+            FileNotFoundError: If input PDF doesn't exist
+            ValueError: If PDF is empty or page range is invalid
+        """
+        if not input_path.is_file():
+            raise FileNotFoundError(f'PDF file not found: {input_path}')
+
+        pdf = pymupdf.open(input_path)
+        total_pages = pdf.page_count
+
+        if total_pages == 0:
+            pdf.close()
+            raise ValueError('PDF file is empty (no pages)')
+
+        start = from_page if from_page is not None else 0
+        end = to_page if to_page is not None else total_pages - 1
+
+        if start < 0 or start >= total_pages:
+            pdf.close()
+            raise ValueError(
+                f'Invalid page range: page {start + 1} does not exist (PDF has {total_pages} pages)'
+            )
+
+        if end < 0 or end >= total_pages:
+            pdf.close()
+            raise ValueError(
+                f'Invalid page range: page {end + 1} does not exist (PDF has {total_pages} pages)'
+            )
+
+        if start > end:
+            pdf.close()
+            raise ValueError(
+                f'Invalid page range: start page {start + 1} > end page {end + 1}'
+            )
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            output_pdf = pymupdf.open()
+            output_pdf.insert_pdf(pdf, from_page=start, to_page=end)
+            output_pdf.save(str(output_path))
+            output_pdf.close()
+        finally:
+            pdf.close()
 
     @staticmethod
     def optimize_pdf(
