@@ -11,7 +11,6 @@ The Parxy CLI lets you:
 | Command          | Description                                                                                                 |
 |------------------|-------------------------------------------------------------------------------------------------------------|
 | `parxy parse`    | Extract text content from documents with customizable detail levels and output formats. Process files or folders with multiple drivers. |
-| `parxy preview`  | Interactive document viewer with metadata, table of contents, and scrollable content preview                |
 | `parxy markdown` | Convert documents to Markdown files, with support for multiple drivers and folder processing                |
 | `parxy pdf:merge`| Merge multiple PDF files into one, with support for page ranges                                            |
 | `parxy pdf:split`| Split a PDF into individual pages, with optional page range and single-file extraction                      |
@@ -132,47 +131,6 @@ Process all PDFs in a folder with two drivers, output as JSON, and save to a spe
 ```bash
 parxy parse /path/to/pdfs -d pymupdf -d llamaparse -m json -o output/
 ```
-
-## Previewing Documents
-
-The `preview` command provides an interactive document viewer that displays:
-- Document metadata (title, author, creation date, etc.)
-- Table of contents extracted from headings
-- Document content rendered as markdown
-
-This is useful for quickly inspecting a document's structure and content without creating output files.
-
-### Basic Usage
-
-```bash
-parxy preview document.pdf
-```
-
-The preview is displayed in a scrollable three-panel layout.
-
-### Options
-
-Specify a driver:
-
-```bash
-parxy preview document.pdf --driver llamaparse
-```
-
-Adjust extraction level:
-
-```bash
-parxy preview document.pdf --level line
-```
-
-### Navigation
-
-The preview uses your system's default pager (similar to `less` on Unix systems), allowing you to:
-- Scroll up and down
-- Search for text
-- Exit the preview
-
-This is ideal for quick document inspection before running a full parsing operation.
-
 
 ## Converting to Markdown
 
@@ -407,7 +365,6 @@ With the CLI, you can use Parxy as a **standalone document parsing tool** — id
 | Command          | Purpose                                                      |
 |------------------|--------------------------------------------------------------|
 | `parxy parse`    | Extract text from documents with multiple formats & drivers  |
-| `parxy preview`  | Interactive document viewer with metadata and TOC            |
 | `parxy markdown` | Generate Markdown files; accepts JSON results and supports `--page-separators` |
 | `parxy pdf:merge`| Merge multiple PDF files with page range support             |
 | `parxy pdf:split`| Split PDF into individual pages; supports `--pages` and `--combine` |
