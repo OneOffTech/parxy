@@ -503,3 +503,69 @@ class TestOutputStructure:
         assert 'title: "My Title"' in result
         assert 'description: "My description."' in result
         assert result.endswith('\n')
+
+
+class TestPageSeparators:
+    """Tests for page_separators support in ContentMdService and Document.markdown."""
+
+    def test_contentmd_page_separators_off_by_default(self):
+        page = make_page(number=1, text='', blocks=[make_text_block('Content.')])
+        doc = make_doc(pages=[page])
+        result = ContentMdService.render(doc, title='T')
+        assert '<!-- page:' not in result
+
+    def test_contentmd_page_separators_inserted(self):
+        page = make_page(number=1, text='', blocks=[make_text_block('Content.')])
+        doc = make_doc(pages=[page])
+        result = ContentMdService.render(doc, title='T', page_separators=True)
+        assert '<!-- page: 1 -->' in result
+
+    def test_contentmd_page_separators_multipage(self):
+        page1 = make_page(number=1, text='', blocks=[make_text_block('Page one.')])
+        page2 = make_page(number=2, text='', blocks=[make_text_block('Page two.')])
+        doc = make_doc(pages=[page1, page2])
+        result = ContentMdService.render(doc, title='T', page_separators=True)
+        assert '<!-- page: 1 -->' in result
+        assert '<!-- page: 2 -->' in result
+        # Separators appear in correct order relative to each other
+        assert result.index('<!-- page: 1 -->') < result.index('<!-- page: 2 -->')
+
+    def test_contentmd_page_separators_via_document_method(self):
+        page = make_page(number=3, text='', blocks=[make_text_block('Content.')])
+        doc = make_doc(pages=[page])
+        result = doc.contentmd(title='T', page_separators=True)
+        assert '<!-- page: 3 -->' in result
+
+    def test_markdown_page_separators_off_by_default(self):
+        doc = Document(pages=[Page(number=1, text='Hello world')])
+        result = doc.markdown()
+        assert '<!-- page:' not in result
+
+    def test_markdown_page_separators_inserted(self):
+        doc = Document(pages=[Page(number=1, text='Hello world')])
+        result = doc.markdown(page_separators=True)
+        assert '<!-- page: 1 -->' in result
+
+    def test_markdown_page_separators_multipage(self):
+        doc = Document(
+            pages=[
+                Page(number=1, text='First page'),
+                Page(number=2, text='Second page'),
+            ]
+        )
+        result = doc.markdown(page_separators=True)
+        assert '<!-- page: 1 -->' in result
+        assert '<!-- page: 2 -->' in result
+        assert result.index('<!-- page: 1 -->') < result.index('First page')
+        assert result.index('<!-- page: 2 -->') < result.index('Second page')
+
+    def test_markdown_page_separators_empty_page_still_emits_comment(self):
+        doc = Document(
+            pages=[
+                Page(number=1, text='Content'),
+                Page(number=2, text=''),  # empty page
+            ]
+        )
+        result = doc.markdown(page_separators=True)
+        assert '<!-- page: 1 -->' in result
+        assert '<!-- page: 2 -->' in result

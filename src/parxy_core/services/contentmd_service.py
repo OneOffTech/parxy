@@ -137,13 +137,18 @@ class ContentMdService:
         return '\n'.join(lines)
 
     @staticmethod
-    def _build_body(document: Document, title: str) -> str:
+    def _build_body(
+        document: Document, title: str, page_separators: bool = False
+    ) -> str:
         from parxy_core.models.models import ImageBlock, TableBlock, TextBlock
 
         normalize = ContentMdService._normalize
         parts = [f'# {title}']
 
         for page in document.pages:
+            if page_separators:
+                parts.append(f'<!-- page: {page.number} -->')
+
             if not page.blocks:
                 if page.text.strip():
                     parts.append(normalize(page.text))
@@ -198,6 +203,7 @@ class ContentMdService:
         date: Optional[str] = None,
         license: Optional[str] = None,
         author: Optional[str] = None,
+        page_separators: bool = False,
     ) -> str:
         """Render *document* as a content-md string.
 
@@ -219,6 +225,9 @@ class ContentMdService:
             License name or SPDX identifier.
         author:
             Author name. Falls back to ``metadata.author``.
+        page_separators:
+            When True, inserts ``<!-- page: N -->`` before each page's
+            content in the body.
 
         Returns
         -------
@@ -260,5 +269,5 @@ class ContentMdService:
         if not document.pages:
             return f'{frontmatter}\n\n# {resolved_title}\n'
 
-        body = ContentMdService._build_body(document, resolved_title)
+        body = ContentMdService._build_body(document, resolved_title, page_separators)
         return f'{frontmatter}\n\n{body}\n'
