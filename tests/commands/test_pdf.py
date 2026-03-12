@@ -568,3 +568,198 @@ class TestSplitCommand:
         output_files = list(output_dir.glob('*.pdf'))
         assert len(output_files) == 1
         assert output_files[0].name == 'single_page_1.pdf'
+
+    def test_split_with_pages_range(self, runner, sample_pdfs):
+        """Test splitting with --pages extracts only specified pages."""
+        output_dir = sample_pdfs['tmp_path'] / 'split_pages'
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),  # 3 pages
+                '--output',
+                str(output_dir),
+                '--pages',
+                '1:2',
+            ],
+        )
+
+        assert result.exit_code == 0
+        output_files = sorted(output_dir.glob('*.pdf'))
+        assert len(output_files) == 2
+        assert output_files[0].name == 'doc1_page_1.pdf'
+        assert output_files[1].name == 'doc1_page_2.pdf'
+
+    def test_split_with_pages_single(self, runner, sample_pdfs):
+        """Test splitting with --pages extracts a single page."""
+        output_dir = sample_pdfs['tmp_path'] / 'split_single_page'
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),  # 3 pages
+                '--output',
+                str(output_dir),
+                '--pages',
+                '2',
+            ],
+        )
+
+        assert result.exit_code == 0
+        output_files = list(output_dir.glob('*.pdf'))
+        assert len(output_files) == 1
+        assert output_files[0].name == 'doc1_page_2.pdf'
+
+    def test_split_with_pages_open_start(self, runner, sample_pdfs):
+        """Test splitting with --pages using open start (:n)."""
+        output_dir = sample_pdfs['tmp_path'] / 'split_open_start'
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),  # 3 pages
+                '--output',
+                str(output_dir),
+                '--pages',
+                ':2',
+            ],
+        )
+
+        assert result.exit_code == 0
+        output_files = sorted(output_dir.glob('*.pdf'))
+        assert len(output_files) == 2
+
+    def test_split_with_pages_open_end(self, runner, sample_pdfs):
+        """Test splitting with --pages using open end (n:)."""
+        output_dir = sample_pdfs['tmp_path'] / 'split_open_end'
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),  # 3 pages
+                '--output',
+                str(output_dir),
+                '--pages',
+                '2:',
+            ],
+        )
+
+        assert result.exit_code == 0
+        output_files = sorted(output_dir.glob('*.pdf'))
+        assert len(output_files) == 2  # pages 2 and 3
+
+    def test_split_with_invalid_pages_format(self, runner, sample_pdfs):
+        """Test that invalid --pages format exits with error."""
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),
+                '--pages',
+                'abc',
+            ],
+        )
+
+        assert result.exit_code == 1
+        assert 'invalid' in result.stdout.lower()
+
+    def test_split_combine_produces_single_pdf(self, runner, sample_pdfs):
+        """Test --combine outputs a single PDF with all specified pages."""
+        output = sample_pdfs['tmp_path'] / 'combined.pdf'
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),  # 3 pages
+                '--pages',
+                '1:2',
+                '--combine',
+                '--output',
+                str(output),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert output.exists()
+
+        pdf = pymupdf.open(str(output))
+        assert len(pdf) == 2
+        pdf.close()
+
+    def test_split_combine_default_output_name(self, runner, sample_pdfs):
+        """Test --combine without --output uses auto-generated filename."""
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),
+                '--pages',
+                '1:2',
+                '--combine',
+            ],
+        )
+
+        assert result.exit_code == 0
+        expected = sample_pdfs['pdf1'].parent / 'doc1_pages_1-2.pdf'
+        assert expected.exists()
+
+        pdf = pymupdf.open(str(expected))
+        assert len(pdf) == 2
+        pdf.close()
+
+    def test_split_combine_single_page(self, runner, sample_pdfs):
+        """Test --combine with a single page produces a one-page PDF."""
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),
+                '--pages',
+                '2',
+                '--combine',
+            ],
+        )
+
+        assert result.exit_code == 0
+        expected = sample_pdfs['pdf1'].parent / 'doc1_pages_2.pdf'
+        assert expected.exists()
+
+        pdf = pymupdf.open(str(expected))
+        assert len(pdf) == 1
+        pdf.close()
+
+    def test_split_combine_all_pages(self, runner, sample_pdfs):
+        """Test --combine without --pages combines all pages."""
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),  # 3 pages
+                '--combine',
+            ],
+        )
+
+        assert result.exit_code == 0
+        expected = sample_pdfs['pdf1'].parent / 'doc1_pages_1-3.pdf'
+        assert expected.exists()
+
+        pdf = pymupdf.open(str(expected))
+        assert len(pdf) == 3
+        pdf.close()
+
+    def test_split_combine_does_not_create_split_directory(self, runner, sample_pdfs):
+        """Test that --combine does not create an unwanted split directory."""
+        result = runner.invoke(
+            app,
+            [
+                'pdf:split',
+                str(sample_pdfs['pdf1']),
+                '--pages',
+                '1:2',
+                '--combine',
+            ],
+        )
+
+        assert result.exit_code == 0
+        unwanted_dir = sample_pdfs['pdf1'].parent / 'doc1_split'
+        assert not unwanted_dir.exists()

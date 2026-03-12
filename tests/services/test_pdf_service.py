@@ -334,6 +334,130 @@ class TestSplitPdf:
         assert output_dir.exists()
         assert len(output_files) == 3
 
+    def test_split_with_page_range(self, multiple_pdfs):
+        """Test splitting only a subset of pages."""
+        output_dir = multiple_pdfs['tmp_path'] / 'split_range'
+
+        # pdf1 has 3 pages; extract pages 1-2 (0-based: 0-1)
+        output_files = PdfService.split_pdf(
+            multiple_pdfs['pdf1'], output_dir, 'doc1', from_page=0, to_page=1
+        )
+
+        assert len(output_files) == 2
+        assert output_files[0].name == 'doc1_page_1.pdf'
+        assert output_files[1].name == 'doc1_page_2.pdf'
+
+    def test_split_single_page_range(self, multiple_pdfs):
+        """Test splitting with a single-page range."""
+        output_dir = multiple_pdfs['tmp_path'] / 'split_single'
+
+        output_files = PdfService.split_pdf(
+            multiple_pdfs['pdf1'], output_dir, 'doc1', from_page=1, to_page=1
+        )
+
+        assert len(output_files) == 1
+        assert output_files[0].name == 'doc1_page_2.pdf'
+
+    def test_split_invalid_from_page(self, multiple_pdfs):
+        """Test splitting with out-of-bounds from_page raises ValueError."""
+        output_dir = multiple_pdfs['tmp_path'] / 'split_invalid'
+
+        with pytest.raises(ValueError, match='does not exist'):
+            PdfService.split_pdf(
+                multiple_pdfs['pdf1'], output_dir, 'doc1', from_page=10
+            )
+
+    def test_split_invalid_to_page(self, multiple_pdfs):
+        """Test splitting with out-of-bounds to_page raises ValueError."""
+        output_dir = multiple_pdfs['tmp_path'] / 'split_invalid'
+
+        with pytest.raises(ValueError, match='does not exist'):
+            PdfService.split_pdf(multiple_pdfs['pdf1'], output_dir, 'doc1', to_page=10)
+
+    def test_split_inverted_range(self, multiple_pdfs):
+        """Test splitting with from_page > to_page raises ValueError."""
+        output_dir = multiple_pdfs['tmp_path'] / 'split_invalid'
+
+        with pytest.raises(ValueError, match='start page'):
+            PdfService.split_pdf(
+                multiple_pdfs['pdf1'], output_dir, 'doc1', from_page=2, to_page=0
+            )
+
+
+class TestExtractPages:
+    """Tests for the extract_pages static method."""
+
+    def test_extract_all_pages(self, multiple_pdfs):
+        """Test extracting all pages into a single PDF."""
+        output = multiple_pdfs['tmp_path'] / 'extracted.pdf'
+
+        PdfService.extract_pages(multiple_pdfs['pdf1'], output)
+
+        assert output.exists()
+        pdf = pymupdf.open(str(output))
+        assert len(pdf) == 3
+        pdf.close()
+
+    def test_extract_page_range(self, multiple_pdfs):
+        """Test extracting a page range into a single PDF."""
+        output = multiple_pdfs['tmp_path'] / 'extracted.pdf'
+
+        # pdf1 has 3 pages; extract pages 1-2 (0-based: 0-1)
+        PdfService.extract_pages(multiple_pdfs['pdf1'], output, from_page=0, to_page=1)
+
+        assert output.exists()
+        pdf = pymupdf.open(str(output))
+        assert len(pdf) == 2
+        pdf.close()
+
+    def test_extract_single_page(self, multiple_pdfs):
+        """Test extracting a single page into a PDF."""
+        output = multiple_pdfs['tmp_path'] / 'extracted.pdf'
+
+        PdfService.extract_pages(multiple_pdfs['pdf1'], output, from_page=1, to_page=1)
+
+        assert output.exists()
+        pdf = pymupdf.open(str(output))
+        assert len(pdf) == 1
+        pdf.close()
+
+    def test_extract_file_not_found(self, tmp_path):
+        """Test extracting from nonexistent file raises FileNotFoundError."""
+        with pytest.raises(FileNotFoundError):
+            PdfService.extract_pages(tmp_path / 'nonexistent.pdf', tmp_path / 'out.pdf')
+
+    def test_extract_invalid_from_page(self, multiple_pdfs):
+        """Test extracting with out-of-bounds from_page raises ValueError."""
+        output = multiple_pdfs['tmp_path'] / 'extracted.pdf'
+
+        with pytest.raises(ValueError, match='does not exist'):
+            PdfService.extract_pages(multiple_pdfs['pdf1'], output, from_page=10)
+
+    def test_extract_invalid_to_page(self, multiple_pdfs):
+        """Test extracting with out-of-bounds to_page raises ValueError."""
+        output = multiple_pdfs['tmp_path'] / 'extracted.pdf'
+
+        with pytest.raises(ValueError, match='does not exist'):
+            PdfService.extract_pages(multiple_pdfs['pdf1'], output, to_page=10)
+
+    def test_extract_inverted_range(self, multiple_pdfs):
+        """Test extracting with from_page > to_page raises ValueError."""
+        output = multiple_pdfs['tmp_path'] / 'extracted.pdf'
+
+        with pytest.raises(ValueError, match='start page'):
+            PdfService.extract_pages(
+                multiple_pdfs['pdf1'], output, from_page=2, to_page=0
+            )
+
+    def test_extract_creates_output_directory(self, multiple_pdfs):
+        """Test that extract creates output directory if needed."""
+        output = multiple_pdfs['tmp_path'] / 'nested' / 'subdir' / 'extracted.pdf'
+
+        PdfService.extract_pages(multiple_pdfs['pdf1'], output)
+
+        assert output.exists()
+        assert output.parent.exists()
+
 
 class TestOptimizePdf:
     """Tests for the optimize_pdf static method."""
