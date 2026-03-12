@@ -119,7 +119,7 @@ class Parxy:
         Example
         -------
         >>> Parxy.with_middleware(
-        ...     [LoggingMiddleware(), 'parxy_core.middleware.PIIScanner']
+        ...     [MyCustomMiddleware(), 'parxy_core.middleware.SimpleMiddleware']
         ... )
         >>> doc = Parxy.parse('document.pdf')
         """

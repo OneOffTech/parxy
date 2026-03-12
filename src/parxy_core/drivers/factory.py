@@ -48,8 +48,11 @@ class DriverFactory:
     __custom_creators: Dict[str, Callable[[], Driver]] = {}
     """The custom drivers"""
 
+    __config_middleware: List[Middleware] = []
+    """Middleware loaded from ParxyConfig — preserved across clear_middleware() calls."""
+
     __middleware: List[Middleware] = []
-    """The global middleware registry"""
+    """Runtime middleware added programmatically via with_middleware()."""
 
     _config: Optional[ParxyConfig] = None
 
@@ -79,6 +82,7 @@ class DriverFactory:
         Useful for testing and isolation between test cases.
         """
         cls.__instance = None
+        cls.__config_middleware = []
         cls.__middleware = []
         cls.__drivers = {}
         cls.__custom_creators = {}
@@ -108,10 +112,10 @@ class DriverFactory:
         return self
 
     def _load_middleware_from_config(self) -> None:
-        """Load middleware from ParxyConfig.middleware.
+        """Load middleware from ParxyConfig.middleware into the config layer.
 
-        Middleware specified in config are automatically registered
-        in the factory's global middleware registry.
+        Config middleware is kept separate from runtime middleware so it
+        survives clear_middleware() calls.
         """
         if not self._config.middleware:
             return
@@ -119,7 +123,7 @@ class DriverFactory:
         for middleware_path in self._config.middleware:
             try:
                 middleware = self._import_middleware(middleware_path)
-                self.__middleware.append(middleware)
+                self.__config_middleware.append(middleware)
                 self._logger.info(f'Loaded middleware from config: {middleware_path}')
             except (ImportError, ValueError) as e:
                 self._logger.warning(
@@ -342,7 +346,10 @@ class DriverFactory:
         return self
 
     def clear_middleware(self) -> 'DriverFactory':
-        """Clear all global middleware.
+        """Clear runtime middleware.
+
+        Middleware loaded from ``ParxyConfig.middleware`` is preserved.
+        Only middleware added via :meth:`with_middleware` is removed.
 
         Returns
         -------
@@ -354,14 +361,14 @@ class DriverFactory:
         return self
 
     def get_middleware(self) -> List[Middleware]:
-        """Get the list of global middleware.
+        """Get the combined middleware list (config layer + runtime layer).
 
         Returns
         -------
         List[Middleware]
-            Copy of the current global middleware list
+            Copy of the current middleware list, config entries first.
         """
-        return list(self.__middleware)
+        return list(self.__config_middleware) + list(self.__middleware)
 
     def get_drivers(self) -> Dict[str, Driver]:
         """Get all of the created "drivers".

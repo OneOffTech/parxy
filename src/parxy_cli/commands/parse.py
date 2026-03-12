@@ -1,11 +1,10 @@
 """Command line interface for Parxy document processing."""
 
 import json
-import os
 import tomllib
 from datetime import timedelta
 from pathlib import Path
-from typing import Optional, List, Annotated, Dict
+from typing import Optional, List, Annotated
 
 import typer
 
@@ -20,31 +19,21 @@ app = typer.Typer()
 console = Console()
 
 
-DEFAULT_MIDDLEWARE_PROFILES: Dict[str, List[str]] = {
-    'default': [],
-}
-
-
-def _load_middleware_profiles(config_path: Optional[Path]) -> Dict[str, List[str]]:
-    """Load middleware profiles from optional config file.
+def _load_middleware_from_config(config_path: Path) -> List[str]:
+    """Load middleware class paths from a config file.
 
     Supports JSON, TOML, YAML and YML. The expected structure is either:
-    - ``{"middleware_profiles": {"profile": ["path.to.Middleware"]}}``
-    - ``{"profiles": {"profile": ["path.to.Middleware"]}}``
+    - A top-level list: ``["path.to.Middleware1", "path.to.Middleware2"]``
+    - An object with a ``middleware`` key: ``{"middleware": ["path.to.Middleware"]}``
     """
-    profiles = dict(DEFAULT_MIDDLEWARE_PROFILES)
-    if config_path is None:
-        return profiles
-
     if not config_path.exists():
         raise typer.BadParameter(f'Middleware config file not found: {config_path}')
 
     suffix = config_path.suffix.lower()
-    raw_data = None
 
-    if suffix in {'.json'}:
+    if suffix == '.json':
         raw_data = json.loads(config_path.read_text(encoding='utf-8'))
-    elif suffix in {'.toml'}:
+    elif suffix == '.toml':
         raw_data = tomllib.loads(config_path.read_text(encoding='utf-8'))
     elif suffix in {'.yaml', '.yml'}:
         try:
@@ -59,60 +48,43 @@ def _load_middleware_profiles(config_path: Optional[Path]) -> Dict[str, List[str
             'Unsupported middleware config format. Use .json, .toml, .yaml or .yml'
         )
 
-    if not isinstance(raw_data, dict):
-        raise typer.BadParameter(
-            'Middleware config must be an object/map at top level.'
-        )
-
-    custom_profiles = raw_data.get('middleware_profiles') or raw_data.get('profiles')
-    if custom_profiles is None:
-        return profiles
-
-    if not isinstance(custom_profiles, dict):
-        raise typer.BadParameter(
-            'middleware_profiles must be a map of profile names to middleware paths.'
-        )
-
-    for name, middleware_list in custom_profiles.items():
-        if not isinstance(name, str) or not isinstance(middleware_list, list):
+    if isinstance(raw_data, list):
+        middleware_list = raw_data
+    elif isinstance(raw_data, dict):
+        middleware_list = raw_data.get('middleware', [])
+        if not isinstance(middleware_list, list):
             raise typer.BadParameter(
-                'Each profile must map to a list of middleware class paths.'
+                'middleware_config: "middleware" key must be a list of class paths.'
             )
-        if not all(isinstance(item, str) for item in middleware_list):
-            raise typer.BadParameter('Middleware class paths must be strings.')
-        profiles[name] = middleware_list
+    else:
+        raise typer.BadParameter(
+            'Middleware config must be a list or an object with a "middleware" key.'
+        )
 
-    return profiles
+    if not all(isinstance(item, str) for item in middleware_list):
+        raise typer.BadParameter('Middleware class paths must be strings.')
+
+    return middleware_list
 
 
-def configure_middleware_profile(
-    profile: Optional[str],
+def configure_middleware(
+    middleware: Optional[List[str]],
     config_path: Optional[Path],
 ) -> None:
-    """Configure global middleware registry from a selected profile."""
-    selected_profile = profile or os.getenv('PARXY_MIDDLEWARE_PROFILE')
-    if not selected_profile:
+    """Configure global middleware from inline class paths and/or a config file."""
+    paths: List[str] = list(middleware or [])
+
+    if config_path is not None:
+        paths.extend(_load_middleware_from_config(config_path))
+
+    if not paths:
         return
 
-    env_config_path = os.getenv('PARXY_MIDDLEWARE_CONFIG')
-    effective_config = config_path or (
-        Path(env_config_path) if env_config_path else None
-    )
-    profiles = _load_middleware_profiles(effective_config)
-
-    if selected_profile not in profiles:
-        available = ', '.join(sorted(profiles.keys()))
-        raise typer.BadParameter(
-            f'Unknown middleware profile: {selected_profile}. Available profiles: {available}'
-        )
-
-    middleware_paths = profiles[selected_profile]
     Parxy.clear_middleware()
-    if middleware_paths:
-        Parxy.with_middleware(middleware_paths)
+    Parxy.with_middleware(paths)
 
     console.info(
-        f"Using middleware profile '{selected_profile}' ({len(middleware_paths)} middleware)."
+        f'Using {len(paths)} middleware class{"es" if len(paths) != 1 else ""}.'
     )
 
 
@@ -360,12 +332,12 @@ def parse(
             min=1,
         ),
     ] = None,
-    middleware_profile: Annotated[
-        Optional[str],
+    middleware: Annotated[
+        Optional[List[str]],
         typer.Option(
-            '--middleware-profile',
-            envvar='PARXY_MIDDLEWARE_PROFILE',
-            help='Middleware profile name to activate. Built-in: default. Additional profiles can be loaded via --middleware-config.',
+            '--middleware',
+            '-p',
+            help='Middleware class path(s) to apply. Can be specified multiple times (e.g. --middleware my.pkg.MyMiddleware).',
         ),
     ] = None,
     middleware_config: Annotated[
@@ -373,7 +345,7 @@ def parse(
         typer.Option(
             '--middleware-config',
             envvar='PARXY_MIDDLEWARE_CONFIG',
-            help='Path to a .json/.toml/.yaml config file defining custom middleware profiles.',
+            help='Path to a .json/.toml/.yaml file with a list of middleware class paths to apply. Appended after inline middleware with --middleware',
         ),
     ] = None,
 ):
@@ -427,9 +399,8 @@ def parse(
     # Calculate total tasks
     total_tasks = len(files) * len(drivers)
 
-
-    configure_middleware_profile(
-        profile=middleware_profile,
+    configure_middleware(
+        middleware=middleware,
         config_path=Path(middleware_config) if middleware_config else None,
     )
 
