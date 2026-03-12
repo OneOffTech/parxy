@@ -21,7 +21,6 @@ dependencies = [
     "opentelemetry-exporter-otlp>=1.37.0",
     "opentelemetry-proto>=1.37.0",
     "opentelemetry-sdk>=1.37.0",
-    "textual>=0.89.0",
 ]
 
 [project.scripts]
@@ -40,16 +39,18 @@ llmwhisperer = [
 unstructured_local = [
     "unstructured[pdf]>=0.18.13",
 ]
-
 landingai = [
-    "landingai-ade>=0.15.1"
+    "landingai-ade>=0.15.1",
 ]
-
+tui = [
+    "textual>=0.89.0",
+]
 all = [
     "llama-cloud-services>=0.6.77",
     "llmwhisperer-client>=2.4.2",
     "unstructured[pdf]>=0.18.13",
     "landingai-ade>=0.15.1",
+    "textual>=0.89.0",
 ]
 
 

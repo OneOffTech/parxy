@@ -1,21 +1,17 @@
-"""Parser selector widget for choosing parsers to run."""
-
-from typing import List
+"""Footer widget — status bar + hints."""
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical, VerticalScroll
-from textual.widgets import Button, Checkbox, Label, Static
-from textual.message import Message
-
-from parxy_core.facade import Parxy
+from textual.containers import Horizontal
+from textual.widgets import Static
 
 
 class Footer(Horizontal):
-    """Widget for selecting parsers."""
+    """Status + hints footer docked to the bottom of each screen."""
 
     def compose(self) -> ComposeResult:
-        """Compose the parser selector."""
         yield Static('Ready', id='status-bar')
-        yield Static(
-            '[$foreground]ctrl+p[/$foreground] commands', classes='command-palette'
-        )
+        yield Static('', id='footer-hints')
+
+    def set_hints(self, text: str) -> None:
+        """Update the right-hand hints text."""
+        self.query_one('#footer-hints', Static).update(text)

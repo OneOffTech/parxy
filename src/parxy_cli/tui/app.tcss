@@ -1,5 +1,5 @@
 
-/* Utilities */
+/* ── Utilities ─────────────────────────────────────────────────────────── */
 
 .dock-bottom {
     dock: bottom;
@@ -18,36 +18,13 @@
 }
 
 
-
-
-
-Screen {
-    layout: grid;
-    grid-size: 2 1;
-    grid-columns: 2fr 1fr;
-}
-
-/* When sidebar is hidden, use single column layout */
-Screen.sidebar-hidden {
-    grid-size: 1 1;
-    grid-columns: 1fr;
-}
-
-
+/* ── Footer ─────────────────────────────────────────────────────────────── */
 
 Footer {
     layout: horizontal;
     dock: bottom;
     height: 1;
     scrollbar-size: 0 0;
-
-    .command-palette  {
-        width: auto;
-        height: auto;
-        content-align: right middle;
-        color: $text-muted;
-        padding: 0 1;
-    }
 
     &:ansi {
         background: ansi_default;
@@ -60,43 +37,31 @@ Footer {
             color: ansi_default;
         }
     }
-    
 }
 
-/* Main area - left side, 2/3 width */
-#main-area {
+#footer-hints {
+    width: auto;
+    height: 1;
+    content-align: right middle;
+    color: $text-muted;
+    padding: 0 1;
+}
+
+
+/* ── Viewer screen main area ────────────────────────────────────────────── */
+
+#viewer-main {
     width: 100%;
     height: 100%;
     layout: vertical;
 }
 
-/* Sidebar - right side, 1/3 width */
-.sidebar {
-    width: 100%;
-    height: 100%;
-    layout: vertical;
-    padding: 1;
-    background: $surface;
-}
 
+/* ── Welcome / parser selector ──────────────────────────────────────────── */
 
 #welcome-container {
     height: auto;
     width: 100%;
-}
-
-#results-viewer {
-    height: 1fr;
-    width: 100%;
-    display: none;
-}
-
-#status-container {
-    height: auto;
-    width: 100%;
-    padding-top: 1;
-    dock: bottom;
-    layout: horizontal;
 }
 
 #status-bar {
@@ -112,53 +77,9 @@ Footer {
     display: none;
 }
 
-
-
-
-#file-tree-selector {
-    height: 1fr;
-}
-
-#file-tree-selector-container {
-    height: 100%;
-    layout: vertical;
-}
-
-#file-search-input {
-    margin-bottom: 1;
-    padding: 0 1;
-}
-
-#file-tree {
-    height: 1fr;
-}
-
-
-
-#workspace-footer {
-    height: auto;
-    padding: 1 0;
-    dock: bottom;
-}
-
-/* Welcome screen */
-#welcome-container {
-    height: 100%;
-    width: 100%;
-    align: center middle;
-}
-
-#welcome-title {
-    text-align: center;
+.section-title {
     text-style: bold;
-    color: $accent;
-    padding: 2;
-}
-
-#welcome-message {
-    text-align: center;
-    color: $text-muted;
-    padding: 1 4;
+    padding: 0 0 1 0;
 }
 
 /* Parser selector */
@@ -170,11 +91,6 @@ Footer {
 #parser-selector-container {
     height: auto;
     layout: vertical;
-}
-
-.section-title {
-    text-style: bold;
-    padding: 0 0 1 0;
 }
 
 #parser-checkboxes-scroll {
@@ -191,79 +107,13 @@ Checkbox {
     margin: 0 0 0 2;
 }
 
-/* Results viewer */
-#diff-container {
-    width: 100%;
-    height: 100%;
-}
 
-#diff-content {
-    padding: 1;
-}
+/* ── Results viewer ─────────────────────────────────────────────────────── */
 
-#side-by-side-container {
-    width: 100%;
-    height: 100%;
-}
-
-.parser-column {
-    width: 1fr;
-    height: 100%;
-    margin: 0 1;
-}
-
-.parser-title {
-    background: $boost;
-    text-align: center;
-    padding: 1;
-    text-style: bold;
-}
-
-.parser-content {
-    width: 100%;
-    height: 100%;
-    padding: 1;
-}
-
-/* Workspace viewer */
-#workspace-viewer {
+#results-viewer {
     height: 1fr;
     width: 100%;
     display: none;
 }
 
-#workspace-viewer-container {
-    height: 100%;
-    width: 100%;
-    layout: vertical;
-}
 
-#driver-comparison-table {
-    height: auto;
-    max-height: 12;
-    margin-bottom: 1;
-}
-
-#driver-tabs {
-    height: 1fr;
-}
-
-#no-results-message {
-    padding: 2;
-    text-align: center;
-    color: $text-muted;
-}
-
-.subsection-title {
-    padding: 1 0;
-}
-
-/* Workspace summary */
-#workspace-summary-container {
-    height: 100%;
-    width: 100%;
-}
-
-#workspace-summary-table {
-    height: 1fr;
-}
