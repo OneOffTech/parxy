@@ -1,3 +1,8 @@
+---
+title: Getting started
+description: Parse your first PDF with Parxy, explore the unified Document model, and learn how to extract plain text and Markdown from any supported driver.
+---
+
 # Getting Started with Parxy
 
 **Parxy** is a unified Python interface for document parsing.

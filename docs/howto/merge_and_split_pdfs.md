@@ -1,3 +1,8 @@
+---
+title: Merge and split PDFs
+description: How to merge multiple PDFs and split a single PDF into pages or ranges from the command line using parxy pdf:merge and parxy pdf:split.
+---
+
 # How to Manipulate PDFs with Parxy
 
 Parxy provides powerful **PDF manipulation commands** that allow you to merge multiple PDF files into one or split a single PDF into multiple files — all from the command line.

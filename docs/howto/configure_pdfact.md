@@ -1,3 +1,8 @@
+---
+title: Configure PdfAct
+description: How to set up the PdfAct driver against a self-hosted or remote service instance, configure the base URL and API key, and run PdfAct locally with Docker.
+---
+
 # How to Configure PdfAct
 
 This guide shows you how to configure the PdfAct driver for document processing using a self-hosted or remote PdfAct service.

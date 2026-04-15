@@ -1,3 +1,8 @@
+---
+title: Working with PDF attachments
+description: Step-by-step walkthrough for adding, listing, extracting, and removing file attachments embedded in a PDF using Parxy's CLI attachment commands.
+---
+
 # Tutorial: Working with PDF Attachments
 
 In this tutorial, you'll learn how to incorporate file attachments into PDF documents using Parxy's attachment commands. We'll walk through a real-world scenario where you need to bundle data files with a report.
@@ -413,7 +418,7 @@ parxy attach:list document.pdf
 Now that you understand PDF attachments, you can:
 
 1. **Explore other Parxy features:**
-   - [PDF Manipulation](../howto/pdf_manipulation.md) - Merge and split PDFs
+   - [Merge and split PDFs](../howto/merge_and_split_pdfs.md)
    - [Using the CLI](./using_cli.md) - Learn more CLI patterns
 
 2. **Apply to your work:**

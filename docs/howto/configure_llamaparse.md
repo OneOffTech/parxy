@@ -1,3 +1,8 @@
+---
+title: Configure LlamaParse
+description: How to set up the LlamaParse driver, configure the API key and parsing mode, and override options on a per-document basis for better extraction results.
+---
+
 # How to Configure LlamaParse
 
 This guide shows you how to configure the LlamaParse driver for document processing, including setting default options and overriding them on a per-document basis.

@@ -1,3 +1,8 @@
+---
+title: Configure PyMuPDF
+description: How to use Parxy's default PyMuPDF driver, choose the right extraction level for your use case, and adjust the output when working with local PDF files.
+---
+
 # How to Configure PyMuPDF
 
 This guide shows you how to use the PyMuPDF driver for document processing. PyMuPDF is the default driver in Parxy and requires no external services or API keys.

@@ -1,3 +1,8 @@
+---
+title: Agentic usage
+description: How to use Parxy alongside AI coding assistants like Claude Code, GitHub Copilot, and Cursor, including setup and common prompting patterns.
+---
+
 # Agentic Usage
 
 You can use Parxy with AI coding assistants such as Claude Code, GitHub Copilot, Cursor, and other AI-powered development tools.
