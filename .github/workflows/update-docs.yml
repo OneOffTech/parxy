@@ -26,7 +26,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: uv sync
 
       - name: Generate reference docs
         run: uv run python scripts/generate_docs.py
@@ -34,5 +34,5 @@ jobs:
       - name: Commit if changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "docs: regenerate CLI and configuration reference"
+          commit_message: "docs: sync CLI and configuration reference"
           file_pattern: "docs/reference/*.md"
