@@ -1,3 +1,8 @@
+---
+title: Configure LLMWhisperer
+description: How to set up the LLMWhisperer driver, configure the API key and parsing mode, and override options on a per-document basis for better extraction results.
+---
+
 # How to Configure LLMWhisperer
 
 This guide shows you how to configure the LLMWhisperer driver for document processing, including setting default options and overriding them on a per-document basis.

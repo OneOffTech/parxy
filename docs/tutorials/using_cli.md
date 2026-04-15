@@ -300,7 +300,7 @@ parxy pdf:split document.pdf --pages 2:5 --combine -o extracted.pdf
 
 Page range formats (1-based): `3` · `2:5` · `:5` · `3:`
 
-For more detailed examples and use cases, see the [PDF Manipulation How-to Guide](../howto/pdf_manipulation.md).
+For more detailed examples and use cases, see the [Merge and split PDFs](../howto/merge_and_split_pdfs.md) guide.
 
 
 ## Managing Drivers

@@ -1,3 +1,8 @@
+---
+title: Process multiple documents in parallel
+description: How to use Parxy's batch API to parse many documents concurrently, control worker count, handle per-file errors, and collect structured results.
+---
+
 # How to Process Multiple Documents in Parallel
 
 Parxy provides a `batch` method for processing multiple documents in parallel, with support for per-file configuration. This is useful when you need to parse many documents efficiently or when different documents require different parsing strategies.

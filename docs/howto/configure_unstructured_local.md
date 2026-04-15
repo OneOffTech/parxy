@@ -1,3 +1,8 @@
+---
+title: Configure Unstructured library
+description: How to install and configure the Unstructured local driver for offline PDF parsing without external APIs, including extraction levels and output options.
+---
+
 # How to Configure Unstructured Local
 
 This guide shows you how to configure the Unstructured Local driver for document processing. This driver uses the open-source `unstructured` library for local document parsing without requiring external services.

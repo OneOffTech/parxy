@@ -1,6 +1,11 @@
+---
+title: Getting started
+description: Parse your first PDF with Parxy, explore the unified Document model, and learn how to extract plain text and Markdown from any supported driver.
+---
+
 # Getting Started with Parxy
 
-Welcome to your first experience with **Parxy** — a unified Python interface for document parsing.  
+**Parxy** is a unified Python interface for document parsing.
 
 This tutorial will guide you step-by-step through:
 
@@ -151,11 +156,11 @@ In this tutorial you:
 
 You're now ready to try more advanced use cases, such as:
 
-* [Using Parxy from the command line](using_cli.md)
+* [Using Parxy from the command line](./using_cli.md)
 * [Processing multiple documents in parallel](../howto/batch_processing.md)
-* Comparing different parsers on the same document
 * [Extending Parxy with a custom driver](../howto/add_new_parser.md)
 * [Monitoring document processing with OpenTelemetry](../howto/configure_observability.md)
+* Comparing different parsers on the same document
 
 
 > [!TIP]

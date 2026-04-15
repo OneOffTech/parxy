@@ -1,3 +1,8 @@
+---
+title: Configure observability
+description: How to enable OpenTelemetry tracing and metrics in Parxy, connect to an OTLP collector, and monitor document processing operations in your observability stack.
+---
+
 # How to Configure Observability
 
 This guide shows you how to enable and configure OpenTelemetry-based observability in Parxy to monitor document processing operations.

@@ -1,3 +1,8 @@
+---
+title: Configure LandingAI ADE
+description: How to set up the LandingAI Agentic Document Extraction driver, configure the API key and environment, and override parsing options per document.
+---
+
 # How to Configure LandingAI ADE
 
 This guide shows you how to configure the LandingAI ADE (Agentic Document Extraction) driver for document processing, including setting default options and overriding them on a per-document basis.

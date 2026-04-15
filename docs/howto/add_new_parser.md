@@ -1,3 +1,8 @@
+---
+title: Add a new parser
+description: How to implement a custom driver, register it with Parxy at runtime, and make it available alongside the built-in parsers.
+---
+
 # How to Add a New Parser to Parxy
 
 Parxy is designed to be **extensible** — you can integrate new parsing backends (drivers) or create custom variants of existing ones directly from your Python code, without modifying the core library.
