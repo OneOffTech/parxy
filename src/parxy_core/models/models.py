@@ -2,9 +2,9 @@ from abc import ABC
 from dataclasses import dataclass
 from enum import IntEnum
 from io import BytesIO
-from typing import List, Optional, Any, Union
+from typing import List, Optional, Any, Union, Dict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BoundingBox(BaseModel):
@@ -67,6 +67,8 @@ class Block(BaseModel, ABC):
     source_data: Optional[dict[str, Any]] = None
     category: Optional[str] = None
     """Category attributed to this block by the parser"""
+    metadata: Optional[dict[str, Any]] = None
+    """Extended metadata for storing additional information like PII entities"""
 
 
 class TextBlock(Block):
@@ -273,6 +275,32 @@ class Document(BaseModel):
                 markdown_parts.append('\n\n'.join(page_parts))
 
         return '\n\n'.join(markdown_parts)
+
+
+class ParsingRequest(BaseModel):
+    """Request object for document parsing with middleware support.
+
+    Encapsulates all parameters needed for parsing a document, passed through
+    the middleware chain's handle() methods.
+
+    Attributes
+    ----------
+    driver : str
+        The name of the driver to use for parsing (Required).
+    file : Union[str, BytesIO, bytes]
+        The file to parse (path, URL, or binary data).
+    level : str
+        The extraction level (e.g., 'page', 'block', 'line').
+    config : dict[str, Any]
+        Additional configuration options for the parsing process.
+    """
+
+    model_config = {'arbitrary_types_allowed': True}
+
+    driver: str
+    file: Union[str, BytesIO, bytes]
+    level: str
+    config: Dict[str, Any] = Field(default_factory=dict)
 
 
 @dataclass

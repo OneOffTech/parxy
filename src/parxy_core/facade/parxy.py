@@ -1,5 +1,6 @@
 """Facade for accessing Parxy document parsing functionality."""
 
+import importlib
 import io
 import os
 import threading
@@ -13,6 +14,7 @@ from parxy_core.facade.circuit_breaker import CircuitBreakerState
 from parxy_core.models import Document, BatchTask, BatchResult
 from parxy_core.models.config import ParxyConfig
 from parxy_core.services.pdf_service import PdfService
+from parxy_core.middleware import Middleware
 
 
 class Parxy:
@@ -61,6 +63,99 @@ class Parxy:
         return cls._factory
 
     @classmethod
+    def _import_middleware(cls, middleware_path: str) -> Middleware:
+        """Import a middleware class from a string path.
+
+        Parameters
+        ----------
+        middleware_path : str
+            Dot-notation path to the middleware class (e.g., 'parxy_core.middleware.PIIScanner')
+
+        Returns
+        -------
+        Middleware
+            An instance of the middleware class
+
+        Raises
+        ------
+        ImportError
+            If the module or class cannot be imported
+        ValueError
+            If the imported object is not a Middleware subclass
+        """
+        try:
+            module_path, class_name = middleware_path.rsplit('.', 1)
+            module = importlib.import_module(module_path)
+            middleware_class = getattr(module, class_name)
+
+            if not issubclass(middleware_class, Middleware):
+                raise ValueError(f'{middleware_path} is not a Middleware subclass')
+
+            return middleware_class()
+        except (ImportError, AttributeError) as e:
+            raise ImportError(f'Failed to import middleware: {middleware_path}') from e
+
+    @classmethod
+    def with_middleware(cls, middleware: List[Union[str, Middleware]]) -> 'Parxy':
+        """Add middleware to the global middleware chain.
+
+        Middleware can be specified as:
+        - Middleware instances
+        - String paths to middleware classes (for loading from config)
+
+        The middleware are executed in the order they are added.
+
+        Parameters
+        ----------
+        middleware : List[Union[str, Middleware]]
+            List of middleware to add. Each can be a Middleware instance
+            or a string path like 'parxy_core.middleware.PIIScanner'
+
+        Returns
+        -------
+        Parxy
+            Returns self for chaining
+
+        Example
+        -------
+        >>> Parxy.with_middleware(
+        ...     [MyCustomMiddleware(), 'parxy_core.middleware.SimpleMiddleware']
+        ... )
+        >>> doc = Parxy.parse('document.pdf')
+        """
+        factory = cls._get_factory()
+        for mw in middleware:
+            if isinstance(mw, str):
+                factory.with_middleware([cls._import_middleware(mw)])
+            elif isinstance(mw, Middleware):
+                factory.with_middleware([mw])
+            else:
+                raise TypeError(f'Invalid middleware type: {type(mw)}')
+
+        return cls
+
+    @classmethod
+    def clear_middleware(cls) -> None:
+        """Clear all global middleware.
+
+        Note that driver-specific middleware is not affected.
+        """
+        factory = cls._get_factory()
+        factory.clear_middleware()
+
+    @classmethod
+    def get_middleware(cls) -> List[Middleware]:
+        """Get the list of global middleware.
+
+        Returns
+        -------
+        List[Middleware]
+            Copy of the current global middleware list
+        """
+        factory = cls._get_factory()
+        return factory.get_middleware()
+
+    @classmethod
     def parse(
         cls,
         file: str | io.BytesIO | bytes,
@@ -83,7 +178,14 @@ class Parxy:
         Document
             The parsed document
         """
-        return cls.driver(driver_name).parse(file=file, level=level)
+        # Get the driver instance
+        driver = cls.driver(driver_name)
+
+        # Delegate to driver's parse method (middleware execution now happens in driver)
+        return driver.parse(
+            file=file,
+            level=level,
+        )
 
     @classmethod
     def driver(cls, name: Optional[str] = None) -> Driver:

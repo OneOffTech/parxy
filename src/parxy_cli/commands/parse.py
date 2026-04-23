@@ -1,5 +1,7 @@
 """Command line interface for Parxy document processing."""
 
+import json
+import tomllib
 from datetime import timedelta
 from pathlib import Path
 from typing import Optional, List, Annotated
@@ -15,6 +17,75 @@ from parxy_cli.console.console import Console
 app = typer.Typer()
 
 console = Console()
+
+
+def _load_middleware_from_config(config_path: Path) -> List[str]:
+    """Load middleware class paths from a config file.
+
+    Supports JSON, TOML, YAML and YML. The expected structure is either:
+    - A top-level list: ``["path.to.Middleware1", "path.to.Middleware2"]``
+    - An object with a ``middleware`` key: ``{"middleware": ["path.to.Middleware"]}``
+    """
+    if not config_path.exists():
+        raise typer.BadParameter(f'Middleware config file not found: {config_path}')
+
+    suffix = config_path.suffix.lower()
+
+    if suffix == '.json':
+        raw_data = json.loads(config_path.read_text(encoding='utf-8'))
+    elif suffix == '.toml':
+        raw_data = tomllib.loads(config_path.read_text(encoding='utf-8'))
+    elif suffix in {'.yaml', '.yml'}:
+        try:
+            import yaml
+        except ImportError as exc:
+            raise typer.BadParameter(
+                'YAML config requires PyYAML. Install pyyaml or use JSON/TOML config.'
+            ) from exc
+        raw_data = yaml.safe_load(config_path.read_text(encoding='utf-8'))
+    else:
+        raise typer.BadParameter(
+            'Unsupported middleware config format. Use .json, .toml, .yaml or .yml'
+        )
+
+    if isinstance(raw_data, list):
+        middleware_list = raw_data
+    elif isinstance(raw_data, dict):
+        middleware_list = raw_data.get('middleware', [])
+        if not isinstance(middleware_list, list):
+            raise typer.BadParameter(
+                'middleware_config: "middleware" key must be a list of class paths.'
+            )
+    else:
+        raise typer.BadParameter(
+            'Middleware config must be a list or an object with a "middleware" key.'
+        )
+
+    if not all(isinstance(item, str) for item in middleware_list):
+        raise typer.BadParameter('Middleware class paths must be strings.')
+
+    return middleware_list
+
+
+def configure_middleware(
+    middleware: Optional[List[str]],
+    config_path: Optional[Path],
+) -> None:
+    """Configure global middleware from inline class paths and/or a config file."""
+    paths: List[str] = list(middleware or [])
+
+    if config_path is not None:
+        paths.extend(_load_middleware_from_config(config_path))
+
+    if not paths:
+        return
+
+    Parxy.clear_middleware()
+    Parxy.with_middleware(paths)
+
+    console.info(
+        f'Using {len(paths)} middleware class{"es" if len(paths) != 1 else ""}.'
+    )
 
 
 def collect_files_with_depth(
@@ -261,6 +332,22 @@ def parse(
             min=1,
         ),
     ] = None,
+    middleware: Annotated[
+        Optional[List[str]],
+        typer.Option(
+            '--middleware',
+            '-p',
+            help='Middleware class path(s) to apply. Can be specified multiple times (e.g. --middleware my.pkg.MyMiddleware).',
+        ),
+    ] = None,
+    middleware_config: Annotated[
+        Optional[str],
+        typer.Option(
+            '--middleware-config',
+            envvar='PARXY_MIDDLEWARE_CONFIG',
+            help='Path to a .json/.toml/.yaml file with a list of middleware class paths to apply. Appended after inline middleware with --middleware',
+        ),
+    ] = None,
 ):
     """
     Parse documents using one or more drivers.
@@ -311,6 +398,11 @@ def parse(
 
     # Calculate total tasks
     total_tasks = len(files) * len(drivers)
+
+    configure_middleware(
+        middleware=middleware,
+        config_path=Path(middleware_config) if middleware_config else None,
+    )
 
     error_count = 0
 
