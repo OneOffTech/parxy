@@ -6,16 +6,18 @@ import requests
 from parxy_core.models.config import LlamaParseConfig
 from parxy_core.tracing.utils import trace_with_output
 
-# Type hints that will be available at runtime when llama_cloud_services is installed
 if TYPE_CHECKING:
-    from llama_cloud_services import LlamaParse
-    from llama_cloud_services.parse.types import JobResult, PageItem, Page as LlamaPage
+    from llama_cloud import LlamaCloud
+    from llama_cloud.types.parsing_get_response import (
+        ParsingGetResponse,
+        ItemsPageStructuredResultPage,
+        MetadataPage,
+    )
 else:
-    # Placeholder types for when package is not installed
-    LlamaParse = None
-    JobResult = object
-    PageItem = object
-    LlamaPage = object
+    LlamaCloud = None
+    ParsingGetResponse = object
+    ItemsPageStructuredResultPage = object
+    MetadataPage = object
 
 from parxy_core.drivers import Driver
 from parxy_core.models import (
@@ -27,117 +29,118 @@ from parxy_core.models import (
     ImageBlock,
     HierarchyLevel,
 )
-from parxy_core.utils import safe_json_dumps
 from parxy_core.exceptions import (
     ParsingException,
     AuthenticationException,
     FileNotFoundException,
 )
 
-# Mapping from LlamaParse types to WAI-ARIA document structure roles
-# See docs/explanation/document-roles.md for role definitions
+# Mapping from LlamaParse v2 item types to WAI-ARIA document structure roles.
+# See docs/explanation/document-roles.md for role definitions.
 LLAMAPARSE_TO_ROLE: dict[str, str] = {
+    # New API v2 item types
     'text': 'paragraph',
+    'heading': 'heading',
     'table': 'table',
+    'image': 'figure',
+    'list': 'list',
+    'code': 'generic',
+    'link': 'generic',
+    'header': 'doc-pageheader',
+    'footer': 'doc-pagefooter',
+    # Legacy types retained for compatibility with stored source_data
     'tables': 'table',
     'figure': 'figure',
     'figures': 'figure',
-    'list': 'list',
     'lists': 'list',
-    # Footer variants
-    'footer': 'doc-pagefooter',
     'page-footer': 'doc-pagefooter',
     'page_footer': 'doc-pagefooter',
     'page-number': 'doc-pagefooter',
-    # Footnote variants
     'footnote': 'doc-footnote',
     'note': 'doc-footnote',
     'endnote': 'doc-endnotes',
     'annotation': 'doc-footnote',
     'footer-note': 'doc-footnote',
-    # Heading variants
-    'heading': 'heading',
     'title': 'doc-title',
     'titles': 'heading',
     'subtitle': 'doc-subtitle',
     'section': 'heading',
     'chapter': 'doc-chapter',
-    # Header variants
     'page-header': 'doc-pageheader',
     'page_header': 'doc-pageheader',
     'page-heading': 'doc-pageheader',
-    'header': 'doc-pageheader',
 }
 
-_credits_per_parsing_mode = {
-    # Minimum credits per parsing mode as deduced from https://developers.llamaindex.ai/python/cloud/general/pricing/
-    'accurate': 3,  # equivalent to Parse page with LLM as observed in their dashboard
-    'parse_page_without_llm': 1,
-    'parse_page_with_llm': 3,
-    'parse_page_with_lvm': 6,
-    'parse_page_with_agent': 10,
-    'parse_document_with_llm': 30,
-    'parse_document_with_agent': 30,
+# Legacy parse_mode values (llama_cloud_services API) mapped to new tier names.
+_PARSE_MODE_TO_TIER: dict[str, str] = {
+    'parse_page_without_llm': 'fast',
+    'parse_page_with_llm': 'cost_effective',
+    'accurate': 'cost_effective',
+    'parse_page_with_lvm': 'agentic',
+    'parse_page_with_agent': 'agentic',
+    'parse_document_with_llm': 'agentic',
+    'parse_document_with_agent': 'agentic_plus',
+}
+
+# Estimated credits per page per tier (for cost fallback estimation).
+_credits_per_tier: dict[str, int] = {
+    'fast': 1,
+    'cost_effective': 3,
+    'agentic': 6,
+    'agentic_plus': 10,
 }
 
 # Options that can be overridden per-call via kwargs
 _PER_CALL_OPTIONS = frozenset(
     {
-        'model',
-        'skip_diagonal_text',
-        'preset',
+        # New API v2 options
+        'tier',
+        'version',
+        # Legacy options mapped to new API
         'parse_mode',
+        'premium_mode',
+        'fast_mode',
         'language',
         'target_pages',
         'max_pages',
-        'continuous_mode',
-        'disable_ocr',
-        'disable_image_extraction',
-        'fast_mode',
-        'premium_mode',
-        'high_res_ocr',
-        'extract_layout',
-        'auto_mode',
+        'skip_diagonal_text',
         'do_not_unroll_columns',
+        'disable_image_extraction',
+        'disable_ocr',
+        'continuous_mode',
+        'do_not_cache',
     }
 )
 
 
 class LlamaParseDriver(Driver):
-    """Llama Cloud Services document processing via LlamaParse API.
-
-    This parser interacts with the LlamaParse cloud service to extract document text,
-    supporting page- and block-level extraction.
+    """LlamaCloud document processing via LlamaParse API v2.
 
     Attributes
     ----------
     supported_levels : list of str
         The supported extraction levels: `page`, `block`.
-    client : LlamaParse
-        The LlamaParse client instance.
+    client : LlamaCloud
+        The LlamaCloud client instance (created fresh per call).
     """
 
     _config: LlamaParseConfig
 
-    # supported_levels: list[str] = ["page", "block"]
-
     def _initialize_driver(self):
-        """Initialize the Llama Parse driver.
+        """Initialize the LlamaParse driver.
 
-        Validates that dependencies are installed.
-        A fresh client is created per ``_handle`` call to avoid sharing asyncio
-        event-loop state across threads (LlamaParse uses ``asyncio.run``
-        internally, so a single client instance cannot be used concurrently).
+        Validates that the llama-cloud package is installed. A fresh client is
+        created per ``_handle`` call to avoid sharing state across threads.
 
         Raises
         ------
         ImportError
-            If LlamaParse dependencies are not installed
+            If llama-cloud dependencies are not installed
         """
         try:
-            from llama_cloud_services import LlamaParse
+            from llama_cloud import LlamaCloud
 
-            self._LlamaParse = LlamaParse  # Store class reference for per-call clients
+            self._LlamaCloud = LlamaCloud
         except ImportError as e:
             raise ImportError(
                 'LlamaParse dependencies not installed. '
@@ -145,33 +148,87 @@ class LlamaParseDriver(Driver):
             ) from e
 
     def _create_client(
-        self, config_dict: dict, api_key: Optional['SecretStr'] = None
-    ) -> 'LlamaParse':
-        """Create a LlamaParse client with the given configuration.
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ) -> 'LlamaCloud':
+        """Create a LlamaCloud client."""
+        kwargs: dict = {}
+        if api_key:
+            kwargs['api_key'] = api_key
+        if base_url:
+            kwargs['base_url'] = base_url
+        return self._LlamaCloud(**kwargs)
 
-        Parameters
-        ----------
-        config_dict : dict
-            Configuration dictionary to pass to LlamaParse constructor.
-        api_key : SecretStr, optional
-            The API key (passed separately since it's excluded from model_dump).
+    def _resolve_tier(self, overrides: dict) -> str:
+        """Resolve the parsing tier, honouring legacy config options."""
+        if overrides.get('tier'):
+            return overrides['tier']
+        if overrides.get('premium_mode') or (
+            self._config and self._config.premium_mode
+        ):
+            return 'agentic_plus'
+        if overrides.get('fast_mode') or (self._config and self._config.fast_mode):
+            return 'fast'
+        parse_mode = overrides.get('parse_mode') or (
+            self._config.parse_mode if self._config else None
+        )
+        if parse_mode:
+            return _PARSE_MODE_TO_TIER.get(parse_mode, 'cost_effective')
+        if self._config and self._config.tier:
+            return self._config.tier
+        return 'cost_effective'
 
-        Returns
-        -------
-        LlamaParse
-            Configured client instance
-        """
-        # Make a copy to avoid modifying the original
-        config = config_dict.copy()
+    def _get_opt(self, overrides: dict, key: str, default=None):
+        """Return the value for ``key`` from overrides, config, or default."""
+        if key in overrides:
+            return overrides[key]
+        if self._config and hasattr(self._config, key):
+            val = getattr(self._config, key)
+            if val is not None:
+                return val
+        return default
 
-        # Handle api_key (may be SecretStr, needs to be converted)
-        if api_key is not None:
-            if hasattr(api_key, 'get_secret_value'):
-                api_key = api_key.get_secret_value()
-            # Only pass api_key if it has a value, otherwise let LlamaParse use default
-            config['api_key'] = api_key
+    def _build_processing_options(self, overrides: dict) -> dict:
+        opts: dict = {}
+        ignore_opts: dict = {}
 
-        return self._LlamaParse(**config)
+        if self._get_opt(overrides, 'skip_diagonal_text', False):
+            ignore_opts['ignore_diagonal_text'] = True
+        if self._get_opt(overrides, 'disable_ocr', False):
+            ignore_opts['ignore_text_in_image'] = True
+        if ignore_opts:
+            opts['ignore'] = ignore_opts
+
+        language = self._get_opt(overrides, 'language', None)
+        if language:
+            opts['ocr_parameters'] = {'languages': [language]}
+
+        return opts
+
+    def _build_output_options(self, overrides: dict) -> dict:
+        opts: dict = {}
+
+        if self._get_opt(overrides, 'do_not_unroll_columns', False):
+            opts['spatial_text'] = {'do_not_unroll_columns': True}
+
+        if self._get_opt(overrides, 'continuous_mode', False):
+            opts['markdown'] = {'tables': {'merge_continued_tables': True}}
+
+        if self._get_opt(overrides, 'disable_image_extraction', False):
+            opts['images_to_save'] = []
+
+        return opts
+
+    def _build_page_ranges(self, overrides: dict) -> dict:
+        opts: dict = {}
+        target_pages = self._get_opt(overrides, 'target_pages', None)
+        if target_pages:
+            opts['target_pages'] = target_pages
+        max_pages = self._get_opt(overrides, 'max_pages', None)
+        if max_pages:
+            opts['max_pages'] = max_pages
+        return opts
 
     def _fetch_usage_metrics(self, job_id: str) -> Optional[dict]:
         """Fetch actual usage metrics from the LlamaParse beta API.
@@ -184,31 +241,25 @@ class LlamaParseDriver(Driver):
         Returns
         -------
         Optional[dict]
-            Dictionary with 'total_cost', 'cost_unit', 'parsing_mode_counts', and 'mode_details'
-            Returns None if organization_id is not configured or if the API call fails
+            Dictionary with cost and mode data, or None if unavailable.
         """
-        # Only fetch if organization_id is configured
         if not self._config or not self._config.organization_id:
             return None
 
         try:
-            # Construct the beta API endpoint
             base_url = self._config.base_url.rstrip('/')
             endpoint = f'{base_url}/api/v1/beta/usage-metrics'
 
-            # Prepare request parameters
             params = {
                 'organization_id': self._config.organization_id,
                 'event_aggregation_key': job_id,
             }
 
-            # Prepare headers with authentication
             headers = {
                 'Authorization': f'Bearer {self._config.api_key.get_secret_value()}',
                 'Content-Type': 'application/json',
             }
 
-            # Make the API request
             response = requests.get(
                 endpoint, params=params, headers=headers, timeout=10
             )
@@ -220,8 +271,7 @@ class LlamaParseDriver(Driver):
             if not items:
                 return None
 
-            # Aggregate usage data by parsing mode
-            parsing_mode_counts = {}
+            parsing_mode_counts: dict = {}
             mode_details = []
 
             for item in items:
@@ -230,10 +280,7 @@ class LlamaParseDriver(Driver):
                     pages = item.get('value', 0)
                     model = item.get('properties', {}).get('model', 'unknown')
 
-                    # Count pages per mode
                     parsing_mode_counts[mode] = parsing_mode_counts.get(mode, 0) + pages
-
-                    # Store detailed info
                     mode_details.append(
                         {
                             'mode': mode,
@@ -243,11 +290,10 @@ class LlamaParseDriver(Driver):
                         }
                     )
 
-            # Calculate total cost based on actual usage
-            total_cost = 0
-            for mode, count in parsing_mode_counts.items():
-                credits_per_page = _credits_per_parsing_mode.get(mode, 3)
-                total_cost += credits_per_page * count
+            total_cost = sum(
+                _credits_per_tier.get(mode, 3) * count
+                for mode, count in parsing_mode_counts.items()
+            )
 
             return {
                 'total_cost': total_cost,
@@ -257,7 +303,6 @@ class LlamaParseDriver(Driver):
             }
 
         except Exception as e:
-            # Log the error but don't fail the parsing
             self._logger.warning(
                 f'Failed to fetch usage metrics from beta API: {str(e)}'
             )
@@ -269,7 +314,7 @@ class LlamaParseDriver(Driver):
         level: str = 'block',
         **kwargs,
     ) -> Document:
-        """Parse a document using LlamaParse.
+        """Parse a document using LlamaParse API v2.
 
         Parameters
         -------
@@ -280,22 +325,20 @@ class LlamaParseDriver(Driver):
         **kwargs
             Per-call configuration overrides. Supported options:
 
-            - model: Document model name for parse_with_agent
-            - skip_diagonal_text: Skip diagonal text (useful for CAD)
-            - preset: Parser preset (overrides most options)
-            - parse_mode: Parsing mode ('accurate', 'parse_page_with_llm', etc.)
-            - language: Text language
-            - target_pages: Specific pages to parse (e.g., '0,2,5-10')
+            - tier: Parsing tier ('fast', 'cost_effective', 'agentic', 'agentic_plus')
+            - version: API version string (default 'latest')
+            - parse_mode: Legacy mode name (mapped to tier for backward compatibility)
+            - premium_mode: If True, uses 'agentic_plus' tier
+            - fast_mode: If True, uses 'fast' tier
+            - language: OCR language code (e.g. 'en')
+            - target_pages: Comma-separated 1-based page numbers or ranges (e.g. '1,3,5-8')
             - max_pages: Maximum pages to extract
-            - continuous_mode: Better table handling across pages
-            - disable_ocr: Disable OCR
-            - disable_image_extraction: Don't extract images
-            - fast_mode: Speed over accuracy
-            - premium_mode: Best parser mode
-            - high_res_ocr: High resolution OCR
-            - extract_layout: Extract layout information
-            - auto_mode: Automatic mode selection
-            - do_not_unroll_columns: Keep columns in layout
+            - skip_diagonal_text: Skip text rotated at an angle
+            - do_not_unroll_columns: Keep multi-column layout intact
+            - disable_image_extraction: Skip image extraction
+            - disable_ocr: Disable OCR on images
+            - continuous_mode: Merge tables that span multiple pages
+            - do_not_cache: Bypass result caching
 
         Returns
         -------
@@ -305,7 +348,7 @@ class LlamaParseDriver(Driver):
         Raises
         ------
         ImportError
-            If LlamaParse dependencies are not installed
+            If llama-cloud dependencies are not installed
         AuthenticationException
             If authentication with LlamaParse fails
         FileNotFoundException
@@ -313,82 +356,105 @@ class LlamaParseDriver(Driver):
         ParsingException
             If any other parsing error occurs
         """
-        # Extract per-call overrides from kwargs
         overrides = {k: v for k, v in kwargs.items() if k in _PER_CALL_OPTIONS}
-        remaining_kwargs = {
-            k: v for k, v in kwargs.items() if k not in _PER_CALL_OPTIONS
-        }
 
-        # Always create a fresh client per call.  LlamaParse uses
-        # ``asyncio.run`` internally which binds objects to a thread-local
-        # event loop, so sharing a single client across threads causes
-        # "bound to a different event loop" errors.
-        merged_config = self._config.model_dump() if self._config else {}
-        if overrides:
-            merged_config.update(overrides)
-        client = self._create_client(
-            merged_config,
-            api_key=self._config.api_key if self._config else None,
+        api_key = (
+            self._config.api_key.get_secret_value()
+            if (self._config and self._config.api_key)
+            else None
         )
+        base_url = self._config.base_url if self._config else None
+        client = self._create_client(api_key=api_key, base_url=base_url)
+
+        tier = self._resolve_tier(overrides)
+        version = (
+            overrides.get('version')
+            or (self._config.version if self._config else None)
+            or 'latest'
+        )
+
+        expand = ['text', 'metadata', 'job_metadata']
+        if HierarchyLevel[level.upper()] >= HierarchyLevel.BLOCK:
+            expand.append('items')
+            if not self._get_opt(overrides, 'disable_image_extraction', False):
+                expand.append('images_content_metadata')
+
+        processing_options = self._build_processing_options(overrides)
+        output_options = self._build_output_options(overrides)
+        page_ranges = self._build_page_ranges(overrides)
+        disable_cache = self._get_opt(overrides, 'do_not_cache', True)
+
+        try:
+            from llama_cloud._polling import PollingError, PollingTimeoutError
+            from llama_cloud._exceptions import (
+                AuthenticationError,
+                PermissionDeniedError,
+            )
+        except ImportError:
+            PollingError = Exception  # type: ignore[assignment,misc]
+            PollingTimeoutError = Exception  # type: ignore[assignment,misc]
+            AuthenticationError = Exception  # type: ignore[assignment,misc]
+            PermissionDeniedError = Exception  # type: ignore[assignment,misc]
 
         try:
             filename, stream = self.handle_file_input(file)
-            extra_info = {'file_name': filename if len(filename) > 0 else 'default'}
+            upload_filename = filename if filename else 'document.pdf'
+
             with self._trace_parse(filename, stream, **kwargs) as span:
-                res = client.parse(stream, extra_info=extra_info)
-                span.set_attribute('output.document', safe_json_dumps(res.model_dump()))
+                parse_kwargs: dict = {
+                    'upload_file': (upload_filename, stream),
+                    'tier': tier,
+                    'version': version,
+                    'expand': expand,
+                    'disable_cache': disable_cache,
+                    'verbose': self._config.verbose if self._config else False,
+                }
+                if self._config and self._config.organization_id:
+                    parse_kwargs['organization_id'] = self._config.organization_id
+                if self._config and self._config.project_id:
+                    parse_kwargs['project_id'] = self._config.project_id
+                if processing_options:
+                    parse_kwargs['processing_options'] = processing_options
+                if output_options:
+                    parse_kwargs['output_options'] = output_options
+                if page_ranges:
+                    parse_kwargs['page_ranges'] = page_ranges
+
+                res = client.parsing.parse(**parse_kwargs)
+                span.set_attribute('output.document', res.model_dump_json())
+
         except FileNotFoundError as fex:
             raise FileNotFoundException(fex, self.__class__) from fex
+        except (AuthenticationError, PermissionDeniedError) as ex:
+            raise AuthenticationException(
+                message=str(ex),
+                service=self.__class__,
+                details={
+                    'status_code': getattr(ex, 'status_code', None),
+                    'error_response': getattr(ex, 'body', None),
+                },
+            ) from ex
+        except (PollingError, PollingTimeoutError) as ex:
+            raise ParsingException(str(ex), self.__class__) from ex
         except Exception as ex:
-            # Handle HTTP status errors specifically for authentication failures
-            if hasattr(ex, '__cause__') and ex.__cause__ is not None:
-                cause = ex.__cause__
-                if hasattr(cause, 'response') and cause.response is not None:
-                    status_code = cause.response.status_code
-                    error_detail = (
-                        cause.response.json() if hasattr(cause.response, 'json') else {}
-                    )
-
-                    if status_code in (401, 403):
-                        raise AuthenticationException(
-                            message=str(
-                                error_detail.get('detail', 'Authentication failed')
-                            ),
-                            service=self.__class__,
-                            details={
-                                'status_code': status_code,
-                                'error_response': error_detail,
-                            },
-                        ) from ex
-
-            # For all other errors, raise as parsing exception
             raise ParsingException(str(ex), self.__class__) from ex
 
-        if res.error is not None:
-            raise ParsingException(
-                res.error, self.__class__, res.model_dump(exclude={'file_name'})
-            )
-
-        converted_document = llamaparse_to_parxy(doc=res, level=level)
+        converted_document = llamaparse_to_parxy(
+            doc=res, filename=filename, level=level
+        )
 
         if converted_document.parsing_metadata is None:
             converted_document.parsing_metadata = {}
 
-        converted_document.parsing_metadata['job_id'] = res.job_id
-        converted_document.parsing_metadata['job_metadata'] = (
-            res.job_metadata.model_dump_json()
-        )
-        converted_document.parsing_metadata['job_error'] = getattr(res, 'error', None)
-        converted_document.parsing_metadata['job_error_code'] = getattr(
-            res, 'error_code', None
-        )
-        converted_document.parsing_metadata['job_status'] = getattr(res, 'status', None)
+        converted_document.parsing_metadata['job_id'] = res.job.id
+        converted_document.parsing_metadata['job_metadata'] = res.job_metadata
+        converted_document.parsing_metadata['job_status'] = res.job.status
+        converted_document.parsing_metadata['job_error'] = res.job.error_message
+        converted_document.parsing_metadata['tier'] = tier
 
-        # Try to fetch actual usage metrics from beta API if organization_id is configured
-        usage_metrics = self._fetch_usage_metrics(res.job_id)
+        usage_metrics = self._fetch_usage_metrics(res.job.id)
 
         if usage_metrics:
-            # Use actual metrics from the API
             converted_document.parsing_metadata['cost_estimation'] = usage_metrics[
                 'total_cost'
             ]
@@ -403,242 +469,202 @@ class LlamaParseDriver(Driver):
                 'mode_details'
             ]
         else:
-            # Fall back to estimation from page source_data
-            parsing_modes = {}
-            parsing_mode_counts = {}
-
-            for page in converted_document.pages:
-                if page.source_data and 'parsingMode' in page.source_data:
-                    mode = page.source_data['parsingMode']
-                    parsing_modes[page.number] = mode
-
-                    # Count pages per parsing mode
-                    if mode in parsing_mode_counts:
-                        parsing_mode_counts[mode] += 1
-                    else:
-                        parsing_mode_counts[mode] = 1
-
-            if parsing_modes:
-                converted_document.parsing_metadata['page_parsing_modes'] = (
-                    parsing_modes
-                )
-                converted_document.parsing_metadata['parsing_mode_counts'] = (
-                    parsing_mode_counts
-                )
-
-                # Calculate cost estimation based on parsing modes
-                total_cost = 0
-                for mode, count in parsing_mode_counts.items():
-                    # Use the credit cost from the dictionary, or default to 3 if not recognized
-                    credits_per_page = _credits_per_parsing_mode.get(mode, 3)
-                    total_cost += credits_per_page * count
-
-                converted_document.parsing_metadata['cost_estimation'] = total_cost
-                converted_document.parsing_metadata['cost_estimation_unit'] = 'credits'
-                converted_document.parsing_metadata['cost_data_source'] = 'estimation'
+            page_count = len(converted_document.pages)
+            credits_per_page = _credits_per_tier.get(tier, 3)
+            converted_document.parsing_metadata['cost_estimation'] = (
+                credits_per_page * page_count
+            )
+            converted_document.parsing_metadata['cost_estimation_unit'] = 'credits'
+            converted_document.parsing_metadata['cost_data_source'] = 'estimation'
 
         return converted_document
 
 
 @trace_with_output('converting')
 def llamaparse_to_parxy(
-    doc: JobResult,
+    doc: 'ParsingGetResponse',
+    filename: str,
     level: str,
 ) -> Document:
-    """Convert a LlamaParse `JobResult` to a `Document` object.
+    """Convert a LlamaParse ``ParsingGetResponse`` to a ``Document`` object.
 
     Parameters
-    ----
-    doc : JobResult
-        The LlamaParse result object.
+    ----------
+    doc : ParsingGetResponse
+        The LlamaParse v2 result object.
+    filename : str
+        Original filename (not included in the response).
     level : str
         Desired extraction level.
 
     Returns
     -------
     Document
-        The converted `Document` in unified format.
+        The converted ``Document`` in unified format.
     """
-    pages = [_convert_page(page, level.upper()) for page in doc.pages]
+    metadata_by_page: dict = {}
+    if doc.metadata:
+        for meta_page in doc.metadata.pages:
+            metadata_by_page[meta_page.page_number] = meta_page
+
+    text_by_page: dict = {}
+    if doc.text:
+        for text_page in doc.text.pages:
+            text_by_page[text_page.page_number] = text_page.text
+
+    pages = []
+    level_upper = level.upper()
+
+    if doc.items:
+        for items_page in doc.items.pages:
+            page_text = text_by_page.get(items_page.page_number, '')
+            meta_page = metadata_by_page.get(items_page.page_number)
+            if getattr(items_page, 'success', True):
+                page = _convert_page(items_page, page_text, meta_page, level_upper)
+            else:
+                page = Page(
+                    number=items_page.page_number,
+                    text=page_text,
+                    blocks=[],
+                    source_data={'error': getattr(items_page, 'error', None)},
+                )
+            pages.append(page)
+    elif doc.text:
+        for text_page in doc.text.pages:
+            meta_page = metadata_by_page.get(text_page.page_number)
+            source = meta_page.model_dump() if meta_page else {}
+            pages.append(
+                Page(
+                    number=text_page.page_number,
+                    text=text_page.text,
+                    blocks=None,
+                    source_data=source,
+                )
+            )
+
+    source_data: dict = {}
+    if doc.job_metadata:
+        source_data['job_metadata'] = doc.job_metadata
+
     return Document(
-        filename=doc.file_name,
+        filename=filename,
         pages=pages,
-        source_data=doc.model_dump(exclude={'file_name', 'pages'}),
+        source_data=source_data,
     )
 
 
-def _convert_text_block(text_block: PageItem, page_number: int) -> TextBlock:
-    """Convert a LlamaParse `PageItem` to a `TextBlock`.
-
-    Parameters
-    ----
-    text_block : PageItem
-        The LlamaParse page item.
-    page_number : int
-        The page number (0-based).
-
-    Returns
-    -------
-    TextBlock
-        The converted `TextBlock` object.
-    """
-    ## Note: Bounding Box (bBox) can be None, it is still to be evaluated if that is a sign of hallucination or not
-    bbox = (
-        BoundingBox(
-            x0=text_block.bBox.x,
-            y0=text_block.bBox.y,
-            x1=text_block.bBox.x + text_block.bBox.w,
-            y1=text_block.bBox.y + text_block.bBox.h,
-        )
-        if text_block.bBox is not None
-        else None
+def _extract_bbox(bbox_list) -> Optional[BoundingBox]:
+    """Extract the first bounding box from a list of BBox objects."""
+    if not bbox_list:
+        return None
+    b = bbox_list[0]
+    return BoundingBox(
+        x0=b.x,
+        y0=b.y,
+        x1=b.x + b.w,
+        y1=b.y + b.h,
     )
-    # Handle empty page marker
-    text_value = text_block.value if text_block.value else ''
+
+
+def _convert_text_block(item, page_number: int) -> TextBlock:
+    """Convert a LlamaParse v2 item to a ``TextBlock``."""
+    bbox = _extract_bbox(getattr(item, 'bbox', None))
+    # Most items use 'value'; header/footer/list containers use 'md'
+    text_value = getattr(item, 'value', None) or getattr(item, 'md', '') or ''
     if text_value == 'NO_CONTENT_HERE':
         text_value = ''
-    category = text_block.type
-    role = LLAMAPARSE_TO_ROLE.get(category, 'generic') if category else 'generic'
+    item_type = getattr(item, 'type', None)
+    role = LLAMAPARSE_TO_ROLE.get(item_type, 'generic') if item_type else 'generic'
+    heading_level = getattr(item, 'level', None)
+
+    source_data: dict = {}
+    if hasattr(item, 'model_dump'):
+        source_data = item.model_dump(exclude={'bbox', 'value', 'type', 'level'})
+
     return TextBlock(
         type='text',
         role=role,
-        category=category,
-        level=text_block.lvl,
+        category=item_type,
+        level=heading_level,
         text=text_value,
         bbox=bbox,
         page=page_number,
-        source_data=text_block.model_dump(exclude={'bBox', 'value', 'type', 'lvl'}),
+        source_data=source_data,
     )
 
 
-def _convert_table_block(text_block: PageItem, page_number: int) -> TableBlock:
-    """Convert a LlamaParse `PageItem` with table type to a `TableBlock`.
+def _convert_table_block(item, page_number: int) -> TableBlock:
+    """Convert a LlamaParse v2 TableItem to a ``TableBlock``."""
+    bbox = _extract_bbox(getattr(item, 'bbox', None))
+    text_value = getattr(item, 'md', '') or ''
+    item_type = getattr(item, 'type', 'table')
+    role = LLAMAPARSE_TO_ROLE.get(item_type, 'table')
 
-    Parameters
-    ----
-    text_block : PageItem
-        The LlamaParse page item containing table data.
-    page_number : int
-        The page number (0-based).
+    source_data: dict = {}
+    if hasattr(item, 'model_dump'):
+        source_data = item.model_dump(exclude={'bbox', 'type'})
 
-    Returns
-    -------
-    TableBlock
-        The converted `TableBlock` object with markdown table content.
-    """
-    bbox = BoundingBox(
-        x0=text_block.bBox.x,
-        y0=text_block.bBox.y,
-        x1=text_block.bBox.x + text_block.bBox.w,
-        y1=text_block.bBox.y + text_block.bBox.h,
-    )
-    # Use markdown representation as the text content for tables
-    text_value = getattr(text_block, 'md', '') or ''
-    category = text_block.type
-    role = LLAMAPARSE_TO_ROLE.get(category, 'table') if category else 'table'
     return TableBlock(
         type='table',
         role=role,
-        category=category,
+        category=item_type,
         text=text_value,
         bbox=bbox,
         page=page_number,
-        source_data=text_block.model_dump(exclude={'bBox', 'value', 'type', 'lvl'}),
+        source_data=source_data,
     )
 
 
-def _convert_image_block(image_data, page_number: int) -> ImageBlock:
-    """Convert a LlamaParse image entry to an `ImageBlock`.
+def _convert_image_block(item, page_number: int) -> ImageBlock:
+    """Convert a LlamaParse v2 ImageItem to an ``ImageBlock``."""
+    bbox = _extract_bbox(getattr(item, 'bbox', None))
+    alt_text = getattr(item, 'caption', None) or None
+    url = getattr(item, 'url', None)
 
-    Parameters
-    ----
-    image_data
-        Image data from the LlamaParse page (model object or dict).
-    page_number : int
-        The page number (0-based).
-
-    Returns
-    -------
-    ImageBlock
-        The converted `ImageBlock` object.
-    """
-    # Normalise to dict so we can handle both Pydantic models and plain dicts
-    if isinstance(image_data, dict):
-        img = image_data
-    elif hasattr(image_data, 'model_dump'):
-        img = image_data.model_dump()
-    else:
-        img = vars(image_data)
-
-    bbox = BoundingBox(
-        x0=img.get('x', 0),
-        y0=img.get('y', 0),
-        x1=img.get('x', 0) + img.get('width', 0),
-        y1=img.get('y', 0) + img.get('height', 0),
-    )
-
-    # Build alt_text from OCR entries when available
-    ocr_entries = img.get('ocr') or []
-    alt_text = (
-        ' '.join(
-            entry.get('text', '')
-            if isinstance(entry, dict)
-            else getattr(entry, 'text', '')
-            for entry in ocr_entries
-        ).strip()
-        or None
-    )
+    source_data: dict = {}
+    if hasattr(item, 'model_dump'):
+        source_data = item.model_dump(exclude={'bbox', 'type'})
 
     return ImageBlock(
         type='image',
         role='figure',
         category='figure',
-        name=img.get('name'),
+        name=url,
         alt_text=alt_text,
         bbox=bbox,
         page=page_number,
-        source_data=img,
+        source_data=source_data,
     )
 
 
 def _convert_page(
-    page: LlamaPage,
+    items_page: 'ItemsPageStructuredResultPage',
+    page_text: str,
+    meta_page: Optional['MetadataPage'],
     level: str,
 ) -> Page:
-    """Convert a LlamaParse `Page` to a `Page` object.
-
-    Parameters
-    ----
-    page : LlamaPage
-        The LlamaParse page object.
-    level : str
-        Desired extraction level.
-
-    Returns
-    -------
-    Page
-        The converted `Page` object.
-    """
+    """Convert a LlamaParse v2 structured page to a ``Page`` object."""
     blocks = None
     if HierarchyLevel[level] >= HierarchyLevel.BLOCK:
         blocks = []
-        for item in page.items:
-            if item.type in ('table', 'tables'):
-                blocks.append(_convert_table_block(item, page.page))
+        for item in items_page.items:
+            item_type = getattr(item, 'type', None)
+            if item_type == 'table':
+                blocks.append(_convert_table_block(item, items_page.page_number))
+            elif item_type == 'image':
+                blocks.append(_convert_image_block(item, items_page.page_number))
             else:
-                blocks.append(_convert_text_block(item, page.page))
+                blocks.append(_convert_text_block(item, items_page.page_number))
 
-        # Process page-level images into ImageBlocks
-        images = getattr(page, 'images', None) or []
-        for image_data in images:
-            blocks.append(_convert_image_block(image_data, page.page))
+    source_data: dict = {}
+    if meta_page:
+        source_data['metadata'] = meta_page.model_dump()
+
     return Page(
-        number=page.page,
-        width=page.width,
-        height=page.height,
-        text=page.text if page.text != 'NO_CONTENT_HERE' else '',
+        number=items_page.page_number,
+        width=items_page.page_width,
+        height=items_page.page_height,
+        text=page_text,
         blocks=blocks,
-        source_data=page.model_dump(
-            exclude={'page', 'text', 'items', 'width', 'height'}
-        ),
+        source_data=source_data,
     )

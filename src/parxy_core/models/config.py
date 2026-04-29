@@ -123,10 +123,10 @@ class LlamaParseConfig(BaseConfig):
 
     # Connection settings
     base_url: str = 'https://api.cloud.eu.llamaindex.ai'
-    """The base URL of the Llama Parsing API."""
+    """The base URL of the LlamaParse API. Override to use a different region or self-hosted instance."""
 
     api_key: SecretStr = Field(exclude=True, default=None)
-    """The authentication key"""
+    """The authentication key."""
 
     organization_id: Optional[str] = None
     """The organization ID for the LlamaParse API."""
@@ -134,72 +134,61 @@ class LlamaParseConfig(BaseConfig):
     project_id: Optional[str] = None
     """The project ID for the LlamaParse API."""
 
-    # Client behavior
-    num_workers: Optional[int] = 4
-    """The number of workers to use sending API requests for parsing."""
+    # Parsing tier (LlamaParse API v2)
+    tier: Optional[Literal['fast', 'cost_effective', 'agentic', 'agentic_plus']] = None
+    """Parsing tier to use. Options: 'fast' (rule-based, cheapest), 'cost_effective' (balanced),
+    'agentic' (AI-powered), 'agentic_plus' (premium AI). Defaults to 'cost_effective' when not set."""
 
-    show_progress: Optional[bool] = False
-    """Show progress when parsing multiple files."""
+    version: Optional[str] = 'latest'
+    """API version string. Use 'latest' for the current stable version or a date string for reproducibility."""
 
-    verbose: Optional[bool] = False
-    """Whether to print the progress of the parsing."""
-
-    # Parsing mode configuration
-    parse_mode: Optional[str] = 'parse_page_with_llm'
-    """Parsing mode to use. Options: 'accurate', 'parse_page_without_llm', 'parse_page_with_llm', 'parse_page_with_lvm', 'parse_page_with_agent', 'parse_document_with_llm', 'parse_document_with_agent'."""
-
-    preset: Optional[str] = None
-    """Parser preset. If set, overrides most other parameters. See LlamaParse documentation for available presets."""
-
-    model: Optional[str] = None
-    """Document model name for parse_with_agent mode."""
+    # Legacy parsing mode (LlamaParse API v1, mapped to tier for backward compatibility)
+    parse_mode: Optional[str] = None
+    """Legacy parsing mode. Mapped to the equivalent tier automatically.
+    Options: 'parse_page_without_llm' → fast, 'parse_page_with_llm' / 'accurate' → cost_effective,
+    'parse_page_with_lvm' / 'parse_page_with_agent' / 'parse_document_with_llm' → agentic,
+    'parse_document_with_agent' → agentic_plus."""
 
     premium_mode: Optional[bool] = False
-    """Use best parser mode if set to True."""
+    """If True, selects the 'agentic_plus' tier (legacy shorthand)."""
 
     fast_mode: Optional[bool] = False
-    """Use faster mode that skips OCR of images and table/heading reconstruction. Not compatible with gpt-4o."""
+    """If True, selects the 'fast' tier (legacy shorthand)."""
 
-    # OCR and extraction settings
+    # OCR and text extraction
     disable_ocr: Optional[bool] = False
-    """Disable the OCR on the document. LlamaParse will only extract the copyable text from the document."""
+    """Disable OCR on images embedded in the document."""
 
-    disable_image_extraction: Optional[bool] = False
-    """If set to true, the parser will not extract images from the document. Makes the parser faster."""
-
-    high_res_ocr: Optional[bool] = False
-    """Use high resolution OCR to extract text from images. Increases accuracy but reduces speed."""
-
-    extract_layout: Optional[bool] = False
-    """Extract layout information from the document. Costs 1 credit per page."""
-
-    # Text handling
     skip_diagonal_text: Optional[bool] = False
-    """Skip diagonal text (when text rotation in degrees modulo 90 is not 0). Useful for CAD drawings."""
+    """Skip text rotated at an angle (e.g. watermarks, CAD annotations)."""
 
     language: Optional[str] = 'en'
-    """Language of the text to parse."""
+    """Primary language for OCR (e.g. 'en', 'de', 'fr')."""
 
+    # Output options
     do_not_unroll_columns: Optional[bool] = False
-    """Keep columns in text according to document layout. May reduce reconstruction accuracy."""
+    """Keep multi-column layout intact instead of linearising columns into sequential text."""
+
+    disable_image_extraction: Optional[bool] = False
+    """If True, skip image extraction. Makes parsing faster."""
+
+    continuous_mode: Optional[bool] = False
+    """Automatically merge tables that span multiple pages."""
 
     # Page selection
     target_pages: Optional[str] = None
-    """Target pages to extract. Comma-separated list of page numbers (0-indexed). E.g., '0,2,5-10'."""
+    """Specific pages to extract. Comma-separated 1-based page numbers or ranges (e.g. '1,3,5-8')."""
 
     max_pages: Optional[int] = None
-    """Maximum number of pages to extract. If not set, all pages are extracted."""
-
-    # Advanced features
-    continuous_mode: Optional[bool] = False
-    """Parse documents continuously for better results on tables spanning multiple pages."""
-
-    auto_mode: Optional[bool] = False
-    """Automatically select best mode based on page content. Upgrades matching pages to Premium mode."""
+    """Maximum number of pages to extract. Extracts all pages when not set."""
 
     # Caching
     do_not_cache: Optional[bool] = True
-    """If set to true, the document will not be cached. You will be re-charged if you reprocess them."""
+    """If True, bypass result caching and force re-parsing."""
+
+    # Client behavior
+    verbose: Optional[bool] = False
+    """Print progress indicators during parsing."""
 
     model_config = SettingsConfigDict(
         env_prefix='parxy_llamaparse_', env_file='.env', extra='ignore'
