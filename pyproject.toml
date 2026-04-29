@@ -21,6 +21,7 @@ dependencies = [
     "opentelemetry-exporter-otlp>=1.37.0",
     "opentelemetry-proto>=1.37.0",
     "opentelemetry-sdk>=1.37.0",
+    
 ]
 
 [project.scripts]
@@ -31,7 +32,7 @@ parxy_cli = [".env.example", "compose.example.yaml", "otel-collector-config.exam
 
 [project.optional-dependencies]
 llama = [
-    "llama-cloud-services>=0.6.77",
+    "llama-cloud>=2.0.0",
 ]
 llmwhisperer = [
     "llmwhisperer-client>=2.4.2",
@@ -46,7 +47,7 @@ tui = [
     "textual>=0.89.0",
 ]
 all = [
-    "llama-cloud-services>=0.6.77",
+    "llama-cloud>=2.0.0",
     "llmwhisperer-client>=2.4.2",
     "unstructured[pdf]>=0.18.13",
     "landingai-ade>=0.15.1",
