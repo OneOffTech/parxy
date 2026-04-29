@@ -55,30 +55,25 @@ Prefix: `PARXY_LLAMAPARSE_`
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PARXY_LLAMAPARSE_BASE_URL` | `https://api.cloud.eu.llamaindex.ai` | The base URL of the Llama Parsing API. |
-| `PARXY_LLAMAPARSE_API_KEY` | *(secret)* | The authentication key |
+| `PARXY_LLAMAPARSE_BASE_URL` | `https://api.cloud.eu.llamaindex.ai` | The base URL of the LlamaParse API. |
+| `PARXY_LLAMAPARSE_API_KEY` | *(secret)* | The authentication key. |
 | `PARXY_LLAMAPARSE_ORGANIZATION_ID` | - | The organization ID for the LlamaParse API. |
 | `PARXY_LLAMAPARSE_PROJECT_ID` | - | The project ID for the LlamaParse API. |
-| `PARXY_LLAMAPARSE_NUM_WORKERS` | `4` | The number of workers to use sending API requests for parsing. |
-| `PARXY_LLAMAPARSE_SHOW_PROGRESS` | `false` | Show progress when parsing multiple files. |
-| `PARXY_LLAMAPARSE_VERBOSE` | `false` | Whether to print the progress of the parsing. |
-| `PARXY_LLAMAPARSE_PARSE_MODE` | `parse_page_with_llm` | Parsing mode to use. |
-| `PARXY_LLAMAPARSE_PRESET` | - | Parser preset. |
-| `PARXY_LLAMAPARSE_MODEL` | - | Document model name for parse_with_agent mode. |
-| `PARXY_LLAMAPARSE_PREMIUM_MODE` | `false` | Use best parser mode if set to True. |
-| `PARXY_LLAMAPARSE_FAST_MODE` | `false` | Use faster mode that skips OCR of images and table/heading reconstruction. |
-| `PARXY_LLAMAPARSE_DISABLE_OCR` | `false` | Disable the OCR on the document. |
-| `PARXY_LLAMAPARSE_DISABLE_IMAGE_EXTRACTION` | `false` | If set to true, the parser will not extract images from the document. |
-| `PARXY_LLAMAPARSE_HIGH_RES_OCR` | `false` | Use high resolution OCR to extract text from images. |
-| `PARXY_LLAMAPARSE_EXTRACT_LAYOUT` | `false` | Extract layout information from the document. |
-| `PARXY_LLAMAPARSE_SKIP_DIAGONAL_TEXT` | `false` | Skip diagonal text (when text rotation in degrees modulo 90 is not 0). |
-| `PARXY_LLAMAPARSE_LANGUAGE` | `en` | Language of the text to parse. |
-| `PARXY_LLAMAPARSE_DO_NOT_UNROLL_COLUMNS` | `false` | Keep columns in text according to document layout. |
-| `PARXY_LLAMAPARSE_TARGET_PAGES` | - | Target pages to extract. |
+| `PARXY_LLAMAPARSE_TIER` | - | Parsing tier to use. One of: `fast`, `cost_effective`, `agentic`, `agentic_plus`. |
+| `PARXY_LLAMAPARSE_VERSION` | `latest` | API version string. |
+| `PARXY_LLAMAPARSE_PARSE_MODE` | - | Legacy parsing mode. |
+| `PARXY_LLAMAPARSE_PREMIUM_MODE` | `false` | If True, selects the 'agentic_plus' tier (legacy shorthand). |
+| `PARXY_LLAMAPARSE_FAST_MODE` | `false` | If True, selects the 'fast' tier (legacy shorthand). |
+| `PARXY_LLAMAPARSE_DISABLE_OCR` | `false` | Disable OCR on images embedded in the document. |
+| `PARXY_LLAMAPARSE_SKIP_DIAGONAL_TEXT` | `false` | Skip text rotated at an angle (e.g. |
+| `PARXY_LLAMAPARSE_LANGUAGE` | `en` | Primary language for OCR (e.g. |
+| `PARXY_LLAMAPARSE_DO_NOT_UNROLL_COLUMNS` | `false` | Keep multi-column layout intact instead of linearising columns into sequential text. |
+| `PARXY_LLAMAPARSE_DISABLE_IMAGE_EXTRACTION` | `false` | If True, skip image extraction. |
+| `PARXY_LLAMAPARSE_CONTINUOUS_MODE` | `false` | Automatically merge tables that span multiple pages. |
+| `PARXY_LLAMAPARSE_TARGET_PAGES` | - | Specific pages to extract. |
 | `PARXY_LLAMAPARSE_MAX_PAGES` | - | Maximum number of pages to extract. |
-| `PARXY_LLAMAPARSE_CONTINUOUS_MODE` | `false` | Parse documents continuously for better results on tables spanning multiple pages. |
-| `PARXY_LLAMAPARSE_AUTO_MODE` | `false` | Automatically select best mode based on page content. |
-| `PARXY_LLAMAPARSE_DO_NOT_CACHE` | `true` | If set to true, the document will not be cached. |
+| `PARXY_LLAMAPARSE_DO_NOT_CACHE` | `true` | If True, bypass result caching and force re-parsing. |
+| `PARXY_LLAMAPARSE_VERBOSE` | `false` | Print progress indicators during parsing. |
 
 ## LLMWhisperer
 
