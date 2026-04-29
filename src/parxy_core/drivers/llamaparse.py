@@ -91,24 +91,26 @@ _credits_per_tier: dict[str, int] = {
 }
 
 # Options that can be overridden per-call via kwargs
-_PER_CALL_OPTIONS = frozenset({
-    # New API v2 options
-    'tier',
-    'version',
-    # Legacy options mapped to new API
-    'parse_mode',
-    'premium_mode',
-    'fast_mode',
-    'language',
-    'target_pages',
-    'max_pages',
-    'skip_diagonal_text',
-    'do_not_unroll_columns',
-    'disable_image_extraction',
-    'disable_ocr',
-    'continuous_mode',
-    'do_not_cache',
-})
+_PER_CALL_OPTIONS = frozenset(
+    {
+        # New API v2 options
+        'tier',
+        'version',
+        # Legacy options mapped to new API
+        'parse_mode',
+        'premium_mode',
+        'fast_mode',
+        'language',
+        'target_pages',
+        'max_pages',
+        'skip_diagonal_text',
+        'do_not_unroll_columns',
+        'disable_image_extraction',
+        'disable_ocr',
+        'continuous_mode',
+        'do_not_cache',
+    }
+)
 
 
 class LlamaParseDriver(Driver):
@@ -162,7 +164,9 @@ class LlamaParseDriver(Driver):
         """Resolve the parsing tier, honouring legacy config options."""
         if overrides.get('tier'):
             return overrides['tier']
-        if overrides.get('premium_mode') or (self._config and self._config.premium_mode):
+        if overrides.get('premium_mode') or (
+            self._config and self._config.premium_mode
+        ):
             return 'agentic_plus'
         if overrides.get('fast_mode') or (self._config and self._config.fast_mode):
             return 'fast'
@@ -256,7 +260,9 @@ class LlamaParseDriver(Driver):
                 'Content-Type': 'application/json',
             }
 
-            response = requests.get(endpoint, params=params, headers=headers, timeout=10)
+            response = requests.get(
+                endpoint, params=params, headers=headers, timeout=10
+            )
             response.raise_for_status()
 
             data = response.json()
@@ -275,12 +281,14 @@ class LlamaParseDriver(Driver):
                     model = item.get('properties', {}).get('model', 'unknown')
 
                     parsing_mode_counts[mode] = parsing_mode_counts.get(mode, 0) + pages
-                    mode_details.append({
-                        'mode': mode,
-                        'model': model,
-                        'pages': pages,
-                        'day': item.get('day'),
-                    })
+                    mode_details.append(
+                        {
+                            'mode': mode,
+                            'model': model,
+                            'pages': pages,
+                            'day': item.get('day'),
+                        }
+                    )
 
             total_cost = sum(
                 _credits_per_tier.get(mode, 3) * count
@@ -295,7 +303,9 @@ class LlamaParseDriver(Driver):
             }
 
         except Exception as e:
-            self._logger.warning(f'Failed to fetch usage metrics from beta API: {str(e)}')
+            self._logger.warning(
+                f'Failed to fetch usage metrics from beta API: {str(e)}'
+            )
             return None
 
     def _handle(
@@ -376,7 +386,10 @@ class LlamaParseDriver(Driver):
 
         try:
             from llama_cloud._polling import PollingError, PollingTimeoutError
-            from llama_cloud._exceptions import AuthenticationError, PermissionDeniedError
+            from llama_cloud._exceptions import (
+                AuthenticationError,
+                PermissionDeniedError,
+            )
         except ImportError:
             PollingError = Exception  # type: ignore[assignment,misc]
             PollingTimeoutError = Exception  # type: ignore[assignment,misc]
@@ -426,7 +439,9 @@ class LlamaParseDriver(Driver):
         except Exception as ex:
             raise ParsingException(str(ex), self.__class__) from ex
 
-        converted_document = llamaparse_to_parxy(doc=res, filename=filename, level=level)
+        converted_document = llamaparse_to_parxy(
+            doc=res, filename=filename, level=level
+        )
 
         if converted_document.parsing_metadata is None:
             converted_document.parsing_metadata = {}
@@ -440,17 +455,25 @@ class LlamaParseDriver(Driver):
         usage_metrics = self._fetch_usage_metrics(res.job.id)
 
         if usage_metrics:
-            converted_document.parsing_metadata['cost_estimation'] = usage_metrics['total_cost']
-            converted_document.parsing_metadata['cost_estimation_unit'] = usage_metrics['cost_unit']
+            converted_document.parsing_metadata['cost_estimation'] = usage_metrics[
+                'total_cost'
+            ]
+            converted_document.parsing_metadata['cost_estimation_unit'] = usage_metrics[
+                'cost_unit'
+            ]
             converted_document.parsing_metadata['parsing_mode_counts'] = usage_metrics[
                 'parsing_mode_counts'
             ]
             converted_document.parsing_metadata['cost_data_source'] = 'beta_api'
-            converted_document.parsing_metadata['usage_details'] = usage_metrics['mode_details']
+            converted_document.parsing_metadata['usage_details'] = usage_metrics[
+                'mode_details'
+            ]
         else:
             page_count = len(converted_document.pages)
             credits_per_page = _credits_per_tier.get(tier, 3)
-            converted_document.parsing_metadata['cost_estimation'] = credits_per_page * page_count
+            converted_document.parsing_metadata['cost_estimation'] = (
+                credits_per_page * page_count
+            )
             converted_document.parsing_metadata['cost_estimation_unit'] = 'credits'
             converted_document.parsing_metadata['cost_data_source'] = 'estimation'
 
@@ -510,12 +533,14 @@ def llamaparse_to_parxy(
         for text_page in doc.text.pages:
             meta_page = metadata_by_page.get(text_page.page_number)
             source = meta_page.model_dump() if meta_page else {}
-            pages.append(Page(
-                number=text_page.page_number,
-                text=text_page.text,
-                blocks=None,
-                source_data=source,
-            ))
+            pages.append(
+                Page(
+                    number=text_page.page_number,
+                    text=text_page.text,
+                    blocks=None,
+                    source_data=source,
+                )
+            )
 
     source_data: dict = {}
     if doc.job_metadata:
