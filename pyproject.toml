@@ -1,6 +1,6 @@
 [project]
 name = "parxy"
-version = "0.12.0"
+version = "0.12.1"
 description = "Parxy document processing gateway"
 readme = "README.md"
 authors = [
