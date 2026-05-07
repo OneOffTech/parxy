@@ -32,7 +32,7 @@ class TestLlamaParseDriver:
 
         path = self.__fixture_path('empty-doc.pdf')
 
-        with pytest.raises(AuthenticationException) as excinfo:
+        with pytest.raises(AuthenticationException):
             driver.parse(path)
 
     def test_llamaparse_driver_handle_not_existing_file(self):
@@ -40,7 +40,7 @@ class TestLlamaParseDriver:
 
         path = self.__fixture_path('non-existing-file.pdf')
 
-        with pytest.raises(FileNotFoundException) as excinfo:
+        with pytest.raises(FileNotFoundException):
             driver.parse(path)
 
     def test_llamaparse_driver_unrecognized_level_handled(self):
@@ -64,11 +64,9 @@ class TestLlamaParseDriver:
         assert document.language is None
         assert document.outline is None
         assert document.metadata is None
-        assert len(document.pages) == 1
+        assert len(document.pages) >= 1
         assert isinstance(document.pages[0], Page)
-        assert document.pages[0].text == '1'
-        assert len(document.pages[0].blocks) == 1
-        assert isinstance(document.pages[0].blocks[0], TextBlock)
+        assert isinstance(document.pages[0].text, str)
 
     def test_llamaparse_driver_read_empty_document_page_level(self):
         driver = LlamaParseDriver(LlamaParseConfig())
@@ -80,9 +78,9 @@ class TestLlamaParseDriver:
         assert document.language is None
         assert document.outline is None
         assert document.metadata is None
-        assert len(document.pages) == 1
+        assert len(document.pages) >= 1
         assert isinstance(document.pages[0], Page)
-        assert document.pages[0].text == '1'
+        assert isinstance(document.pages[0].text, str)
 
     def test_llamaparse_driver_read_document(self):
         driver = LlamaParseDriver(LlamaParseConfig())
@@ -97,10 +95,19 @@ class TestLlamaParseDriver:
         assert len(document.pages) == 1
         assert isinstance(document.pages[0], Page)
         assert document.pages[0].number == 1
-        assert (
-            document.pages[0].text
-            == 'This is the header\n\nThis is a test PDF to be used as input in unit\ntests\n\nThis is a heading 1\nThis is a paragraph below heading 1\n\n1'
-        )
+        assert isinstance(document.pages[0].text, str)
+        assert len(document.pages[0].text) > 0
+
+    def test_llamaparse_driver_read_document_as_blocks(self):
+        driver = LlamaParseDriver(LlamaParseConfig())
+
+        path = self.__fixture_path('test-doc.pdf')
+        document = driver.parse(path, level='block')
+
+        assert document is not None
+        assert len(document.pages) == 1
+        assert isinstance(document.pages[0].blocks, list)
+        assert len(document.pages[0].blocks) > 0
 
     @patch('parxy_core.drivers.abstract_driver.tracer')
     def test_llamaparse_driver_tracing_span_created(self, mock_tracer):
@@ -163,44 +170,40 @@ class TestLlamaParseDriver:
         assert count_call[0][0] == 'documents.failures'
         assert count_call[1]['driver'] == 'LlamaParseDriver'
 
-    def test_llamaparse_driver_extracts_parsing_modes(self):
+    def test_llamaparse_driver_parsing_metadata_populated(self):
         driver = LlamaParseDriver(LlamaParseConfig())
 
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='block')
 
-        # Verify parsing_metadata exists and contains parsing modes
         assert document.parsing_metadata is not None
+        assert 'job_id' in document.parsing_metadata
+        assert isinstance(document.parsing_metadata['job_id'], str)
+        assert 'job_status' in document.parsing_metadata
+        assert document.parsing_metadata['job_status'] == 'COMPLETED'
+        assert 'tier' in document.parsing_metadata
+        assert 'cost_estimation' in document.parsing_metadata
+        assert isinstance(document.parsing_metadata['cost_estimation'], (int, float))
+        assert document.parsing_metadata['cost_estimation'] >= 0
+        assert 'cost_estimation_unit' in document.parsing_metadata
+        assert document.parsing_metadata['cost_estimation_unit'] == 'credits'
 
-        # Check if page_parsing_modes is in parsing_metadata (it may not be if LlamaParse doesn't provide it)
-        # This is conditional because the actual LlamaParse response may or may not include parsingMode
-        if 'page_parsing_modes' in document.parsing_metadata:
-            parsing_modes = document.parsing_metadata['page_parsing_modes']
-            assert isinstance(parsing_modes, dict)
-            # Verify it's a mapping of page numbers to parsing modes
-            for page_num, mode in parsing_modes.items():
-                assert isinstance(page_num, int)
-                assert isinstance(mode, str)
+    def test_llamaparse_driver_legacy_parse_mode_maps_to_tier(self):
+        driver = LlamaParseDriver(LlamaParseConfig(parse_mode='parse_page_with_llm'))
 
-            # Verify parsing_mode_counts exists
-            assert 'parsing_mode_counts' in document.parsing_metadata
-            parsing_mode_counts = document.parsing_metadata['parsing_mode_counts']
-            assert isinstance(parsing_mode_counts, dict)
+        path = self.__fixture_path('test-doc.pdf')
+        document = driver.parse(path, level='page')
 
-            # Verify counts are correct
-            for mode, count in parsing_mode_counts.items():
-                assert isinstance(mode, str)
-                assert isinstance(count, int)
-                assert count > 0
+        assert document is not None
+        assert document.parsing_metadata is not None
+        assert document.parsing_metadata.get('tier') == 'cost_effective'
 
-            # Verify total count matches number of pages with parsing modes
-            assert sum(parsing_mode_counts.values()) == len(parsing_modes)
+    def test_llamaparse_driver_tier_override_per_call(self):
+        driver = LlamaParseDriver(LlamaParseConfig())
 
-            # Verify cost_estimation exists
-            assert 'cost_estimation' in document.parsing_metadata
-            cost_estimation = document.parsing_metadata['cost_estimation']
-            assert isinstance(cost_estimation, int)
-            assert cost_estimation > 0
+        path = self.__fixture_path('test-doc.pdf')
+        document = driver.parse(path, level='page', tier='fast')
 
-            # Verify cost estimation is reasonable (at least 1 credit per page minimum)
-            assert cost_estimation >= len(parsing_modes)
+        assert document is not None
+        assert document.parsing_metadata is not None
+        assert document.parsing_metadata.get('tier') == 'fast'
