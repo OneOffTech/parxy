@@ -22,7 +22,12 @@ jobs:
     - name: Install the latest version of uv and set the python version
       uses: astral-sh/setup-uv@v7.3.1
       with:
-        python-version: "3.12"
+        python-version: "3.13"
+
+    - name: Sync version
+      if: github.event_name == 'release'
+      run: |
+        uv version ${{ github.event.release.tag_name }}
 
     - name: Build wheel
       run: |
@@ -57,7 +62,7 @@ jobs:
         with:
           enable-cache: false
           ignore-empty-workdir: true
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Download build
         uses: actions/download-artifact@v8
