@@ -1,4 +1,4 @@
-"""PDFMiner backend driver for parxy."""
+"""PDFMiner driver for parxy."""
 
 import io
 
@@ -6,27 +6,27 @@ from parxy_core.drivers import Driver
 from parxy_core.models import Document, Page
 
 
-class PDFMinerBackend(Driver):
+class PDFMinerDriver(Driver):
     """PDF parser using PDFMiner - mature text extraction.
 
     PDFMiner is a mature, pure-Python PDF text extraction library.
     Good for text-heavy documents, handles various encodings well.
     """
 
-    supported_levels = ['page']
+    supported_levels = ["page", "block"]
 
     def _initialize_driver(self):
         """Initialize PDFMiner driver by checking if the library is available."""
         try:
-            from pdfminer.high_level import extract_text_to_fp  # noqa: F401
+            from pdfminer.high_level import extract_pages  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                'pdfminer.six is required. Install with: pip install parxy[pdfminer]'
+                "pdfminer.six is required. Install with: pip install parxy[pdfminer]"
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -44,28 +44,27 @@ class PDFMinerBackend(Driver):
         Document
             A parsed Document in unified format.
         """
-        from io import StringIO
-        from pdfminer.high_level import extract_text_to_fp
-        from pdfminer.layout import LAParams
+        from pdfminer.high_level import extract_pages
+        from pdfminer.layout import LAParams, LTTextContainer
+
+        if level == 'block':
+            level = 'page'
 
         filename, stream = self.handle_file_input(file)
 
         with self._trace_parse(filename, stream, **kwargs) as span:
-            output = StringIO()
-            stream_io = io.BytesIO(stream)
-            extract_text_to_fp(stream_io, output, laparams=LAParams())
-            text = output.getvalue().strip()
+            pages = []
+            for page_num, page_layout in enumerate(
+                extract_pages(io.BytesIO(stream), laparams=LAParams())
+            ):
+                text = ''.join(
+                    element.get_text()
+                    for element in page_layout
+                    if isinstance(element, LTTextContainer)
+                ).strip()
+                pages.append(Page(number=page_num, text=text, blocks=None))
 
-            # Create a single page with the extracted text
-            pages = [
-                Page(
-                    number=0,
-                    text=text,
-                    blocks=None,
-                )
-            ]
-
-            span.set_attribute('output.pages', len(pages))
+            span.set_attribute("output.pages", len(pages))
 
         return Document(
             filename=filename,

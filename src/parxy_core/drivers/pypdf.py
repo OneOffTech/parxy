@@ -1,19 +1,19 @@
-"""PyPDF backend driver for parxy."""
+"""PyPDF driver for parxy."""
 
 import io
 
 from parxy_core.drivers import Driver
-from parxy_core.models import Document, Page
+from parxy_core.models import Document, Metadata, Page
 
 
-class PyPDFBackend(Driver):
+class PyPDFDriver(Driver):
     """PDF parser using PyPDF for text extraction.
 
     PyPDF is a pure-python library - lightweight with no binary dependencies.
     Good for simple text extraction, not ideal for complex layouts or tables.
     """
 
-    supported_levels = ['page']
+    supported_levels = ["page"]
 
     def _initialize_driver(self):
         """Initialize PyPDF driver by checking if the library is available."""
@@ -21,12 +21,12 @@ class PyPDFBackend(Driver):
             import pypdf  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                'pypdf is required. Install with: pip install parxy[pypdf]'
+                "pypdf is required. Install with: pip install parxy[pypdf]"
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -67,14 +67,54 @@ class PyPDFBackend(Driver):
                     pages.append(
                         Page(
                             number=page_num,
-                            text='',
+                            text="",
                             blocks=None,
                         )
                     )
 
-            span.set_attribute('output.pages', len(pages))
+            span.set_attribute("output.pages", len(pages))
+
+            outline = _collect_outline(reader.outline, reader) or None
+
+            meta = reader.metadata
+            metadata = None
+            if meta is not None:
+                metadata = Metadata(
+                    title=meta.title,
+                    author=meta.author,
+                    subject=meta.subject,
+                    keywords=meta.get('/Keywords'),
+                    creator=meta.creator,
+                    producer=meta.producer,
+                    created_at=_to_iso(meta.creation_date),
+                    updated_at=_to_iso(meta.modification_date),
+                )
 
         return Document(
             filename=filename,
             pages=pages,
+            outline=outline,
+            metadata=metadata,
         )
+
+
+def _collect_outline(outlines, reader, level: int = 0) -> list[str]:
+    entries = []
+    for item in outlines:
+        if isinstance(item, list):
+            entries.extend(_collect_outline(item, reader, level + 1))
+        else:
+            page_number = reader.get_destination_page_number(item)
+            indent = "    " * level
+            page = page_number + 1 if page_number is not None else "?"
+            entries.append(f"{indent}{item.title} -> {page}")
+    return entries
+
+
+def _to_iso(dt) -> str | None:
+    if dt is None:
+        return None
+    try:
+        return dt.replace(tzinfo=None).isoformat()
+    except Exception:
+        return None

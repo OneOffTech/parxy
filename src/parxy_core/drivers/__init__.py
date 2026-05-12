@@ -8,3 +8,10 @@ from parxy_core.drivers.pymupdf import PyMuPdfDriver as PyMuPdfDriver
 from parxy_core.drivers.unstructured_local import (
     UnstructuredLocalDriver as UnstructuredLocalDriver,
 )
+from parxy_core.drivers.pypdfium2 import (
+    PyPDFium2Driver as PyPDFium2Driver,
+)
+from parxy_core.drivers.pymupdf4llm import PyMuPDF4LLMDriver as PyMuPDF4LLMDriver
+from parxy_core.drivers.pdfplumber import PDFPlumberDriver as PDFPlumberDriver
+from parxy_core.drivers.pdfminer import PDFMinerDriver as PDFMinerDriver
+from parxy_core.drivers.pypdf import PyPDFDriver as PyPDFDriver

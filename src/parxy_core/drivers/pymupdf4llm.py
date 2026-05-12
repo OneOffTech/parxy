@@ -1,4 +1,4 @@
-"""PyMuPDF4LLM backend driver for parxy."""
+"""PyMuPDF4LLM driver for parxy."""
 
 import io
 
@@ -6,14 +6,14 @@ from parxy_core.drivers import Driver
 from parxy_core.models import Document, Page
 
 
-class PyMuPDF4LLMBackend(Driver):
+class PyMuPDF4LLMDriver(Driver):
     """PDF parser using PyMuPDF4LLM - optimized for LLM consumption.
 
     PyMuPDF4LLM builds on PyMuPDF to produce markdown output specifically
     formatted for LLM processing. Good balance of quality and speed.
     """
 
-    supported_levels = ['page']
+    supported_levels = ["page", "block"]
 
     def _initialize_driver(self):
         """Initialize PyMuPDF4LLM driver by checking if the library is available."""
@@ -21,12 +21,12 @@ class PyMuPDF4LLMBackend(Driver):
             import pymupdf4llm  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                'pymupdf4llm is required. Install with: pip install parxy[light]'
+                "pymupdf4llm is required. Install with: pip install parxy[light]"
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -47,16 +47,19 @@ class PyMuPDF4LLMBackend(Driver):
         import pymupdf4llm
         import tempfile
 
+        if level == 'block':
+            level = 'page'  # Only page is really supported, added block as it is the default for Parxy
+
         filename, stream = self.handle_file_input(file)
 
         with self._trace_parse(filename, stream, **kwargs) as span:
             # PyMuPDF4LLM requires a file path, so write to temp file if needed
-            if isinstance(file, str) and not file.startswith(('http://', 'https://')):
+            if isinstance(file, str) and not file.startswith(("http://", "https://")):
                 # Use the original file path directly
                 markdown_text = pymupdf4llm.to_markdown(file)
             else:
                 # Write stream to temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                     tmp.write(stream)
                     tmp_path = tmp.name
 
@@ -64,7 +67,6 @@ class PyMuPDF4LLMBackend(Driver):
                     markdown_text = pymupdf4llm.to_markdown(tmp_path)
                 finally:
                     import os
-
                     os.unlink(tmp_path)
 
             # Create a single page with the markdown content
@@ -76,7 +78,7 @@ class PyMuPDF4LLMBackend(Driver):
                 )
             ]
 
-            span.set_attribute('output.pages', len(pages))
+            span.set_attribute("output.pages", len(pages))
 
         return Document(
             filename=filename,

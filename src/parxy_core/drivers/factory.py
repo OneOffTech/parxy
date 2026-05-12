@@ -9,6 +9,11 @@ from parxy_core.drivers.pdfact import PdfActDriver
 from parxy_core.drivers.llamaparse import LlamaParseDriver
 from parxy_core.drivers.llmwhisperer import LlmWhispererDriver
 from parxy_core.drivers.unstructured_local import UnstructuredLocalDriver
+from parxy_core.drivers.pymupdf4llm import PyMuPDF4LLMDriver
+from parxy_core.drivers.pdfplumber import PDFPlumberDriver
+from parxy_core.drivers.pdfminer import PDFMinerDriver
+from parxy_core.drivers.pypdfium2 import PyPDFium2Driver
+from parxy_core.drivers.pypdf import PyPDFDriver
 from parxy_core.models import (
     PdfActConfig,
     LandingAIConfig,
@@ -222,6 +227,21 @@ class DriverFactory:
             logger=self._logger,
         )
 
+    def _create_pymupdf4llm_driver(self) -> PyMuPDF4LLMDriver:
+        return PyMuPDF4LLMDriver(logger=self._logger)
+    
+    def _create_pypdfium_driver(self) -> PyPDFium2Driver:
+        return PyPDFium2Driver(logger=self._logger)
+
+    def _create_pdfplumber_driver(self) -> PDFPlumberDriver:
+        return PDFPlumberDriver(logger=self._logger)
+
+    def _create_pdfminer_driver(self) -> PDFMinerDriver:
+        return PDFMinerDriver(logger=self._logger)
+
+    def _create_pypdf_driver(self) -> PyPDFDriver:
+        return PyPDFDriver(logger=self._logger)
+
     def extend(self, name: str, callback: Callable[[], Driver]) -> 'DriverFactory':
         """Register a custom driver creator callable.
 
@@ -283,6 +303,11 @@ class DriverFactory:
             'llamaparse',
             'llmwhisperer',
             'unstructured_local',
+            'pymupdf4llm',
+            'pdfplumber',
+            'pypdfium',
+            'pdfminer',
+            'pypdf',
         ]
 
         return supported_drivers
