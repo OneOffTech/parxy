@@ -16,7 +16,7 @@ Parxy supports the following document processing services and libraries. The **E
 | [**Landing AI Agentic Document Extraction**](https://landing.ai/agentic-document-extraction) | Preview | `landingai` | ✅ | ✅ |
 | [**LlamaParse**](https://docs.cloud.llamaindex.ai/llamaparse/overview) | Preview | `llama` | ✅ | ✅ |
 | [**LLMWhisperer**](https://docs.unstract.com/llmwhisperer/index.html) | Preview | `llmwhisperer` | ✅ | ✅ |
-
+| [**Pypdfium2**](https://github.com/pypdfium2-team/pypdfium2) | Preview | `pypdfium2` | ✅ | ✅ |
 
 Status meanings: **Live** = stable; **Preview** = functional but the API may change.
 
