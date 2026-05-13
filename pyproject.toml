@@ -46,12 +46,16 @@ landingai = [
 tui = [
     "textual>=0.89.0",
 ]
+pypdfium2 = [
+    "pypdfium2>=5.7.1",
+]
 all = [
     "llama-cloud>=2.0.0",
     "llmwhisperer-client>=2.4.2",
     "unstructured[pdf]>=0.18.13",
     "landingai-ade>=0.15.1",
     "textual>=0.89.0",
+    "pypdfium2>=5.7.1",
 ]
 
 

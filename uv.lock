@@ -1921,6 +1921,7 @@ all = [
     { name = "landingai-ade" },
     { name = "llama-cloud" },
     { name = "llmwhisperer-client" },
+    { name = "pypdfium2" },
     { name = "textual" },
     { name = "unstructured", extra = ["pdf"] },
 ]
@@ -1932,6 +1933,9 @@ llama = [
 ]
 llmwhisperer = [
     { name = "llmwhisperer-client" },
+]
+pypdfium2 = [
+    { name = "pypdfium2" },
 ]
 tui = [
     { name = "textual" },
@@ -1962,6 +1966,8 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
     { name = "pymupdf", specifier = ">=1.26.3" },
+    { name = "pypdfium2", marker = "extra == 'all'", specifier = ">=5.7.1" },
+    { name = "pypdfium2", marker = "extra == 'pypdfium2'", specifier = ">=5.7.1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "requests", specifier = ">=2.32.4" },
     { name = "rich", specifier = ">=13.7.0" },
@@ -1972,7 +1978,7 @@ requires-dist = [
     { name = "unstructured", extras = ["pdf"], marker = "extra == 'unstructured-local'", specifier = ">=0.18.13" },
     { name = "validators", specifier = ">=0.35.0" },
 ]
-provides-extras = ["llama", "llmwhisperer", "unstructured-local", "landingai", "tui", "all"]
+provides-extras = ["llama", "llmwhisperer", "unstructured-local", "landingai", "tui", "pypdfium2", "all"]
 
 [package.metadata.requires-dev]
 dev = [

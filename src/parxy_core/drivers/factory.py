@@ -9,6 +9,7 @@ from parxy_core.drivers.pdfact import PdfActDriver
 from parxy_core.drivers.llamaparse import LlamaParseDriver
 from parxy_core.drivers.llmwhisperer import LlmWhispererDriver
 from parxy_core.drivers.unstructured_local import UnstructuredLocalDriver
+from parxy_core.drivers.pypdfium2 import PyPDFium2Driver
 from parxy_core.models import (
     PdfActConfig,
     LandingAIConfig,
@@ -209,6 +210,9 @@ class DriverFactory:
             logger=self._logger,
         )
 
+    def _create_pypdfium_driver(self) -> PyPDFium2Driver:
+        return PyPDFium2Driver(logger=self._logger)
+
     def _create_landingai_driver(self) -> LandingAIADEDriver:
         """Create a LandingAI ADE Driver instance.
 
@@ -283,6 +287,7 @@ class DriverFactory:
             'llamaparse',
             'llmwhisperer',
             'unstructured_local',
+            'pypdfium',
         ]
 
         return supported_drivers
