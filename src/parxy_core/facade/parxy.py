@@ -214,6 +214,19 @@ class Parxy:
         # Determine number of workers
         max_workers = workers if workers else (os.cpu_count() or 2)
 
+        # PDFium is not thread-safe and crashes under any form of concurrency,
+        # even when calls are serialized via a lock or a dedicated executor.
+        # Force serial execution when pypdfium is among the requested drivers,
+        # or any task explicitly asks for it.
+        task_driver_names = {
+            d
+            for t in tasks
+            if isinstance(t, BatchTask) and t.drivers
+            for d in t.drivers
+        }
+        if 'pypdfium' in set(default_drivers) | task_driver_names:
+            max_workers = 1
+
         # Normalize tasks into single-driver BatchTask objects.
         # When a BatchTask specifies multiple drivers it is split into
         # one BatchTask per driver so each unit of work targets exactly

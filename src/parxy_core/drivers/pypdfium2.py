@@ -13,6 +13,11 @@ class PyPDFium2Driver(Driver):
 
     PyPDFium2 wraps PDFium, the PDF rendering engine used in Chrome.
     Fast and reliable for text extraction.
+
+    Thread-safety: PDFium is not thread-safe and in practice crashes even
+    when calls are serialized via a lock or routed through a dedicated
+    single-thread executor. Batch processing with this driver must be run
+    with a single worker; ``Parxy.batch_iter`` enforces this automatically.
     """
 
     supported_levels = ["page", "block"]
@@ -26,9 +31,6 @@ class PyPDFium2Driver(Driver):
                 "pypdfium2 is required. Install with: pip install parxy[pypdfium2]"
             ) from e
         return self
-
-    
-
 
     def _handle(
         self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
@@ -64,6 +66,8 @@ class PyPDFium2Driver(Driver):
             for page_num, page in enumerate(pdf):
                 textpage = page.get_textpage()
                 text = textpage.get_text_range()
+                textpage.close()
+                page.close()
                 if text and text.strip():
                     pages.append(
                         Page(
@@ -103,6 +107,7 @@ class PyPDFium2Driver(Driver):
             span.set_attribute("output.pages", len(pages))
 
             metadata = pdf.get_metadata_dict()
+            pdf.close()
 
         return Document(
             filename=filename,
