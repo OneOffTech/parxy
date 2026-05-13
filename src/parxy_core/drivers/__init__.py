@@ -11,3 +11,4 @@ from parxy_core.drivers.unstructured_local import (
 from parxy_core.drivers.pypdfium2 import (
     PyPDFium2Driver as PyPDFium2Driver,
 )
+from parxy_core.drivers.pdfplumber import PDFPlumberDriver as PDFPlumberDriver

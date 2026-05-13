@@ -49,6 +49,9 @@ tui = [
 pypdfium2 = [
     "pypdfium2>=5.7.1",
 ]
+pdfplumber = [
+    "pdfplumber>=0.11.0",
+]
 all = [
     "llama-cloud>=2.0.0",
     "llmwhisperer-client>=2.4.2",
@@ -56,6 +59,7 @@ all = [
     "landingai-ade>=0.15.1",
     "textual>=0.89.0",
     "pypdfium2>=5.7.1",
+    "pdfplumber>=0.11.0",
 ]
 
 

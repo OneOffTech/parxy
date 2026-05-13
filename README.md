@@ -164,6 +164,7 @@ For more information take a look at our [Getting Started with Parxy tutorial](./
 | [**LlamaParse**](https://docs.cloud.llamaindex.ai/llamaparse/overview) | `llama` | ✅ | ✅ | Preview |
 | [**LLMWhisperer**](https://docs.unstract.com/llmwhisperer/index.html) | `llmwhisperer` | ✅ | ✅ | Preview |
 | [**Pypdfium2**](https://github.com/pypdfium2-team/pypdfium2) | `pypdfium2` | ✅ | ✅ | Preview |
+| [**pdfplumber**](https://github.com/jsvine/pdfplumber) | `pdfplumber` | ✅ | ✅ | Preview |
 | [**Unstructured.io** cloud service](https://docs.unstructured.io/open-source/introduction/overview) |   |  |  | Planned |
 | [**Chunkr**](https://www.chunkr.ai/) |   |  |  | Planned |
 | [**Docling**](https://docling-project.github.io/docling/) |   |  |  | Planned |
