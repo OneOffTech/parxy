@@ -155,17 +155,18 @@ For more information take a look at our [Getting Started with Parxy tutorial](./
 
 ## Supported services
 
-| Service or Library | Support status | Extra | Local file | Remote file | 
-|--------------------|----------------|-------|------------|-------------|
-| [**PyMuPDF**](https://pymupdf.readthedocs.io/en/latest/) | Live | - | ✅ | ✅ |
-| [**PdfAct**](https://github.com/data-house/pdfact) | Live | - | ✅ | ✅ |
-| [**Unstructured** library](https://docs.unstructured.io/open-source/introduction/overview) | Preview | `unstructured_local` | ✅ | ✅ |
-| [**Landing AI Agentic Document Extraction**](https://landing.ai/agentic-document-extraction) | Preview | `landingai` | ✅ | ✅ |
-| [**LlamaParse**](https://docs.cloud.llamaindex.ai/llamaparse/overview) | Preview | `llama` | ✅ | ✅ |
-| [**LLMWhisperer**](https://docs.unstract.com/llmwhisperer/index.html) | Preview | `llmwhisperer` | ✅ | ✅ |
-| [**Unstructured.io** cloud service](https://docs.unstructured.io/open-source/introduction/overview) | Planned |  |  |  |
-| [**Chunkr**](https://www.chunkr.ai/) | Planned |  |  |  |
-| [**Docling**](https://docling-project.github.io/docling/) | Planned |  |  |  |
+| Service or Library | Extra | Local file | Remote file | Status |
+|--------------------|-------|------------|-------------|----------------|
+| [**PyMuPDF**](https://pymupdf.readthedocs.io/en/latest/) |  - | ✅ | ✅ | |
+| [**PdfAct**](https://github.com/data-house/pdfact) |  - | ✅ | ✅ | |
+| [**Unstructured** library](https://docs.unstructured.io/open-source/introduction/overview) | `unstructured_local` | ✅ | ✅ | Preview |
+| [**Landing AI Agentic Document Extraction**](https://landing.ai/agentic-document-extraction) | `landingai` | ✅ | ✅ | Preview |
+| [**LlamaParse**](https://docs.cloud.llamaindex.ai/llamaparse/overview) | `llama` | ✅ | ✅ | Preview |
+| [**LLMWhisperer**](https://docs.unstract.com/llmwhisperer/index.html) | `llmwhisperer` | ✅ | ✅ | Preview |
+| [**Pypdfium2**](https://github.com/pypdfium2-team/pypdfium2) | `pypdfium2` | ✅ | ✅ | Preview |
+| [**Unstructured.io** cloud service](https://docs.unstructured.io/open-source/introduction/overview) |   |  |  | Planned |
+| [**Chunkr**](https://www.chunkr.ai/) |   |  |  | Planned |
+| [**Docling**](https://docling-project.github.io/docling/) |   |  |  | Planned |
 
 
 ...and more can be added via the [live extension](#live-extension)!

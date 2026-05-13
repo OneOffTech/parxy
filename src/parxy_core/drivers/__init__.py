@@ -8,3 +8,6 @@ from parxy_core.drivers.pymupdf import PyMuPdfDriver as PyMuPdfDriver
 from parxy_core.drivers.unstructured_local import (
     UnstructuredLocalDriver as UnstructuredLocalDriver,
 )
+from parxy_core.drivers.pypdfium2 import (
+    PyPDFium2Driver as PyPDFium2Driver,
+)
