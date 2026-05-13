@@ -12,6 +12,7 @@ from parxy_core.models.models import (
     TextBlock as TextBlock,
     Page as Page,
     Metadata as Metadata,
+    TocEntry as TocEntry,
     Document as Document,
     BatchTask as BatchTask,
     BatchResult as BatchResult,

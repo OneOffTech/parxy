@@ -114,12 +114,19 @@ class Metadata(BaseModel):
     updated_at: Optional[str] = None
 
 
+class TocEntry(BaseModel):
+    title: str
+    page: Optional[int] = None
+    level: Optional[int] = None
+    bbox: Optional[BoundingBox] = None
+
+
 class Document(BaseModel):
     filename: Optional[str] = None
     language: Optional[str] = None
     metadata: Optional[Metadata] = None
     pages: List[Page]
-    outline: Optional[List[str]] = None
+    outline: Optional[List[str | TocEntry]] = None
     source_data: Optional[dict[str, Any]] = None
     parsing_metadata: Optional[dict[str, Any]] = None
 
