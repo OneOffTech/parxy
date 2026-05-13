@@ -55,7 +55,7 @@ class PDFMinerDriver(Driver):
         with self._trace_parse(filename, stream, **kwargs) as span:
             pages = []
             for page_num, page_layout in enumerate(
-                extract_pages(io.BytesIO(stream), laparams=LAParams())
+                extract_pages(io.BytesIO(stream), laparams=LAParams()), start=1
             ):
                 text = ''.join(
                     element.get_text()

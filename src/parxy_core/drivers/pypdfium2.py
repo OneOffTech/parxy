@@ -63,7 +63,7 @@ class PyPDFium2Driver(Driver):
             pdf = pdfium.PdfDocument(stream)
 
             pages = []
-            for page_num, page in enumerate(pdf):
+            for page_num, page in enumerate(pdf, start=1):
                 textpage = page.get_textpage()
                 text = textpage.get_text_range()
                 textpage.close()
