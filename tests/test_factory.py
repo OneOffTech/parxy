@@ -9,6 +9,7 @@ from parxy_core.drivers import LlamaParseDriver
 from parxy_core.drivers import LlmWhispererDriver
 from parxy_core.drivers import UnstructuredLocalDriver
 from parxy_core.drivers.landingai import LandingAIADEDriver
+from parxy_core.drivers import PyPDFium2Driver
 from parxy_core.models import Document
 from parxy_core.models import ParxyConfig
 
@@ -116,3 +117,8 @@ class TestDriverFactory:
         DriverFactory.reset()
         driver = DriverFactory.build().driver('landingai')
         assert isinstance(driver, LandingAIADEDriver)
+
+    def test_pypdfium_driver_instantiated(self):
+        DriverFactory.reset()
+        driver = DriverFactory.build().driver('pypdfium')
+        assert isinstance(driver, PyPDFium2Driver)
