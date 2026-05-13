@@ -109,7 +109,7 @@ class TestPyMuPDF4LLMDriver:
         path = self.__fixture_path('non-existing-file.pdf')
 
         with pytest.raises(FileNotFoundException):
-            driver.parse(path, level="page")
+            driver.parse(path, level='page')
 
         mock_tracer.error.assert_called_once()
         error_call = mock_tracer.error.call_args

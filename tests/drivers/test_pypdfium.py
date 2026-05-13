@@ -138,7 +138,7 @@ class TestPyPDFiumfDriver:
 
         # Attempt to parse non-existing file
         with pytest.raises(FileNotFoundException):
-            driver.parse(path, level="page")
+            driver.parse(path, level='page')
 
         # Verify error was logged via tracer.error
         mock_tracer.error.assert_called_once()

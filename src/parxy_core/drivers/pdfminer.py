@@ -13,7 +13,7 @@ class PDFMinerDriver(Driver):
     Good for text-heavy documents, handles various encodings well.
     """
 
-    supported_levels = ["page", "block"]
+    supported_levels = ['page', 'block']
 
     def _initialize_driver(self):
         """Initialize PDFMiner driver by checking if the library is available."""
@@ -21,12 +21,12 @@ class PDFMinerDriver(Driver):
             from pdfminer.high_level import extract_pages  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "pdfminer.six is required. Install with: pip install parxy[pdfminer]"
+                'pdfminer.six is required. Install with: pip install parxy[pdfminer]'
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -64,7 +64,7 @@ class PDFMinerDriver(Driver):
                 ).strip()
                 pages.append(Page(number=page_num, text=text, blocks=None))
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
         return Document(
             filename=filename,

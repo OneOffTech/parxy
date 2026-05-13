@@ -229,7 +229,7 @@ class DriverFactory:
 
     def _create_pymupdf4llm_driver(self) -> PyMuPDF4LLMDriver:
         return PyMuPDF4LLMDriver(logger=self._logger)
-    
+
     def _create_pypdfium_driver(self) -> PyPDFium2Driver:
         return PyPDFium2Driver(logger=self._logger)
 

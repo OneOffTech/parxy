@@ -13,7 +13,7 @@ class PyPDFDriver(Driver):
     Good for simple text extraction, not ideal for complex layouts or tables.
     """
 
-    supported_levels = ["page"]
+    supported_levels = ['page']
 
     def _initialize_driver(self):
         """Initialize PyPDF driver by checking if the library is available."""
@@ -21,12 +21,12 @@ class PyPDFDriver(Driver):
             import pypdf  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "pypdf is required. Install with: pip install parxy[pypdf]"
+                'pypdf is required. Install with: pip install parxy[pypdf]'
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -67,12 +67,12 @@ class PyPDFDriver(Driver):
                     pages.append(
                         Page(
                             number=page_num,
-                            text="",
+                            text='',
                             blocks=None,
                         )
                     )
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
             outline = _collect_outline(reader.outline, reader) or None
 
@@ -105,9 +105,9 @@ def _collect_outline(outlines, reader, level: int = 0) -> list[str]:
             entries.extend(_collect_outline(item, reader, level + 1))
         else:
             page_number = reader.get_destination_page_number(item)
-            indent = "    " * level
-            page = page_number + 1 if page_number is not None else "?"
-            entries.append(f"{indent}{item.title} -> {page}")
+            indent = '    ' * level
+            page = page_number + 1 if page_number is not None else '?'
+            entries.append(f'{indent}{item.title} -> {page}')
     return entries
 
 

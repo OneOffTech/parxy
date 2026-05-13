@@ -20,7 +20,7 @@ class PyPDFium2Driver(Driver):
     with a single worker; ``Parxy.batch_iter`` enforces this automatically.
     """
 
-    supported_levels = ["page", "block"]
+    supported_levels = ['page', 'block']
 
     def _initialize_driver(self):
         """Initialize PyPDFium2 driver by checking if the library is available."""
@@ -28,12 +28,12 @@ class PyPDFium2Driver(Driver):
             import pypdfium2  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "pypdfium2 is required. Install with: pip install parxy[pypdfium2]"
+                'pypdfium2 is required. Install with: pip install parxy[pypdfium2]'
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -81,30 +81,30 @@ class PyPDFium2Driver(Driver):
                     pages.append(
                         Page(
                             number=page_num,
-                            text="",
+                            text='',
                             blocks=None,
                         )
                     )
             outline = []
             for bm in pdf.get_toc(max_depth=15):
                 count, dest = bm.get_count(), bm.get_dest()
-                entry = "    " * bm.level
-                entry += "[%s] %s -> " % (
-                    f"{count:+}" if count != 0 else "*",
+                entry = '    ' * bm.level
+                entry += '[%s] %s -> ' % (
+                    f'{count:+}' if count != 0 else '*',
                     bm.get_title(),
                 )
                 if dest:
                     index, (view_mode, view_pos) = dest.get_index(), dest.get_view()
-                    entry += "%s  # %s %s" % (
-                        index + 1 if index is not None else "?",
+                    entry += '%s  # %s %s' % (
+                        index + 1 if index is not None else '?',
                         pdfium_i.ViewmodeToStr.get(view_mode),
                         view_pos,
                     )
                 else:
-                    entry += "_"
+                    entry += '_'
                 outline.append(entry)
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
             metadata = pdf.get_metadata_dict()
             pdf.close()
