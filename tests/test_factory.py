@@ -11,6 +11,7 @@ from parxy_core.drivers import UnstructuredLocalDriver
 from parxy_core.drivers.landingai import LandingAIADEDriver
 from parxy_core.drivers import PyPDFium2Driver
 from parxy_core.drivers import PDFPlumberDriver
+from parxy_core.drivers import PDFMinerDriver
 from parxy_core.models import Document
 from parxy_core.models import ParxyConfig
 
@@ -128,3 +129,8 @@ class TestDriverFactory:
         DriverFactory.reset()
         driver = DriverFactory.build().driver('pdfplumber')
         assert isinstance(driver, PDFPlumberDriver)
+
+    def test_pdfminer_driver_instantiated(self):
+        DriverFactory.reset()
+        driver = DriverFactory.build().driver('pdfminer')
+        assert isinstance(driver, PDFMinerDriver)
