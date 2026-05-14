@@ -14,7 +14,7 @@ class PDFMinerDriver(Driver):
     Good for text-heavy documents, handles various encodings well.
     """
 
-    supported_levels = ["page", "block"]
+    supported_levels = ['page', 'block']
 
     def _initialize_driver(self):
         """Initialize PDFMiner driver by checking if the library is available."""
@@ -22,12 +22,12 @@ class PDFMinerDriver(Driver):
             from pdfminer.high_level import extract_pages  # noqa: F401
         except ImportError as e:
             raise ImportError(
-                "pdfminer.six is required. Install with: pip install parxy[pdfminer]"
+                'pdfminer.six is required. Install with: pip install parxy[pdfminer]'
             ) from e
         return self
 
     def _handle(
-        self, file: str | io.BytesIO | bytes, level: str = "page", **kwargs
+        self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
         """Parse PDF to Document object.
 
@@ -69,7 +69,7 @@ class PDFMinerDriver(Driver):
                 ).strip()
                 pages.append(Page(number=page_num, text=text, blocks=None))
 
-            span.set_attribute("output.pages", len(pages))
+            span.set_attribute('output.pages', len(pages))
 
             outline = None
             parser = PDFParser(io.BytesIO(stream))
@@ -80,11 +80,13 @@ class PDFMinerDriver(Driver):
                 for bm_level, title, dest, a, se in doc.get_outlines():
                     ref = dest if dest is not None else (a if a is not None else se)
                     page_num = resolver.resolve(ref) if ref is not None else None
-                    entries.append(TocEntry(
-                        title=title,
-                        page=page_num,
-                        level=bm_level,
-                    ))
+                    entries.append(
+                        TocEntry(
+                            title=title,
+                            page=page_num,
+                            level=bm_level,
+                        )
+                    )
                 if entries:
                     outline = entries
             except PDFNoOutlines:
@@ -114,7 +116,10 @@ class _PageNumberResolver:
     def resolve(self, ref: Any) -> Optional[int]:
         if isinstance(ref, self._PDFObjRef):
             resolved = ref.resolve()
-            if isinstance(resolved, dict) and resolved.get('Type') is self._LITERAL_PAGE:
+            if (
+                isinstance(resolved, dict)
+                and resolved.get('Type') is self._LITERAL_PAGE
+            ):
                 return self._objid_to_pagenum.get(ref.objid)
             return self.resolve(resolved)
         if isinstance(ref, dict) and 'D' in ref:
