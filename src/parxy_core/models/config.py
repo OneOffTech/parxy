@@ -265,3 +265,13 @@ class DoclingConfig(BaseConfig):
     model_config = SettingsConfigDict(
         env_prefix='parxy_docling_', env_file='.env', extra='ignore'
     )
+    
+class LiteParseConfig(BaseConfig):
+    """Configuration values for the LiteParse HTTP service. All env variables must start with `parxy_liteparse_`"""
+
+    base_url: str = 'http://localhost:5000'
+    """Base URL of the LiteParse server."""
+
+    model_config = SettingsConfigDict(
+        env_prefix='parxy_liteparse_', env_file='.env', extra='ignore'
+    )
