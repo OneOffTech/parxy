@@ -11,6 +11,7 @@ from parxy_core.drivers.llmwhisperer import LlmWhispererDriver
 from parxy_core.drivers.unstructured_local import UnstructuredLocalDriver
 from parxy_core.drivers.pypdfium2 import PyPDFium2Driver
 from parxy_core.drivers.pdfplumber import PDFPlumberDriver
+from parxy_core.drivers.pdfminer import PDFMinerDriver
 from parxy_core.models import (
     PdfActConfig,
     LandingAIConfig,
@@ -217,6 +218,9 @@ class DriverFactory:
     def _create_pdfplumber_driver(self) -> PDFPlumberDriver:
         return PDFPlumberDriver(logger=self._logger)
 
+    def _create_pdfminer_driver(self) -> PDFMinerDriver:
+        return PDFMinerDriver(logger=self._logger)
+
     def _create_landingai_driver(self) -> LandingAIADEDriver:
         """Create a LandingAI ADE Driver instance.
 
@@ -293,6 +297,7 @@ class DriverFactory:
             'unstructured_local',
             'pypdfium',
             'pdfplumber',
+            'pdfminer',
         ]
 
         return supported_drivers

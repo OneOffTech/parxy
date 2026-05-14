@@ -52,6 +52,9 @@ pypdfium2 = [
 pdfplumber = [
     "pdfplumber>=0.11.0",
 ]
+pdfminer = [
+    "pdfminer.six>=20251230",
+]
 all = [
     "llama-cloud>=2.0.0",
     "llmwhisperer-client>=2.4.2",
@@ -60,6 +63,7 @@ all = [
     "textual>=0.89.0",
     "pypdfium2>=5.7.1",
     "pdfplumber>=0.11.0",
+    "pdfminer.six>=20251230",
 ]
 
 
