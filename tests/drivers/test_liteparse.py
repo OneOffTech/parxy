@@ -6,7 +6,11 @@ from unittest.mock import Mock, patch, MagicMock
 from parxy_core.models import Page
 from parxy_core.models.config import LiteParseConfig
 from parxy_core.drivers import LiteParseDriver
-from parxy_core.exceptions import FileNotFoundException, ParsingException, RateLimitException
+from parxy_core.exceptions import (
+    FileNotFoundException,
+    ParsingException,
+    RateLimitException,
+)
 
 
 def _liteparse_service_available(base_url: str = 'http://localhost:5000') -> bool:
@@ -62,13 +66,21 @@ class TestLiteParseDriver:
         mock_client = _make_mock_client(
             status_code=200,
             json_body={
-                "pages": [
-                    {"pageNum": 1, "width": 612.0, "height": 792.0, "text": "1", "textItems": []},
+                'pages': [
+                    {
+                        'pageNum': 1,
+                        'width': 612.0,
+                        'height': 792.0,
+                        'text': '1',
+                        'textItems': [],
+                    },
                 ]
             },
         )
 
-        with patch('parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client):
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
             driver = LiteParseDriver(config=LiteParseConfig())
             path = self.__fixture_path('empty-doc.pdf')
             document = driver.parse(path, level='page')
@@ -96,13 +108,21 @@ class TestLiteParseDriver:
         mock_client = _make_mock_client(
             status_code=200,
             json_body={
-                "pages": [
-                    {"pageNum": 1, "width": 612.0, "height": 792.0, "text": expected_text, "textItems": []},
+                'pages': [
+                    {
+                        'pageNum': 1,
+                        'width': 612.0,
+                        'height': 792.0,
+                        'text': expected_text,
+                        'textItems': [],
+                    },
                 ]
             },
         )
 
-        with patch('parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client):
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
             driver = LiteParseDriver(config=LiteParseConfig())
             path = self.__fixture_path('test-doc.pdf')
             document = driver.parse(path, level='page')
@@ -119,7 +139,9 @@ class TestLiteParseDriver:
     def test_liteparse_driver_rate_limit_raises_exception(self):
         mock_client = _make_mock_client(status_code=429, json_body={})
 
-        with patch('parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client):
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
             driver = LiteParseDriver(config=LiteParseConfig())
             path = self.__fixture_path('test-doc.pdf')
 
@@ -129,7 +151,9 @@ class TestLiteParseDriver:
     def test_liteparse_driver_http_error_raises_parsing_exception(self):
         mock_client = _make_mock_client(status_code=500, json_body={})
 
-        with patch('parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client):
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
             driver = LiteParseDriver(config=LiteParseConfig())
             path = self.__fixture_path('test-doc.pdf')
 
@@ -142,9 +166,11 @@ class TestLiteParseDriver:
         mock_client = MagicMock()
         mock_client.__enter__ = Mock(return_value=mock_client)
         mock_client.__exit__ = Mock(return_value=False)
-        mock_client.post.side_effect = httpx.ConnectError("Connection refused")
+        mock_client.post.side_effect = httpx.ConnectError('Connection refused')
 
-        with patch('parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client):
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
             driver = LiteParseDriver(config=LiteParseConfig())
             path = self.__fixture_path('test-doc.pdf')
 
@@ -162,17 +188,31 @@ class TestLiteParseDriver:
 
         mock_client = _make_mock_client(
             status_code=200,
-            json_body={"pages": [{"pageNum": 1, "width": 612.0, "height": 792.0, "text": "1", "textItems": []}]},
+            json_body={
+                'pages': [
+                    {
+                        'pageNum': 1,
+                        'width': 612.0,
+                        'height': 792.0,
+                        'text': '1',
+                        'textItems': [],
+                    }
+                ]
+            },
         )
 
-        with patch('parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client):
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
             driver = LiteParseDriver(config=LiteParseConfig())
             path = self.__fixture_path('empty-doc.pdf')
             driver.parse(path, level='page')
 
         mock_tracer.span.assert_called()
         span_calls = mock_tracer.span.call_args_list
-        doc_processing_call = [c for c in span_calls if c[0][0] == 'document-processing'][0]
+        doc_processing_call = [
+            c for c in span_calls if c[0][0] == 'document-processing'
+        ][0]
         assert doc_processing_call[1]['driver'] == 'LiteParseDriver'
         assert doc_processing_call[1]['level'] == 'page'
 
@@ -203,10 +243,22 @@ class TestLiteParseDriver:
     def test_liteparse_driver_records_elapsed_time(self):
         mock_client = _make_mock_client(
             status_code=200,
-            json_body={"pages": [{"pageNum": 1, "width": 612.0, "height": 792.0, "text": "1", "textItems": []}]},
+            json_body={
+                'pages': [
+                    {
+                        'pageNum': 1,
+                        'width': 612.0,
+                        'height': 792.0,
+                        'text': '1',
+                        'textItems': [],
+                    }
+                ]
+            },
         )
 
-        with patch('parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client):
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
             driver = LiteParseDriver(config=LiteParseConfig())
             path = self.__fixture_path('empty-doc.pdf')
             document = driver.parse(path, level='page')
@@ -217,18 +269,34 @@ class TestLiteParseDriver:
         assert document.parsing_metadata['driver_elapsed_time'] > 0
 
     def test_liteparse_driver_custom_base_url(self):
-        driver = LiteParseDriver(config=LiteParseConfig(base_url='http://my-server:8080'))
+        driver = LiteParseDriver(
+            config=LiteParseConfig(base_url='http://my-server:8080')
+        )
 
         assert driver._config.base_url == 'http://my-server:8080'
 
     def test_liteparse_driver_posts_to_correct_url(self):
         mock_client = _make_mock_client(
             status_code=200,
-            json_body={"pages": [{"pageNum": 1, "width": 612.0, "height": 792.0, "text": "1", "textItems": []}]},
+            json_body={
+                'pages': [
+                    {
+                        'pageNum': 1,
+                        'width': 612.0,
+                        'height': 792.0,
+                        'text': '1',
+                        'textItems': [],
+                    }
+                ]
+            },
         )
 
-        with patch('parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client):
-            driver = LiteParseDriver(config=LiteParseConfig(base_url='http://my-server:8080'))
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(
+                config=LiteParseConfig(base_url='http://my-server:8080')
+            )
             path = self.__fixture_path('empty-doc.pdf')
             driver.parse(path, level='page')
 
@@ -254,7 +322,9 @@ class TestLiteParseDriverIntegration:
             'This is a heading 1\n'
             'This is a paragraph below heading 1\n\n\n\n\n\n\n\n\n\n\n1'
         )
-        driver = LiteParseDriver(config=LiteParseConfig(base_url='http://localhost:5000'))
+        driver = LiteParseDriver(
+            config=LiteParseConfig(base_url='http://localhost:5000')
+        )
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='page')
 
@@ -270,7 +340,9 @@ class TestLiteParseDriverIntegration:
         assert document.pages[0].text == expected_text
 
     def test_liteparse_driver_read_document_block_level(self):
-        driver = LiteParseDriver(config=LiteParseConfig(base_url='http://localhost:5000'))
+        driver = LiteParseDriver(
+            config=LiteParseConfig(base_url='http://localhost:5000')
+        )
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='block')
 
@@ -279,7 +351,9 @@ class TestLiteParseDriverIntegration:
         assert document.pages[0].number == 1
 
     def test_liteparse_driver_returns_parsing_metadata(self):
-        driver = LiteParseDriver(config=LiteParseConfig(base_url='http://localhost:5000'))
+        driver = LiteParseDriver(
+            config=LiteParseConfig(base_url='http://localhost:5000')
+        )
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='page')
 
