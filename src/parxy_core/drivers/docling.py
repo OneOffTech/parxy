@@ -13,12 +13,11 @@ Example .env configuration:
     PARXY_DOCLING_BASE_URL=http://localhost:5001
     PARXY_DOCLING_API_KEY=secret
     PARXY_DOCLING_DO_OCR=false
-    PARXY_DOCLING_PDF_BACKEND=dlparse_v2
+    PARXY_DOCLING_PDF_BACKEND=docling_parse
     PARXY_DOCLING_TABLE_MODE=accurate
     PARXY_DOCLING_INCLUDE_IMAGES=false
 """
 
-import base64
 import io
 from typing import Optional
 
@@ -34,6 +33,23 @@ from parxy_core.models import (
     TableBlock,
     TextBlock,
 )
+
+try:
+    from docling.service_client import DoclingServiceClient
+    from docling.service_client.client import ExperimentalWarning
+    from docling.service_client.exceptions import (
+        DoclingServiceClientError,
+        ServiceError,
+        TaskNotFoundError,
+        TaskTimeoutError,
+    )
+except ImportError:
+    DoclingServiceClient = None  # type: ignore[assignment,misc]
+    ExperimentalWarning = None  # type: ignore[assignment,misc]
+    DoclingServiceClientError = None  # type: ignore[assignment,misc]
+    ServiceError = None  # type: ignore[assignment,misc]
+    TaskNotFoundError = None  # type: ignore[assignment,misc]
+    TaskTimeoutError = None  # type: ignore[assignment,misc]
 
 _PER_CALL_OPTIONS = frozenset({
     'do_ocr',
@@ -64,7 +80,8 @@ DOCLING_LABEL_TO_ROLE: dict[str, str] = {
     'checkbox_unselected': 'generic',
 }
 
-DOCLING_LOCAL_URL="http://localhost:5001"
+DOCLING_LOCAL_URL = 'http://localhost:5001'
+
 
 class DoclingDriver(Driver):
     """PDF parser using IBM Docling Serve API.
@@ -87,12 +104,10 @@ class DoclingDriver(Driver):
     supported_levels = ['page', 'block']
 
     def _initialize_driver(self):
-        try:
-            import httpx  # noqa: F401
-        except ImportError as e:
+        if DoclingServiceClient is None:
             raise ImportError(
-                'httpx is required. Install with: pip install parxy[docling]'
-            ) from e
+                'docling is required. Install with: pip install parxy[docling]'
+            )
 
         if self._config:
             self._base_url = getattr(self._config, 'base_url', DOCLING_LOCAL_URL).rstrip('/')
@@ -116,48 +131,37 @@ class DoclingDriver(Driver):
                 return val
         return default
 
-    def _build_headers(self) -> dict:
-        headers: dict = {}
-        if self._api_key:
-            api_key_value = (
-                self._api_key.get_secret_value()
-                if hasattr(self._api_key, 'get_secret_value')
-                else self._api_key
-            )
-            headers['X-Api-Key'] = api_key_value
-        return headers
+    def _get_api_key_str(self) -> str:
+        if self._api_key is None:
+            return ''
+        if hasattr(self._api_key, 'get_secret_value'):
+            return self._api_key.get_secret_value()
+        return str(self._api_key)
 
-    def _build_options(self, overrides: dict) -> dict:
-        opts: dict = {
-            'to_formats': ['json'],
-            'do_ocr': self._get_opt(overrides, 'do_ocr', False),
-            'do_table_structure': True,
-            'pdf_backend': self._get_opt(overrides, 'pdf_backend', 'docling_parse'),
-            'table_mode': self._get_opt(overrides, 'table_mode', 'accurate'),
-            'include_images': self._get_opt(overrides, 'include_images', False),
-            'abort_on_error': False,
-        }
+    def _build_docling_options(self, overrides: dict):
+        from docling.datamodel.base_models import OutputFormat
+        from docling.datamodel.service.options import ConvertDocumentsOptions
 
-        images_scale = self._get_opt(overrides, 'images_scale', None)
-        if images_scale is not None:
-            opts['images_scale'] = float(images_scale)
-
-        if self._get_opt(overrides, 'do_picture_classification', False):
-            opts['do_picture_classification'] = True
-
-        if self._get_opt(overrides, 'do_picture_description', False):
-            opts['do_picture_description'] = True
-
-        return opts
+        return ConvertDocumentsOptions(
+            to_formats=[OutputFormat.JSON],
+            do_ocr=self._get_opt(overrides, 'do_ocr', False),
+            do_table_structure=True,
+            pdf_backend=self._get_opt(overrides, 'pdf_backend', 'docling_parse'),
+            table_mode=self._get_opt(overrides, 'table_mode', 'accurate'),
+            include_images=self._get_opt(overrides, 'include_images', False),
+            images_scale=self._get_opt(overrides, 'images_scale', 2.0),
+            abort_on_error=False,
+            do_picture_classification=self._get_opt(overrides, 'do_picture_classification', False),
+            do_picture_description=self._get_opt(overrides, 'do_picture_description', False),
+        )
 
     def _handle(
         self, file: str | io.BytesIO | bytes, level: str = 'page', **kwargs
     ) -> Document:
-        """Parse a document via the Docling Serve async API (blocking).
+        """Parse a document via the Docling Serve API (blocking).
 
-        Submits the job to the async endpoint, polls until complete, then
-        fetches and returns the result. Transparently blocking from the
-        caller's perspective.
+        Uses the official docling-serve client SDK, which handles async job
+        submission, polling, and result retrieval transparently.
 
         Parameters
         ----------
@@ -169,10 +173,10 @@ class DoclingDriver(Driver):
             Per-call configuration overrides. Supported options:
 
             - do_ocr: Enable OCR on bitmap content
-            - pdf_backend: PDF backend (dlparse_v2, pypdfium2, etc.)
+            - pdf_backend: PDF backend (docling_parse, pypdfium2, etc.)
             - table_mode: Table extraction mode ('fast' or 'accurate')
             - include_images: Include images in output (default False)
-            - images_scale: Scale factor for images
+            - images_scale: Scale factor for images (default 2.0)
             - do_picture_classification: Classify pictures
             - do_picture_description: Generate picture descriptions
 
@@ -181,186 +185,102 @@ class DoclingDriver(Driver):
         Document
             A parsed Document in unified format.
         """
-        import httpx
+        import json
+        import warnings
+        from pathlib import Path
+        from docling_core.types.io import DocumentStream
+        from docling.datamodel.base_models import ConversionStatus
 
         overrides = {k: v for k, v in kwargs.items() if k in _PER_CALL_OPTIONS}
-
         is_url = isinstance(file, str) and validators.url(file) is True
 
         if is_url:
             filename = file
-            # Use URL bytes as stand-in for tracing hash/size; the actual
-            # download is delegated to docling-serve
             stream_for_trace = file.encode('utf-8')
+            source: str | DocumentStream = file
         else:
             filename, stream_for_trace = self.handle_file_input(file)
+            name = Path(filename).name if filename else 'document.pdf'
+            source = DocumentStream(name=name, stream=io.BytesIO(stream_for_trace))
 
         with self._trace_parse(filename, stream_for_trace, **kwargs) as span:
-            headers = self._build_headers()
-            options = self._build_options(overrides)
+            options = self._build_docling_options(overrides)
 
-            span.set_attribute('docling.do_ocr', options['do_ocr'])
-            span.set_attribute('docling.pdf_backend', options['pdf_backend'])
-            span.set_attribute('docling.table_mode', options['table_mode'])
-            span.set_attribute('docling.include_images', options['include_images'])
-            if 'images_scale' in options:
-                span.set_attribute('docling.images_scale', options['images_scale'])
-            if options.get('do_picture_classification'):
+            span.set_attribute('docling.do_ocr', options.do_ocr)
+            span.set_attribute('docling.pdf_backend', str(options.pdf_backend.value))
+            span.set_attribute('docling.table_mode', str(options.table_mode.value))
+            span.set_attribute('docling.include_images', options.include_images)
+            span.set_attribute('docling.images_scale', options.images_scale)
+            if options.do_picture_classification:
                 span.set_attribute('docling.do_picture_classification', True)
-            if options.get('do_picture_description'):
+            if options.do_picture_description:
                 span.set_attribute('docling.do_picture_description', True)
 
-            if is_url:
-                payload: dict = {
-                    'options': options,
-                    'sources': [{'kind': 'http', 'url': file}],
-                }
-            else:
-                b64_data = base64.b64encode(stream_for_trace).decode('utf-8')
-                upload_filename = (
-                    filename.replace('\\', '/').rsplit('/', 1)[-1]
-                    if filename
-                    else 'document.pdf'
-                )
-                payload = {
-                    'options': options,
-                    'sources': [
-                        {
-                            'kind': 'file',
-                            'base64_string': b64_data,
-                            'filename': upload_filename,
-                        }
-                    ],
-                }
-
             try:
-                with httpx.Client(timeout=self._timeout) as client:
-                    response = client.post(
-                        f'{self._base_url}/v1/convert/source/async',
-                        json=payload,
-                        headers=headers,
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', ExperimentalWarning)
+                    client = DoclingServiceClient(
+                        url=self._base_url,
+                        api_key=self._get_api_key_str(),
+                        poll_server_wait=self._poll_wait,
+                        poll_client_interval=self._poll_wait,
+                        job_timeout=self._timeout,
+                        status_watcher='polling',
                     )
 
-                    if response.status_code == 401:
-                        raise AuthenticationException(
-                            'Authentication failed. Check PARXY_DOCLING_API_KEY.',
-                            self.__class__,
-                        )
-                    if response.status_code != 200:
-                        raise ParsingException(
-                            f'Docling API error {response.status_code}: {response.text[:200]}',
-                            self.__class__,
-                        )
-
-                    task_id = response.json().get('task_id')
-                    if not task_id:
-                        raise ParsingException(
-                            'Docling async API did not return a task_id',
-                            self.__class__,
-                        )
-
-                    span.set_attribute('docling.task_id', task_id)
-                    data = self._poll_for_result(client, task_id, headers)
-
-            except httpx.TimeoutException as e:
+                job = client.submit(source, options=options)
+            except ServiceError as e:
+                if e.status_code == 401:
+                    raise AuthenticationException(
+                        'Authentication failed. Check PARXY_DOCLING_API_KEY.',
+                        self.__class__,
+                    ) from e
                 raise ParsingException(
-                    f'Timeout communicating with Docling server at {self._base_url}',
+                    f'Docling service error: {e}',
                     self.__class__,
                 ) from e
-            except httpx.TransportError as e:
+            except DoclingServiceClientError as e:
                 raise ParsingException(
                     f'Network error communicating with Docling server at {self._base_url}: {e}',
                     self.__class__,
                 ) from e
 
-            if data.get('status') not in ('success', 'partial_success'):
-                errors = data.get('errors', [])
+            span.set_attribute('docling.task_id', job.task_id)
+
+            try:
+                result = job.result(timeout=self._timeout)
+            except TaskTimeoutError as e:
+                raise ParsingException(
+                    f'Docling processing timed out after {self._timeout}s (task {job.task_id})',
+                    self.__class__,
+                ) from e
+            except TaskNotFoundError as e:
+                raise ParsingException(
+                    f'Docling task not found (task {job.task_id})',
+                    self.__class__,
+                ) from e
+            except DoclingServiceClientError as e:
+                raise ParsingException(
+                    f'Docling client error: {e}',
+                    self.__class__,
+                ) from e
+
+            if result.status not in (ConversionStatus.SUCCESS, ConversionStatus.PARTIAL_SUCCESS):
+                errors = [err.error_message for err in result.errors]
                 raise ParsingException(
                     f'Docling processing failed: {errors}', self.__class__
                 )
 
-            json_content = data.get('document', {}).get('json_content')
-
-            if not json_content:
+            if result.document is None:
                 raise ParsingException(
-                    'Docling API returned empty JSON content', self.__class__
+                    'Docling API returned no document', self.__class__
                 )
 
-            document = _docling_json_to_document(json_content, filename=filename, level=level)
+            doc_dict = json.loads(result.document.model_dump_json())
+            document = _docling_json_to_document(doc_dict, filename=filename, level=level)
             span.set_attribute('output.pages', len(document.pages))
 
         return document
-
-    def _poll_for_result(self, client, task_id: str, headers: dict) -> dict:
-        """Poll until the async task completes, then fetch and return the result."""
-        import time
-        import httpx
-
-        deadline = time.monotonic() + self._timeout
-        poll_read_timeout = self._poll_wait + 10.0
-
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise ParsingException(
-                    f'Docling processing timed out after {self._timeout}s (task {task_id})',
-                    self.__class__,
-                )
-
-            wait = int(min(self._poll_wait, remaining))
-            poll_resp = client.get(
-                f'{self._base_url}/v1/status/poll/{task_id}',
-                params={'wait': wait},
-                headers=headers,
-                timeout=httpx.Timeout(
-                    connect=10.0, read=poll_read_timeout, write=10.0, pool=5.0
-                ),
-            )
-
-            if poll_resp.status_code == 404:
-                raise ParsingException(
-                    f'Docling task not found (task {task_id})',
-                    self.__class__,
-                )
-            if poll_resp.status_code != 200:
-                raise ParsingException(
-                    f'Docling poll error {poll_resp.status_code}: {poll_resp.text[:200]}',
-                    self.__class__,
-                )
-
-            status_data = poll_resp.json()
-            task_status = status_data.get('task_status', '')
-            task_meta = status_data.get('task_meta') or {}
-            num_docs = task_meta.get('num_docs', 0)
-            num_processed = task_meta.get('num_processed', 0)
-            error_message = task_meta.get('error_message', None)
-
-            if task_status == 'failure':
-                raise ParsingException(
-                    f'Docling processing failed (task {task_id}) {error_message}',
-                    self.__class__,
-                )
-
-            if task_status in ('success', 'partial_success'):
-                break
-            if num_docs > 0 and num_processed >= num_docs:
-                break
-
-            # Sleep between polls. Docling, as last checked, in
-            # https://github.com/docling-project/docling-jobkit/blob/b6b2e02a2d7762038335681b00b00087855d4b3e/docling_jobkit/orchestrators/base_orchestrator.py#L96
-            # does not honor the wait parameter set via the API
-            time.sleep(self._poll_wait)
-
-        result_resp = client.get(
-            f'{self._base_url}/v1/result/{task_id}',
-            headers=headers,
-        )
-        if result_resp.status_code != 200:
-            raise ParsingException(
-                f'Docling result fetch error {result_resp.status_code}: {result_resp.text[:200]}',
-                self.__class__,
-            )
-        return result_resp.json()
 
 
 def _docling_json_to_document(json_content: dict, filename: str, level: str) -> Document:

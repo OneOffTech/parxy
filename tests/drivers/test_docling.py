@@ -1,6 +1,8 @@
+import json as _json
 import os
-import pytest
+
 import httpx
+import pytest
 from unittest.mock import Mock, patch, MagicMock
 
 from parxy_core.models import Page, TextBlock, TableBlock, ImageBlock
@@ -27,7 +29,7 @@ docling_live = pytest.mark.skipif(
 
 
 def _docling_response(pages: dict, texts=None, tables=None, pictures=None, groups=None):
-    """Build a minimal successful Docling Serve API response."""
+    """Build a minimal DoclingDocument JSON dict (as returned by model_dump_json)."""
     texts = texts or []
     tables = tables or []
     pictures = pictures or []
@@ -40,74 +42,43 @@ def _docling_response(pages: dict, texts=None, tables=None, pictures=None, group
     )
 
     return {
-        'document': {
-            'json_content': {
-                'schema_name': 'DoclingDocument',
-                'version': '1.0.0',
-                'pages': pages,
-                'texts': texts,
-                'tables': tables,
-                'pictures': pictures,
-                'groups': groups,
-                'body': {
-                    'self_ref': '#/body',
-                    'children': body_children,
-                    'label': 'unspecified',
-                    'name': 'body',
-                },
-            }
+        'schema_name': 'DoclingDocument',
+        'version': '1.0.0',
+        'pages': pages,
+        'texts': texts,
+        'tables': tables,
+        'pictures': pictures,
+        'groups': groups,
+        'body': {
+            'self_ref': '#/body',
+            'children': body_children,
+            'label': 'unspecified',
+            'name': 'body',
         },
-        'status': 'success',
-        'processing_time': 0.5,
-        'errors': [],
     }
 
 
-def _mock_response(data: dict, status_code: int = 200):
-    resp = Mock()
-    resp.status_code = status_code
-    resp.json.return_value = data
-    resp.text = str(data)
-    return resp
+def _mock_conversion_result(json_content: dict):
+    """Build a mock ConversionResult with SUCCESS status."""
+    from docling.datamodel.base_models import ConversionStatus
+
+    result = Mock()
+    result.status = ConversionStatus.SUCCESS
+    result.errors = []
+    mock_doc = Mock()
+    mock_doc.model_dump_json.return_value = _json.dumps(json_content)
+    result.document = mock_doc
+    return result
 
 
-def _mock_submit_response(task_id: str = 'test-task-123'):
-    """Submit response from the async endpoint."""
-    return _mock_response({
-        'task_id': task_id,
-        'task_type': 'conversion',
-        'task_status': 'started',
-        'task_meta': {'num_docs': 1, 'num_processed': 0, 'num_succeeded': 0, 'num_failed': 0},
-    })
-
-
-def _mock_poll_done_response(task_id: str = 'test-task-123'):
-    """Poll response indicating the task has completed."""
-    return _mock_response({
-        'task_id': task_id,
-        'task_type': 'conversion',
-        'task_status': 'success',
-        'task_meta': {'num_docs': 1, 'num_processed': 1, 'num_succeeded': 1, 'num_failed': 0},
-    })
-
-
-def _mock_client(post_response, get_responses=None):
-    """Return a context-manager-compatible httpx.Client mock."""
-    ctx = MagicMock()
-    ctx.__enter__ = Mock(return_value=ctx)
-    ctx.__exit__ = Mock(return_value=False)
-    ctx.post.return_value = post_response
-    if get_responses is not None:
-        ctx.get.side_effect = get_responses
-    return ctx
-
-
-def _mock_async_client(result_data: dict, task_id: str = 'test-task-123'):
-    """Mock the full async flow: submit → poll (done) → result fetch."""
-    return _mock_client(
-        _mock_submit_response(task_id),
-        get_responses=[_mock_poll_done_response(task_id), _mock_response(result_data)],
-    )
+def _mock_docling_client(json_content: dict, task_id: str = 'test-task-123'):
+    """Return a mock DoclingServiceClient instance (to assign to MockCls.return_value)."""
+    mock_client = MagicMock()
+    mock_job = Mock()
+    mock_job.task_id = task_id
+    mock_job.result.return_value = _mock_conversion_result(json_content)
+    mock_client.submit.return_value = mock_job
+    return mock_client
 
 
 class TestDoclingDriver:
@@ -146,9 +117,9 @@ class TestDoclingDriver:
 
     # ── page-level extraction ─────────────────────────────────────────────────
 
-    @patch('httpx.Client')
-    def test_docling_driver_read_document_page_level(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_read_document_page_level(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
             texts=[
                 {
@@ -159,7 +130,7 @@ class TestDoclingDriver:
                 }
             ],
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -176,13 +147,13 @@ class TestDoclingDriver:
         assert page.width == 595.3
         assert page.height == 841.9
 
-    @patch('httpx.Client')
-    def test_docling_driver_read_empty_document_page_level(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_read_empty_document_page_level(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
             texts=[],
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -194,9 +165,9 @@ class TestDoclingDriver:
         assert document.pages[0].text == ''
         assert document.pages[0].blocks is None
 
-    @patch('httpx.Client')
-    def test_docling_driver_keeps_empty_pages(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_keeps_empty_pages(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={
                 '1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1},
                 '2': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 2},
@@ -217,7 +188,7 @@ class TestDoclingDriver:
                 },
             ],
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -233,9 +204,9 @@ class TestDoclingDriver:
 
     # ── block-level extraction ────────────────────────────────────────────────
 
-    @patch('httpx.Client')
-    def test_docling_driver_read_document_block_level(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_read_document_block_level(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
             texts=[
                 {
@@ -259,7 +230,7 @@ class TestDoclingDriver:
                 },
             ],
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -288,9 +259,9 @@ class TestDoclingDriver:
         assert para_block.role == 'paragraph'
         assert para_block.text == 'A paragraph of text.'
 
-    @patch('httpx.Client')
-    def test_docling_driver_table_block(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_table_block(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
             tables=[
                 {
@@ -308,7 +279,7 @@ class TestDoclingDriver:
                 }
             ],
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -325,9 +296,9 @@ class TestDoclingDriver:
         assert '| Val 1 | Val 2 |' in block.text
         assert '| --- | --- |' in block.text
 
-    @patch('httpx.Client')
-    def test_docling_driver_image_block(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_image_block(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
             pictures=[
                 {
@@ -338,7 +309,7 @@ class TestDoclingDriver:
                 }
             ],
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -355,9 +326,9 @@ class TestDoclingDriver:
 
     # ── bounding box ──────────────────────────────────────────────────────────
 
-    @patch('httpx.Client')
-    def test_docling_driver_block_bbox(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_block_bbox(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
             texts=[
                 {
@@ -368,7 +339,7 @@ class TestDoclingDriver:
                 }
             ],
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -381,96 +352,97 @@ class TestDoclingDriver:
 
     # ── API request structure ─────────────────────────────────────────────────
 
-    @patch('httpx.Client')
-    def test_docling_driver_sends_json_format(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_sends_json_format(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
         )
-        mock_ctx = _mock_async_client(response_data)
-        MockClient.return_value = mock_ctx
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
         driver.parse(path, level='page')
 
-        call_kwargs = mock_ctx.post.call_args
-        payload = call_kwargs[1]['json'] if 'json' in call_kwargs[1] else call_kwargs[0][1]
-        assert payload['options']['to_formats'] == ['json']
-        assert 'sources' in payload
-        assert payload['sources'][0]['kind'] == 'file'
+        mock_client = MockDoclingServiceClient.return_value
+        submit_args = mock_client.submit.call_args
+        source = submit_args[0][0]
+        options = submit_args[1]['options']
 
-    @patch('httpx.Client')
-    def test_docling_driver_url_uses_http_sources(self, MockClient):
-        response_data = _docling_response(
+        from docling_core.types.io import DocumentStream
+        assert isinstance(source, DocumentStream)
+        assert any(f.value == 'json' for f in options.to_formats)
+
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_url_uses_http_sources(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
         )
-        mock_ctx = _mock_async_client(response_data)
-        MockClient.return_value = mock_ctx
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         driver.parse('http://example.com/doc.pdf', level='page')
 
-        call_kwargs = mock_ctx.post.call_args
-        payload = call_kwargs[1]['json'] if 'json' in call_kwargs[1] else call_kwargs[0][1]
-        assert 'sources' in payload
-        assert payload['sources'][0]['kind'] == 'http'
-        assert payload['sources'][0]['url'] == 'http://example.com/doc.pdf'
+        mock_client = MockDoclingServiceClient.return_value
+        submit_args = mock_client.submit.call_args
+        source = submit_args[0][0]
 
-    @patch('httpx.Client')
-    def test_docling_driver_per_call_ocr_override(self, MockClient):
-        response_data = _docling_response(
+        assert source == 'http://example.com/doc.pdf'
+
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_per_call_ocr_override(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
         )
-        mock_ctx = _mock_async_client(response_data)
-        MockClient.return_value = mock_ctx
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
         driver.parse(path, level='page', do_ocr=True)
 
-        call_kwargs = mock_ctx.post.call_args
-        payload = call_kwargs[1]['json'] if 'json' in call_kwargs[1] else call_kwargs[0][1]
-        assert payload['options']['do_ocr'] is True
+        mock_client = MockDoclingServiceClient.return_value
+        options = mock_client.submit.call_args[1]['options']
+        assert options.do_ocr is True
 
-    @patch('httpx.Client')
-    def test_docling_driver_per_call_pdf_backend_override(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_per_call_pdf_backend_override(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
         )
-        mock_ctx = _mock_async_client(response_data)
-        MockClient.return_value = mock_ctx
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
         driver.parse(path, level='page', pdf_backend='pypdfium2', table_mode='fast')
 
-        call_kwargs = mock_ctx.post.call_args
-        payload = call_kwargs[1]['json'] if 'json' in call_kwargs[1] else call_kwargs[0][1]
-        assert payload['options']['pdf_backend'] == 'pypdfium2'
-        assert payload['options']['table_mode'] == 'fast'
+        mock_client = MockDoclingServiceClient.return_value
+        options = mock_client.submit.call_args[1]['options']
+        assert options.pdf_backend.value == 'pypdfium2'
+        assert options.table_mode.value == 'fast'
 
-    @patch('httpx.Client')
-    def test_docling_driver_include_images_default_false(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_include_images_default_false(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
         )
-        mock_ctx = _mock_async_client(response_data)
-        MockClient.return_value = mock_ctx
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
         driver.parse(path, level='page')
 
-        call_kwargs = mock_ctx.post.call_args
-        payload = call_kwargs[1]['json'] if 'json' in call_kwargs[1] else call_kwargs[0][1]
-        assert payload['options']['include_images'] is False
+        mock_client = MockDoclingServiceClient.return_value
+        options = mock_client.submit.call_args[1]['options']
+        assert options.include_images is False
 
     # ── error handling ────────────────────────────────────────────────────────
 
-    @patch('httpx.Client')
-    def test_docling_driver_auth_error(self, MockClient):
-        mock_ctx = _mock_client(_mock_response({}, status_code=401))
-        MockClient.return_value = mock_ctx
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_auth_error(self, MockDoclingServiceClient):
+        from docling.service_client.exceptions import ServiceError
+
+        mock_client = MagicMock()
+        mock_client.submit.side_effect = ServiceError(message='Unauthorized', status_code=401)
+        MockDoclingServiceClient.return_value = mock_client
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -478,10 +450,15 @@ class TestDoclingDriver:
         with pytest.raises(AuthenticationException):
             driver.parse(path)
 
-    @patch('httpx.Client')
-    def test_docling_driver_server_error(self, MockClient):
-        mock_ctx = _mock_client(_mock_response({'detail': 'Internal error'}, status_code=500))
-        MockClient.return_value = mock_ctx
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_server_error(self, MockDoclingServiceClient):
+        from docling.service_client.exceptions import ServiceUnavailableError
+
+        mock_client = MagicMock()
+        mock_client.submit.side_effect = ServiceUnavailableError(
+            message='Internal server error', status_code=500
+        )
+        MockDoclingServiceClient.return_value = mock_client
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -489,19 +466,19 @@ class TestDoclingDriver:
         with pytest.raises(ParsingException):
             driver.parse(path)
 
-    @patch('httpx.Client')
-    def test_docling_driver_failure_status(self, MockClient):
-        result_data = {
-            'document': {'json_content': None},
-            'status': 'failure',
-            'errors': ['Unsupported format'],
-            'processing_time': 0.1,
-        }
-        mock_ctx = _mock_client(
-            _mock_submit_response(),
-            get_responses=[_mock_poll_done_response(), _mock_response(result_data)],
-        )
-        MockClient.return_value = mock_ctx
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_failure_status(self, MockDoclingServiceClient):
+        from docling.datamodel.base_models import ConversionStatus
+
+        mock_client = MagicMock()
+        mock_job = Mock()
+        mock_job.task_id = 'test-task-123'
+        mock_result = Mock()
+        mock_result.status = ConversionStatus.FAILURE
+        mock_result.errors = []
+        mock_job.result.return_value = mock_result
+        mock_client.submit.return_value = mock_job
+        MockDoclingServiceClient.return_value = mock_client
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -509,13 +486,16 @@ class TestDoclingDriver:
         with pytest.raises(ParsingException):
             driver.parse(path)
 
-    @patch('httpx.Client')
-    def test_docling_driver_poll_task_not_found(self, MockClient):
-        mock_ctx = _mock_client(
-            _mock_submit_response(),
-            get_responses=[_mock_response({'detail': 'Not found'}, status_code=404)],
-        )
-        MockClient.return_value = mock_ctx
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_poll_task_not_found(self, MockDoclingServiceClient):
+        from docling.service_client.exceptions import TaskNotFoundError
+
+        mock_client = MagicMock()
+        mock_job = Mock()
+        mock_job.task_id = 'test-task-123'
+        mock_job.result.side_effect = TaskNotFoundError('Task not found')
+        mock_client.submit.return_value = mock_job
+        MockDoclingServiceClient.return_value = mock_client
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -523,13 +503,15 @@ class TestDoclingDriver:
         with pytest.raises(ParsingException, match='task not found'):
             driver.parse(path)
 
-    @patch('httpx.Client')
-    def test_docling_driver_connect_error(self, MockClient):
-        mock_ctx = MagicMock()
-        mock_ctx.__enter__ = Mock(return_value=mock_ctx)
-        mock_ctx.__exit__ = Mock(return_value=False)
-        mock_ctx.post.side_effect = httpx.ConnectError('Connection refused')
-        MockClient.return_value = mock_ctx
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_connect_error(self, MockDoclingServiceClient):
+        from docling.service_client.exceptions import ServiceUnavailableError
+
+        mock_client = MagicMock()
+        mock_client.submit.side_effect = ServiceUnavailableError(
+            message='Connection refused', status_code=None
+        )
+        MockDoclingServiceClient.return_value = mock_client
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -537,15 +519,15 @@ class TestDoclingDriver:
         with pytest.raises(ParsingException):
             driver.parse(path)
 
-    @patch('httpx.Client')
-    def test_docling_driver_remote_protocol_error(self, MockClient):
-        mock_ctx = MagicMock()
-        mock_ctx.__enter__ = Mock(return_value=mock_ctx)
-        mock_ctx.__exit__ = Mock(return_value=False)
-        mock_ctx.post.side_effect = httpx.RemoteProtocolError(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_remote_protocol_error(self, MockDoclingServiceClient):
+        from docling.service_client.exceptions import DoclingServiceClientError
+
+        mock_client = MagicMock()
+        mock_client.submit.side_effect = DoclingServiceClientError(
             'Server disconnected without sending a response.'
         )
-        MockClient.return_value = mock_ctx
+        MockDoclingServiceClient.return_value = mock_client
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -555,9 +537,9 @@ class TestDoclingDriver:
 
     # ── tracing ───────────────────────────────────────────────────────────────
 
-    @patch('httpx.Client')
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
     @patch('parxy_core.drivers.abstract_driver.tracer')
-    def test_docling_driver_tracing_span_created(self, mock_tracer, MockClient):
+    def test_docling_driver_tracing_span_created(self, mock_tracer, MockDoclingServiceClient):
         mock_span = MagicMock()
         mock_span.__enter__ = Mock(return_value=mock_span)
         mock_span.__exit__ = Mock(return_value=False)
@@ -565,10 +547,10 @@ class TestDoclingDriver:
         mock_tracer.count = Mock()
         mock_tracer.info = Mock()
 
-        response_data = _docling_response(
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -589,9 +571,8 @@ class TestDoclingDriver:
         assert count_call[0][0] == 'documents.processed'
         assert count_call[1]['driver'] == 'DoclingDriver'
 
-    @patch('httpx.Client')
     @patch('parxy_core.drivers.abstract_driver.tracer')
-    def test_docling_driver_tracing_exception_recorded(self, mock_tracer, MockClient):
+    def test_docling_driver_tracing_exception_recorded(self, mock_tracer):
         mock_span = MagicMock()
         mock_span.__enter__ = Mock(return_value=mock_span)
         mock_span.__exit__ = Mock(return_value=False)
@@ -613,9 +594,9 @@ class TestDoclingDriver:
 
     # ── elapsed time ──────────────────────────────────────────────────────────
 
-    @patch('httpx.Client')
-    def test_docling_driver_records_elapsed_time(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_records_elapsed_time(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
             texts=[
                 {
@@ -626,7 +607,7 @@ class TestDoclingDriver:
                 }
             ],
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
@@ -639,9 +620,9 @@ class TestDoclingDriver:
 
     # ── multi-page ────────────────────────────────────────────────────────────
 
-    @patch('httpx.Client')
-    def test_docling_driver_multi_page_page_numbers_start_at_1(self, MockClient):
-        response_data = _docling_response(
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_multi_page_page_numbers_start_at_1(self, MockDoclingServiceClient):
+        json_content = _docling_response(
             pages={
                 '1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1},
                 '2': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 2},
@@ -661,7 +642,7 @@ class TestDoclingDriver:
                 },
             ],
         )
-        MockClient.return_value = _mock_async_client(response_data)
+        MockDoclingServiceClient.return_value = _mock_docling_client(json_content)
 
         driver = DoclingDriver()
         path = self.__fixture_path('empty-doc.pdf')
