@@ -27,4 +27,5 @@ from parxy_core.models.config import (
     LandingAIConfig as LandingAIConfig,
     LlmWhispererConfig as LlmWhispererConfig,
     UnstructuredLocalConfig as UnstructuredLocalConfig,
+    DoclingConfig as DoclingConfig,
 )
