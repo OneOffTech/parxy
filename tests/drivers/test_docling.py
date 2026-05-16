@@ -510,9 +510,21 @@ class TestDoclingDriver:
             driver.parse(path)
 
     @patch('httpx.Client')
-    def test_docling_driver_connect_error(self, MockClient):
-        import httpx
+    def test_docling_driver_poll_task_not_found(self, MockClient):
+        mock_ctx = _mock_client(
+            _mock_submit_response(),
+            get_responses=[_mock_response({'detail': 'Not found'}, status_code=404)],
+        )
+        MockClient.return_value = mock_ctx
 
+        driver = DoclingDriver()
+        path = self.__fixture_path('empty-doc.pdf')
+
+        with pytest.raises(ParsingException, match='task not found'):
+            driver.parse(path)
+
+    @patch('httpx.Client')
+    def test_docling_driver_connect_error(self, MockClient):
         mock_ctx = MagicMock()
         mock_ctx.__enter__ = Mock(return_value=mock_ctx)
         mock_ctx.__exit__ = Mock(return_value=False)
@@ -523,6 +535,22 @@ class TestDoclingDriver:
         path = self.__fixture_path('empty-doc.pdf')
 
         with pytest.raises(ParsingException):
+            driver.parse(path)
+
+    @patch('httpx.Client')
+    def test_docling_driver_remote_protocol_error(self, MockClient):
+        mock_ctx = MagicMock()
+        mock_ctx.__enter__ = Mock(return_value=mock_ctx)
+        mock_ctx.__exit__ = Mock(return_value=False)
+        mock_ctx.post.side_effect = httpx.RemoteProtocolError(
+            'Server disconnected without sending a response.'
+        )
+        MockClient.return_value = mock_ctx
+
+        driver = DoclingDriver()
+        path = self.__fixture_path('empty-doc.pdf')
+
+        with pytest.raises(ParsingException, match='Network error'):
             driver.parse(path)
 
     # ── tracing ───────────────────────────────────────────────────────────────

@@ -259,8 +259,8 @@ class DoclingConfig(BaseConfig):
     do_picture_description: Optional[bool] = False
     """Generate descriptions for pictures. Default False."""
 
-    poll_wait: float = 5.0
-    """Server-side long-polling wait duration in seconds. Default 5."""
+    poll_wait: float = 10.0
+    """Server-side long-polling wait duration in seconds. Default 10."""
 
     model_config = SettingsConfigDict(
         env_prefix='parxy_docling_', env_file='.env', extra='ignore'

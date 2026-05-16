@@ -64,6 +64,7 @@ DOCLING_LABEL_TO_ROLE: dict[str, str] = {
     'checkbox_unselected': 'generic',
 }
 
+DOCLING_LOCAL_URL="http://localhost:5001"
 
 class DoclingDriver(Driver):
     """PDF parser using IBM Docling Serve API.
@@ -94,12 +95,12 @@ class DoclingDriver(Driver):
             ) from e
 
         if self._config:
-            self._base_url = getattr(self._config, 'base_url', 'http://localhost:5001').rstrip('/')
+            self._base_url = getattr(self._config, 'base_url', DOCLING_LOCAL_URL).rstrip('/')
             self._api_key = getattr(self._config, 'api_key', None)
             self._timeout = getattr(self._config, 'timeout', 120.0)
             self._poll_wait = getattr(self._config, 'poll_wait', 5.0)
         else:
-            self._base_url = 'http://localhost:5001'
+            self._base_url = DOCLING_LOCAL_URL
             self._api_key = None
             self._timeout = 120.0
             self._poll_wait = 5.0
@@ -258,16 +259,17 @@ class DoclingDriver(Driver):
                             self.__class__,
                         )
 
+                    span.set_attribute('docling.task_id', task_id)
                     data = self._poll_for_result(client, task_id, headers)
 
-            except httpx.ConnectError as e:
-                raise ParsingException(
-                    f'Cannot connect to Docling server at {self._base_url}: {e}',
-                    self.__class__,
-                ) from e
             except httpx.TimeoutException as e:
                 raise ParsingException(
-                    f'Timeout connecting to Docling server at {self._base_url}',
+                    f'Timeout communicating with Docling server at {self._base_url}',
+                    self.__class__,
+                ) from e
+            except httpx.TransportError as e:
+                raise ParsingException(
+                    f'Network error communicating with Docling server at {self._base_url}: {e}',
                     self.__class__,
                 ) from e
 
@@ -315,6 +317,11 @@ class DoclingDriver(Driver):
                 ),
             )
 
+            if poll_resp.status_code == 404:
+                raise ParsingException(
+                    f'Docling task not found (task {task_id})',
+                    self.__class__,
+                )
             if poll_resp.status_code != 200:
                 raise ParsingException(
                     f'Docling poll error {poll_resp.status_code}: {poll_resp.text[:200]}',
@@ -326,10 +333,11 @@ class DoclingDriver(Driver):
             task_meta = status_data.get('task_meta') or {}
             num_docs = task_meta.get('num_docs', 0)
             num_processed = task_meta.get('num_processed', 0)
+            error_message = task_meta.get('error_message', None)
 
             if task_status == 'failure':
                 raise ParsingException(
-                    f'Docling processing failed (task {task_id})',
+                    f'Docling processing failed (task {task_id}) {error_message}',
                     self.__class__,
                 )
 
@@ -337,6 +345,11 @@ class DoclingDriver(Driver):
                 break
             if num_docs > 0 and num_processed >= num_docs:
                 break
+
+            # Sleep between polls. Docling, as last checked, in
+            # https://github.com/docling-project/docling-jobkit/blob/b6b2e02a2d7762038335681b00b00087855d4b3e/docling_jobkit/orchestrators/base_orchestrator.py#L96
+            # does not honor the wait parameter set via the API
+            time.sleep(self._poll_wait)
 
         result_resp = client.get(
             f'{self._base_url}/v1/result/{task_id}',
