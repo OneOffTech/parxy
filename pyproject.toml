@@ -21,7 +21,7 @@ dependencies = [
     "opentelemetry-exporter-otlp>=1.37.0",
     "opentelemetry-proto>=1.37.0",
     "opentelemetry-sdk>=1.37.0",
-    
+    "httpx>=0.28.0",
 ]
 
 [project.scripts]
@@ -55,6 +55,9 @@ pdfplumber = [
 pdfminer = [
     "pdfminer.six>=20251230",
 ]
+docling = [
+    "docling-slim[service-client]>=2.93.0",
+]
 all = [
     "llama-cloud>=2.0.0",
     "llmwhisperer-client>=2.4.2",
@@ -64,6 +67,7 @@ all = [
     "pypdfium2>=5.7.1",
     "pdfplumber>=0.11.0",
     "pdfminer.six>=20251230",
+    "docling-slim[service-client]>=2.93.0",
 ]
 
 
