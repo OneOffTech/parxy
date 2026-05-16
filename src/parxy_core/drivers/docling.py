@@ -19,6 +19,7 @@ Example .env configuration:
 """
 
 import io
+import time
 from typing import Optional
 
 import validators
@@ -37,6 +38,7 @@ from parxy_core.models import (
 try:
     from docling.service_client import DoclingServiceClient
     from docling.service_client.client import ExperimentalWarning
+    from docling.service_client import StatusWatcherKind
     from docling.service_client.exceptions import (
         DoclingServiceClientError,
         ServiceError,
@@ -50,6 +52,10 @@ except ImportError:
     ServiceError = None  # type: ignore[assignment,misc]
     TaskNotFoundError = None  # type: ignore[assignment,misc]
     TaskTimeoutError = None  # type: ignore[assignment,misc]
+    StatusWatcherKind = None  # type: ignore[assignment,misc]
+
+# Grace window to absorb 404s while the server propagates the submitted task
+_TASK_NOT_FOUND_GRACE = 10.0
 
 _PER_CALL_OPTIONS = frozenset({
     'do_ocr',
@@ -225,7 +231,7 @@ class DoclingDriver(Driver):
                         poll_server_wait=self._poll_wait,
                         poll_client_interval=self._poll_wait,
                         job_timeout=self._timeout,
-                        status_watcher='polling',
+                        status_watcher=StatusWatcherKind.POLLING,
                     )
 
                 job = client.submit(source, options=options)
@@ -247,21 +253,52 @@ class DoclingDriver(Driver):
 
             span.set_attribute('docling.task_id', job.task_id)
 
+            # Drive polling manually so TaskNotFoundError during task propagation
+            # is absorbed within a grace window rather than surfacing immediately.
+            deadline = time.monotonic() + self._timeout
+            not_found_grace = time.monotonic() + _TASK_NOT_FOUND_GRACE
+
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise ParsingException(
+                        f'Docling processing timed out after {self._timeout}s'
+                        f' (task {job.task_id})',
+                        self.__class__,
+                    )
+
+                poll_started = time.monotonic()
+                try:
+                    job.poll(wait=min(self._poll_wait, remaining))
+                except TaskNotFoundError as e:
+                    grace_remaining = not_found_grace - time.monotonic()
+                    if grace_remaining > 0:
+                        time.sleep(min(self._poll_wait, grace_remaining))
+                        continue
+                    raise ParsingException(
+                        f'Docling task not found (task {job.task_id})',
+                        self.__class__,
+                    ) from e
+                except DoclingServiceClientError as e:
+                    raise ParsingException(
+                        f'Docling client error: {e}',
+                        self.__class__,
+                    ) from e
+
+                if job.done:
+                    break
+
+                # Client-side sleep to pace polling when server ignores wait param
+                poll_elapsed = time.monotonic() - poll_started
+                sleep_for = max(0.0, self._poll_wait - poll_elapsed)
+                if sleep_for > 0:
+                    time.sleep(sleep_for)
+
             try:
-                result = job.result(timeout=self._timeout)
-            except TaskTimeoutError as e:
-                raise ParsingException(
-                    f'Docling processing timed out after {self._timeout}s (task {job.task_id})',
-                    self.__class__,
-                ) from e
-            except TaskNotFoundError as e:
-                raise ParsingException(
-                    f'Docling task not found (task {job.task_id})',
-                    self.__class__,
-                ) from e
+                result = job.result()
             except DoclingServiceClientError as e:
                 raise ParsingException(
-                    f'Docling client error: {e}',
+                    f'Docling client error fetching result: {e}',
                     self.__class__,
                 ) from e
 

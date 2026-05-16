@@ -232,8 +232,8 @@ class DoclingConfig(BaseConfig):
     api_key: Optional[SecretStr] = Field(exclude=True, default=None)
     """Optional API key for authenticated docling-serve instances."""
 
-    timeout: float = 120.0
-    """HTTP request timeout in seconds. Default 120."""
+    timeout: float = 240.0
+    """HTTP request timeout in seconds. Default 240."""
 
     do_ocr: Optional[bool] = False
     """Enable OCR on bitmap content. Default False."""

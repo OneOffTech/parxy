@@ -72,10 +72,17 @@ def _mock_conversion_result(json_content: dict):
 
 
 def _mock_docling_client(json_content: dict, task_id: str = 'test-task-123'):
-    """Return a mock DoclingServiceClient instance (to assign to MockCls.return_value)."""
+    """Return a mock DoclingServiceClient instance (to assign to MockCls.return_value).
+
+    The driver polls via job.poll() until job.done, then calls job.result().
+    Mock: poll() succeeds immediately, done is truthy (Mock default), result() returns
+    the conversion result.
+    """
     mock_client = MagicMock()
     mock_job = Mock()
     mock_job.task_id = task_id
+    # poll() returns a truthy Mock (no side_effect → no exception)
+    # done is a Mock attribute → truthy → loop breaks after first poll
     mock_job.result.return_value = _mock_conversion_result(json_content)
     mock_client.submit.return_value = mock_job
     return mock_client
@@ -486,14 +493,18 @@ class TestDoclingDriver:
         with pytest.raises(ParsingException):
             driver.parse(path)
 
+    @patch('parxy_core.drivers.docling._TASK_NOT_FOUND_GRACE', 0.0)
+    @patch('parxy_core.drivers.docling.time.sleep')
     @patch('parxy_core.drivers.docling.DoclingServiceClient')
-    def test_docling_driver_poll_task_not_found(self, MockDoclingServiceClient):
+    def test_docling_driver_poll_task_not_found(
+        self, MockDoclingServiceClient, mock_sleep
+    ):
         from docling.service_client.exceptions import TaskNotFoundError
 
         mock_client = MagicMock()
         mock_job = Mock()
         mock_job.task_id = 'test-task-123'
-        mock_job.result.side_effect = TaskNotFoundError('Task not found')
+        mock_job.poll.side_effect = TaskNotFoundError('Task not found')
         mock_client.submit.return_value = mock_job
         MockDoclingServiceClient.return_value = mock_client
 
@@ -502,6 +513,38 @@ class TestDoclingDriver:
 
         with pytest.raises(ParsingException, match='task not found'):
             driver.parse(path)
+
+        # Grace period is 0 → immediate failure on the first poll, no sleep
+        assert mock_job.poll.call_count == 1
+        mock_sleep.assert_not_called()
+
+    @patch('parxy_core.drivers.docling.time.sleep')
+    @patch('parxy_core.drivers.docling.DoclingServiceClient')
+    def test_docling_driver_task_not_found_retries_then_succeeds(
+        self, MockDoclingServiceClient, mock_sleep
+    ):
+        from docling.service_client.exceptions import TaskNotFoundError
+
+        json_content = _docling_response(
+            pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
+        )
+        mock_client = MagicMock()
+        mock_job = Mock()
+        mock_job.task_id = 'test-task-123'
+        # First poll raises TaskNotFoundError; second poll succeeds (returns Mock)
+        mock_job.poll.side_effect = [TaskNotFoundError('Task not found'), Mock()]
+        mock_job.result.return_value = _mock_conversion_result(json_content)
+        mock_client.submit.return_value = mock_job
+        MockDoclingServiceClient.return_value = mock_client
+
+        driver = DoclingDriver()
+        path = self.__fixture_path('empty-doc.pdf')
+        document = driver.parse(path)
+
+        assert document is not None
+        # First poll failed → sleep during grace retry → second poll succeeds
+        assert mock_job.poll.call_count == 2
+        assert mock_sleep.call_count == 1
 
     @patch('parxy_core.drivers.docling.DoclingServiceClient')
     def test_docling_driver_connect_error(self, MockDoclingServiceClient):
