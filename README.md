@@ -166,9 +166,9 @@ For more information take a look at our [Getting Started with Parxy tutorial](./
 | [**Pypdfium2**](https://github.com/pypdfium2-team/pypdfium2) | `pypdfium2` | ✅ | ✅ | Preview |
 | [**pdfplumber**](https://github.com/jsvine/pdfplumber) | `pdfplumber` | ✅ | ✅ | Preview |
 | [**PDFMiner**](https://github.com/pdfminer/pdfminer.six) | `pdfminer` | ✅ | ✅ | Preview | 
+| [**Docling**](https://docling-project.github.io/docling/) | `docling` | ✅ | ✅ | Preview |
 | [**Unstructured.io** cloud service](https://docs.unstructured.io/open-source/introduction/overview) |   |  |  | Planned |
 | [**Chunkr**](https://www.chunkr.ai/) |   |  |  | Planned |
-| [**Docling**](https://docling-project.github.io/docling/) |   |  |  | Planned |
 
 
 ...and more can be added via the [live extension](#live-extension)!

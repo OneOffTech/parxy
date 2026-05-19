@@ -1,28 +1,40 @@
 ---
 title: Configure Docling
-description: How to set up the Docling driver against a self-hosted or remote docling-serve instance, configure OCR, PDF backend and table extraction, and override options on a per-document basis.
+description: How to set up the Docling driver against a self-hosted or remote docling instance, configure OCR, PDF backend and table extraction, and override options on a per-document basis.
 ---
 
 # How to Configure Docling
 
-This guide shows you how to configure the Docling driver for document processing using a running [docling-serve](https://github.com/docling-project/docling-serve) instance.
+This guide shows you how to configure the Docling driver for document processing using a [docling-serve](https://github.com/docling-project/docling-serve) instance.
 
 ## Prerequisites
 
 - Parxy installed with Docling support: `pip install parxy[docling]` or via UV `uv add parxy[docling]`
-- A running docling-serve instance (see [Self-Hosting Docling Serve](#self-hosting-docling-serve) below)
+- At least 10GB of free space on disk to running Docling locally or a docling-serve instance running remotely
 
 ## Quick Start
 
-### Step 1: Start docling-serve
+### Step 1: Start Docling
 
-The simplest way to run docling-serve is with Docker:
+Parxy comes with a sample Docker Compose file to run Docling. Generate it in your current directory with:
 
 ```bash
-docker run -p 5001:5001 ghcr.io/docling-project/docling-serve-cu128:v1.18.0
+parxy docker
 ```
 
+Then pull the image and start the service:
+
+```bash
+docker compose pull docling && docker compose up -d docling
+```
+
+It may take some minutes to download and start Docling as the image (`ghcr.io/docling-project/docling-serve-cu128:v1.18.0`) is about 10 GB after download.
+
+
 ### Step 2: Parse a Document
+
+Parse using the command line or as a 
+
 
 ```python
 from parxy_core.facade.parxy import Parxy
@@ -45,7 +57,7 @@ All Docling configuration uses environment variables with the `PARXY_DOCLING_` p
 |----------|------|---------|-------------|
 | `PARXY_DOCLING_BASE_URL` | string | `http://localhost:5001` | Base URL of the docling-serve instance |
 | `PARXY_DOCLING_API_KEY` | string | None | API key for authenticated docling-serve instances |
-| `PARXY_DOCLING_TIMEOUT` | float | `120.0` | HTTP request timeout in seconds |
+| `PARXY_DOCLING_TIMEOUT` | float | `240.0` | HTTP request timeout in seconds |
 
 #### Extraction
 
@@ -53,7 +65,7 @@ All Docling configuration uses environment variables with the `PARXY_DOCLING_` p
 |----------|------|---------|-------------|
 | `PARXY_DOCLING_DO_OCR` | bool | `false` | Enable OCR on bitmap content (slower but handles scanned PDFs) |
 | `PARXY_DOCLING_DO_TABLE_STRUCTURE` | bool | `true` | Extract table structure |
-| `PARXY_DOCLING_PDF_BACKEND` | string | `dlparse_v2` | PDF backend: `dlparse_v2`, `pypdfium2`, `dlparse_v1`, `dlparse_v4` |
+| `PARXY_DOCLING_PDF_BACKEND` | string | `docling_parse` | PDF backend: `docling_parse`, `pypdfium2` |
 | `PARXY_DOCLING_TABLE_MODE` | string | `accurate` | Table extraction mode: `fast` or `accurate` |
 | `PARXY_DOCLING_INCLUDE_IMAGES` | bool | `false` | Include images in output |
 | `PARXY_DOCLING_IMAGES_SCALE` | float | None | Scale factor for images (server default: 2.0) |
@@ -66,7 +78,7 @@ All Docling configuration uses environment variables with the `PARXY_DOCLING_` p
 PARXY_DOCLING_BASE_URL=http://docling-server:5001
 PARXY_DOCLING_API_KEY=your-secret-key
 PARXY_DOCLING_DO_OCR=false
-PARXY_DOCLING_PDF_BACKEND=dlparse_v2
+PARXY_DOCLING_PDF_BACKEND=docling_parse
 PARXY_DOCLING_TABLE_MODE=accurate
 PARXY_DOCLING_INCLUDE_IMAGES=false
 ```
@@ -104,19 +116,6 @@ The URL is passed directly to docling-serve, which downloads the document server
 
 ```python
 doc = Parxy.parse("https://arxiv.org/pdf/2206.01062", driver_name="docling")
-```
-
-### BytesIO / bytes
-
-Binary content is base64-encoded and sent as a file payload:
-
-```python
-import io
-
-with open("document.pdf", "rb") as f:
-    data = io.BytesIO(f.read())
-
-doc = Parxy.parse(data, driver_name="docling")
 ```
 
 ## Per-Call Configuration Overrides
@@ -157,7 +156,7 @@ doc4 = Parxy.parse(
 | Option | Type | Description |
 |--------|------|-------------|
 | `do_ocr` | bool | Enable OCR on bitmap content |
-| `pdf_backend` | string | PDF backend (`dlparse_v2`, `pypdfium2`, `dlparse_v1`, `dlparse_v4`) |
+| `pdf_backend` | string | PDF backend (`docling_parse`, `pypdfium2`) |
 | `table_mode` | string | Table extraction mode (`fast` or `accurate`) |
 | `include_images` | bool | Include images in output |
 | `images_scale` | float | Scale factor for extracted images |
@@ -226,7 +225,7 @@ doc = Parxy.parse(
 )
 ```
 
-> **Note**: OCR is significantly slower and more resource-intensive than text extraction. Enable it only when the document is actually scanned.
+> **Note**: OCR is significantly slower and more resource-intensive than text extraction. _EasyOCR_ is the default OCR in docling-serve
 
 ### Documents with Complex Tables
 
@@ -269,17 +268,6 @@ for page in doc.pages:
                 print(f"Image on page {page.number}: {block.alt_text}")
 ```
 
-### Processing Remote PDFs
-
-For URLs, docling-serve fetches the document directly, avoiding a round-trip through Parxy:
-
-```python
-doc = Parxy.parse(
-    "https://arxiv.org/pdf/2206.01062",
-    driver_name="docling",
-)
-```
-
 ### Filtering by Block Role
 
 Extract only main body text, skipping headers and footers:
@@ -297,60 +285,6 @@ body_blocks = [
 ]
 ```
 
-
-
-## Self-Hosting Docling Serve
-
-### Docker
-
-```bash
-# Quick start — CPU only
-docker run -p 5001:5001 ghcr.io/docling-project/docling-serve-cu128:v1.18.0
-
-# With GPU support (CUDA)
-docker run --gpus all -p 5001:5001 ghcr.io/docling-project/docling-serve-cu128:v1.18.0
-
-# With resource limits
-docker run -p 5001:5001 \
-    --memory="8g" \
-    --cpus="4" \
-    ghcr.io/docling-project/docling-serve-cu128:v1.18.0
-```
-
-### Docker Compose
-
-```yaml
-services:
-  docling-serve:
-    image: ghcr.io/docling-project/docling-serve-cu128:v1.18.0
-    ports:
-      - "5001:5001"
-    environment:
-      - DOCLING_SERVE_API_KEY=your-secret-key  # optional
-    restart: unless-stopped
-```
-
-Then configure Parxy to use the API key:
-
-```bash
-PARXY_DOCLING_API_KEY=your-secret-key
-```
-
-### Verify the Service is Running
-
-```bash
-curl http://localhost:5001/health
-```
-
-Or from Python:
-
-```python
-import httpx
-
-response = httpx.get("http://localhost:5001/health")
-print(response.json())
-```
-
 ## Troubleshooting
 
 ### Connection Errors
@@ -361,6 +295,13 @@ If you see `Cannot connect to Docling server`:
 2. Check the `PARXY_DOCLING_BASE_URL` value matches the actual address
 3. Ensure no firewall or network policy blocks the port
 
+### TaskNotFound Errors
+
+- UVICORN_WORKERS=1 
+- DOCLING_SERVE_ENG_KIND=local
+      - DOCLING_SERVE_ENG_LOC_NUM_WORKERS=1
+      - DOCLING_SERVE_ENG_LOC_SHARE_MODELS=true
+
 ### Authentication Errors
 
 If you see `AuthenticationException`:
@@ -370,36 +311,11 @@ If you see `AuthenticationException`:
 
 ### Timeout Errors
 
-For large documents or slow hardware, the default 120-second timeout may not be enough:
+For large documents or slow hardware, the default 240-second timeout may not be enough:
 
 ```bash
 PARXY_DOCLING_TIMEOUT=300
 ```
-
-Or per-call (not a per-call override — set it at config level):
-
-```python
-config = DoclingConfig(timeout=300.0)
-driver = Parxy.driver("docling", config=config)
-```
-
-### Poor OCR Results
-
-If OCR output is inaccurate:
-
-1. Ensure the document is genuinely scanned (not a digital PDF) — enabling OCR on digital PDFs is unnecessary and slower
-2. Try a higher `images_scale` value so OCR has more pixels to work with:
-
-```python
-doc = Parxy.parse("scanned.pdf", driver_name="docling", do_ocr=True, images_scale=3.0)
-```
-
-### Missing Tables
-
-If tables are not extracted or have incorrect structure:
-
-1. Ensure `table_mode="accurate"` (the default) is used — `fast` mode skips the deep learning model
-2. Verify `PARXY_DOCLING_DO_TABLE_STRUCTURE=true` is set (default)
 
 ## See Also
 
