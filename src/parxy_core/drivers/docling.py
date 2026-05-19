@@ -57,15 +57,17 @@ except ImportError:
 # Grace window to absorb 404s while the server propagates the submitted task
 _TASK_NOT_FOUND_GRACE = 10.0
 
-_PER_CALL_OPTIONS = frozenset({
-    'do_ocr',
-    'pdf_backend',
-    'table_mode',
-    'include_images',
-    'images_scale',
-    'do_picture_classification',
-    'do_picture_description',
-})
+_PER_CALL_OPTIONS = frozenset(
+    {
+        'do_ocr',
+        'pdf_backend',
+        'table_mode',
+        'include_images',
+        'images_scale',
+        'do_picture_classification',
+        'do_picture_description',
+    }
+)
 
 DOCLING_LABEL_TO_ROLE: dict[str, str] = {
     'title': 'doc-title',
@@ -116,7 +118,9 @@ class DoclingDriver(Driver):
             )
 
         if self._config:
-            self._base_url = getattr(self._config, 'base_url', DOCLING_LOCAL_URL).rstrip('/')
+            self._base_url = getattr(
+                self._config, 'base_url', DOCLING_LOCAL_URL
+            ).rstrip('/')
             self._api_key = getattr(self._config, 'api_key', None)
             self._timeout = getattr(self._config, 'timeout', 120.0)
             self._poll_wait = getattr(self._config, 'poll_wait', 5.0)
@@ -157,8 +161,12 @@ class DoclingDriver(Driver):
             include_images=self._get_opt(overrides, 'include_images', False),
             images_scale=self._get_opt(overrides, 'images_scale', 2.0),
             abort_on_error=False,
-            do_picture_classification=self._get_opt(overrides, 'do_picture_classification', False),
-            do_picture_description=self._get_opt(overrides, 'do_picture_description', False),
+            do_picture_classification=self._get_opt(
+                overrides, 'do_picture_classification', False
+            ),
+            do_picture_description=self._get_opt(
+                overrides, 'do_picture_description', False
+            ),
         )
 
     def _handle(
@@ -302,7 +310,10 @@ class DoclingDriver(Driver):
                     self.__class__,
                 ) from e
 
-            if result.status not in (ConversionStatus.SUCCESS, ConversionStatus.PARTIAL_SUCCESS):
+            if result.status not in (
+                ConversionStatus.SUCCESS,
+                ConversionStatus.PARTIAL_SUCCESS,
+            ):
                 errors = [err.error_message for err in result.errors]
                 raise ParsingException(
                     f'Docling processing failed: {errors}', self.__class__
@@ -314,13 +325,17 @@ class DoclingDriver(Driver):
                 )
 
             doc_dict = json.loads(result.document.model_dump_json())
-            document = _docling_json_to_document(doc_dict, filename=filename, level=level)
+            document = _docling_json_to_document(
+                doc_dict, filename=filename, level=level
+            )
             span.set_attribute('output.pages', len(document.pages))
 
         return document
 
 
-def _docling_json_to_document(json_content: dict, filename: str, level: str) -> Document:
+def _docling_json_to_document(
+    json_content: dict, filename: str, level: str
+) -> Document:
     """Convert a Docling JSON document to a parxy Document."""
     items_by_ref: dict[str, tuple[str, dict]] = {}
     for i, item in enumerate(json_content.get('texts', [])):
@@ -345,12 +360,14 @@ def _docling_json_to_document(json_content: dict, filename: str, level: str) -> 
         for _, (item_type, item_data) in items_by_ref.items():
             prov = item_data.get('prov', [{}])
             p = prov[0] if prov else {}
-            all_items.append((
-                p.get('page_no', 1),
-                -p.get('bbox', {}).get('t', 0.0),
-                item_type,
-                item_data,
-            ))
+            all_items.append(
+                (
+                    p.get('page_no', 1),
+                    -p.get('bbox', {}).get('t', 0.0),
+                    item_type,
+                    item_data,
+                )
+            )
         all_items.sort(key=lambda x: (x[0], x[1]))
         ordered = [(t, d) for _, _, t, d in all_items]
 
@@ -394,13 +411,15 @@ def _docling_json_to_document(json_content: dict, filename: str, level: str) -> 
                         text_parts.append(block.text)
                 elif item_type == 'picture':
                     blocks.append(_make_image_block(item_data, page_no))
-            pages.append(Page(
-                number=page_no,
-                width=width,
-                height=height,
-                text='\n'.join(text_parts),
-                blocks=blocks if blocks else None,
-            ))
+            pages.append(
+                Page(
+                    number=page_no,
+                    width=width,
+                    height=height,
+                    text='\n'.join(text_parts),
+                    blocks=blocks if blocks else None,
+                )
+            )
         else:
             text_parts = []
             for item_type, item_data in page_items:
@@ -412,13 +431,15 @@ def _docling_json_to_document(json_content: dict, filename: str, level: str) -> 
                     md = _table_to_markdown(item_data)
                     if md:
                         text_parts.append(md)
-            pages.append(Page(
-                number=page_no,
-                width=width,
-                height=height,
-                text='\n'.join(text_parts),
-                blocks=None,
-            ))
+            pages.append(
+                Page(
+                    number=page_no,
+                    width=width,
+                    height=height,
+                    text='\n'.join(text_parts),
+                    blocks=None,
+                )
+            )
 
     return Document(filename=filename, pages=pages)
 

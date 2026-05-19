@@ -8,7 +8,11 @@ from unittest.mock import Mock, patch, MagicMock
 from parxy_core.models import Page, TextBlock, TableBlock, ImageBlock
 
 from parxy_core.drivers import DoclingDriver
-from parxy_core.exceptions import FileNotFoundException, AuthenticationException, ParsingException
+from parxy_core.exceptions import (
+    FileNotFoundException,
+    AuthenticationException,
+    ParsingException,
+)
 
 _DOCLING_URL = 'http://localhost:5001'
 
@@ -133,7 +137,18 @@ class TestDoclingDriver:
                     'self_ref': '#/texts/0',
                     'text': 'Hello world',
                     'label': 'paragraph',
-                    'prov': [{'page_no': 1, 'bbox': {'l': 72.0, 't': 720.0, 'r': 540.0, 'b': 700.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 720.0,
+                                'r': 540.0,
+                                'b': 700.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 }
             ],
         )
@@ -155,7 +170,9 @@ class TestDoclingDriver:
         assert page.height == 841.9
 
     @patch('parxy_core.drivers.docling.DoclingServiceClient')
-    def test_docling_driver_read_empty_document_page_level(self, MockDoclingServiceClient):
+    def test_docling_driver_read_empty_document_page_level(
+        self, MockDoclingServiceClient
+    ):
         json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
             texts=[],
@@ -185,13 +202,35 @@ class TestDoclingDriver:
                     'self_ref': '#/texts/0',
                     'text': 'Page one content',
                     'label': 'paragraph',
-                    'prov': [{'page_no': 1, 'bbox': {'l': 72.0, 't': 720.0, 'r': 540.0, 'b': 700.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 720.0,
+                                'r': 540.0,
+                                'b': 700.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 },
                 {
                     'self_ref': '#/texts/1',
                     'text': 'Page three content',
                     'label': 'paragraph',
-                    'prov': [{'page_no': 3, 'bbox': {'l': 72.0, 't': 720.0, 'r': 540.0, 'b': 700.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 3,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 720.0,
+                                'r': 540.0,
+                                'b': 700.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 },
             ],
         )
@@ -220,20 +259,53 @@ class TestDoclingDriver:
                     'self_ref': '#/texts/0',
                     'text': 'Document title',
                     'label': 'title',
-                    'prov': [{'page_no': 1, 'bbox': {'l': 72.0, 't': 800.0, 'r': 540.0, 'b': 780.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 800.0,
+                                'r': 540.0,
+                                'b': 780.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 },
                 {
                     'self_ref': '#/texts/1',
                     'text': 'Section heading',
                     'label': 'section_header',
                     'level': 1,
-                    'prov': [{'page_no': 1, 'bbox': {'l': 72.0, 't': 760.0, 'r': 540.0, 'b': 740.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 760.0,
+                                'r': 540.0,
+                                'b': 740.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 },
                 {
                     'self_ref': '#/texts/2',
                     'text': 'A paragraph of text.',
                     'label': 'paragraph',
-                    'prov': [{'page_no': 1, 'bbox': {'l': 72.0, 't': 720.0, 'r': 540.0, 'b': 700.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 720.0,
+                                'r': 540.0,
+                                'b': 700.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 },
             ],
         )
@@ -274,7 +346,18 @@ class TestDoclingDriver:
                 {
                     'self_ref': '#/tables/0',
                     'label': 'table',
-                    'prov': [{'page_no': 1, 'bbox': {'l': 72.0, 't': 500.0, 'r': 540.0, 'b': 400.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 500.0,
+                                'r': 540.0,
+                                'b': 400.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                     'data': {
                         'num_rows': 2,
                         'num_cols': 2,
@@ -311,7 +394,18 @@ class TestDoclingDriver:
                 {
                     'self_ref': '#/pictures/0',
                     'label': 'picture',
-                    'prov': [{'page_no': 1, 'bbox': {'l': 100.0, 't': 600.0, 'r': 400.0, 'b': 450.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 100.0,
+                                't': 600.0,
+                                'r': 400.0,
+                                'b': 450.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                     'captions': [{'text': 'Figure 1: A diagram'}],
                 }
             ],
@@ -342,7 +436,18 @@ class TestDoclingDriver:
                     'self_ref': '#/texts/0',
                     'text': 'text',
                     'label': 'paragraph',
-                    'prov': [{'page_no': 1, 'bbox': {'l': 72.0, 't': 720.0, 'r': 540.0, 'b': 700.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 720.0,
+                                'r': 540.0,
+                                'b': 700.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 }
             ],
         )
@@ -376,6 +481,7 @@ class TestDoclingDriver:
         options = submit_args[1]['options']
 
         from docling_core.types.io import DocumentStream
+
         assert isinstance(source, DocumentStream)
         assert any(f.value == 'json' for f in options.to_formats)
 
@@ -411,7 +517,9 @@ class TestDoclingDriver:
         assert options.do_ocr is True
 
     @patch('parxy_core.drivers.docling.DoclingServiceClient')
-    def test_docling_driver_per_call_pdf_backend_override(self, MockDoclingServiceClient):
+    def test_docling_driver_per_call_pdf_backend_override(
+        self, MockDoclingServiceClient
+    ):
         json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
         )
@@ -427,7 +535,9 @@ class TestDoclingDriver:
         assert options.table_mode.value == 'fast'
 
     @patch('parxy_core.drivers.docling.DoclingServiceClient')
-    def test_docling_driver_include_images_default_false(self, MockDoclingServiceClient):
+    def test_docling_driver_include_images_default_false(
+        self, MockDoclingServiceClient
+    ):
         json_content = _docling_response(
             pages={'1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1}},
         )
@@ -448,7 +558,9 @@ class TestDoclingDriver:
         from docling.service_client.exceptions import ServiceError
 
         mock_client = MagicMock()
-        mock_client.submit.side_effect = ServiceError(message='Unauthorized', status_code=401)
+        mock_client.submit.side_effect = ServiceError(
+            message='Unauthorized', status_code=401
+        )
         MockDoclingServiceClient.return_value = mock_client
 
         driver = DoclingDriver()
@@ -582,7 +694,9 @@ class TestDoclingDriver:
 
     @patch('parxy_core.drivers.docling.DoclingServiceClient')
     @patch('parxy_core.drivers.abstract_driver.tracer')
-    def test_docling_driver_tracing_span_created(self, mock_tracer, MockDoclingServiceClient):
+    def test_docling_driver_tracing_span_created(
+        self, mock_tracer, MockDoclingServiceClient
+    ):
         mock_span = MagicMock()
         mock_span.__enter__ = Mock(return_value=mock_span)
         mock_span.__exit__ = Mock(return_value=False)
@@ -646,7 +760,18 @@ class TestDoclingDriver:
                     'self_ref': '#/texts/0',
                     'text': 'content',
                     'label': 'paragraph',
-                    'prov': [{'page_no': 1, 'bbox': {'l': 72.0, 't': 720.0, 'r': 540.0, 'b': 700.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 720.0,
+                                'r': 540.0,
+                                'b': 700.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 }
             ],
         )
@@ -664,7 +789,9 @@ class TestDoclingDriver:
     # ── multi-page ────────────────────────────────────────────────────────────
 
     @patch('parxy_core.drivers.docling.DoclingServiceClient')
-    def test_docling_driver_multi_page_page_numbers_start_at_1(self, MockDoclingServiceClient):
+    def test_docling_driver_multi_page_page_numbers_start_at_1(
+        self, MockDoclingServiceClient
+    ):
         json_content = _docling_response(
             pages={
                 '1': {'size': {'width': 595.3, 'height': 841.9}, 'page_no': 1},
@@ -675,13 +802,35 @@ class TestDoclingDriver:
                     'self_ref': '#/texts/0',
                     'text': 'First page',
                     'label': 'paragraph',
-                    'prov': [{'page_no': 1, 'bbox': {'l': 72.0, 't': 720.0, 'r': 540.0, 'b': 700.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 1,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 720.0,
+                                'r': 540.0,
+                                'b': 700.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 },
                 {
                     'self_ref': '#/texts/1',
                     'text': 'Second page',
                     'label': 'paragraph',
-                    'prov': [{'page_no': 2, 'bbox': {'l': 72.0, 't': 720.0, 'r': 540.0, 'b': 700.0, 'coord_origin': 'BOTTOMLEFT'}}],
+                    'prov': [
+                        {
+                            'page_no': 2,
+                            'bbox': {
+                                'l': 72.0,
+                                't': 720.0,
+                                'r': 540.0,
+                                'b': 700.0,
+                                'coord_origin': 'BOTTOMLEFT',
+                            },
+                        }
+                    ],
                 },
             ],
         )
@@ -770,7 +919,10 @@ class TestDoclingDriverLive:
 
         assert isinstance(page.blocks[1], TextBlock)
         assert page.blocks[1].role == 'heading'
-        assert page.blocks[1].text == 'This is a test PDF to be used as input in unit tests'
+        assert (
+            page.blocks[1].text
+            == 'This is a test PDF to be used as input in unit tests'
+        )
 
         assert isinstance(page.blocks[2], TextBlock)
         assert page.blocks[2].role == 'heading'
