@@ -227,7 +227,7 @@ class DriverFactory:
 
     def _create_docling_driver(self) -> DoclingDriver:
         return DoclingDriver(config=DoclingConfig(), logger=self._logger)
-    
+
     def _create_liteparse_driver(self) -> LiteParseDriver:
         return LiteParseDriver(config=LiteParseConfig(), logger=self._logger)
 

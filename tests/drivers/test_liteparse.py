@@ -322,9 +322,7 @@ class TestLiteParseDriverIntegration:
             'This is a heading 1\n'
             'This is a paragraph below heading 1\n\n\n\n\n\n\n\n\n\n\n1'
         )
-        driver = LiteParseDriver(
-            config=LiteParseConfig(base_url='http://localhost:5000')
-        )
+        driver = LiteParseDriver(config=LiteParseConfig())
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='page')
 
@@ -340,9 +338,7 @@ class TestLiteParseDriverIntegration:
         assert document.pages[0].text == expected_text
 
     def test_liteparse_driver_read_document_block_level(self):
-        driver = LiteParseDriver(
-            config=LiteParseConfig(base_url='http://localhost:5000')
-        )
+        driver = LiteParseDriver(config=LiteParseConfig())
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='block')
 
@@ -351,9 +347,7 @@ class TestLiteParseDriverIntegration:
         assert document.pages[0].number == 1
 
     def test_liteparse_driver_returns_parsing_metadata(self):
-        driver = LiteParseDriver(
-            config=LiteParseConfig(base_url='http://localhost:5000')
-        )
+        driver = LiteParseDriver(config=LiteParseConfig())
         path = self.__fixture_path('test-doc.pdf')
         document = driver.parse(path, level='page')
 

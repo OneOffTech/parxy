@@ -265,7 +265,8 @@ class DoclingConfig(BaseConfig):
     model_config = SettingsConfigDict(
         env_prefix='parxy_docling_', env_file='.env', extra='ignore'
     )
-    
+
+
 class LiteParseConfig(BaseConfig):
     """Configuration values for the LiteParse HTTP service. All env variables must start with `parxy_liteparse_`"""
 
