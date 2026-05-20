@@ -3,6 +3,15 @@ import sys
 from datetime import datetime
 
 
+class ParxyLogger(logging.Logger):
+    """Logger that includes stack traces only when DEBUG level is active."""
+
+    def error(self, msg, *args, **kwargs):
+        if 'exc_info' not in kwargs:
+            kwargs['exc_info'] = self.isEnabledFor(logging.DEBUG)
+        super().error(msg, *args, **kwargs)
+
+
 def create_isolated_logger(
     name: str,
     level: int = logging.ERROR,
@@ -28,7 +37,7 @@ def create_isolated_logger(
         Configured logger instance
     """
 
-    logger = logging.getLogger(name)
+    logger = ParxyLogger(name)
     logger.setLevel(level)
     logger.propagate = propagate
     logger.handlers.clear()
