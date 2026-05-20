@@ -273,6 +273,39 @@ class LiteParseConfig(BaseConfig):
     base_url: str = 'http://localhost:5000'
     """Base URL of the LiteParse server."""
 
+    timeout: float = 30.0
+    """HTTP request timeout in seconds. Default 30."""
+
+    # OCR
+    ocr_language: Optional[str] = 'en'
+    """OCR language code (e.g. 'en', 'de'). Default 'en'."""
+
+    ocr_enabled: Optional[bool] = True
+    """Enable OCR on bitmap pages. Default True."""
+
+    ocr_server_url: Optional[str] = None
+    """If set, delegates OCR to an external HTTP OCR service instead of in-process Tesseract."""
+
+    num_workers: Optional[int] = 4
+    """Number of pages to OCR in parallel. Default 4."""
+
+    # Processing
+    max_pages: Optional[int] = None
+    """Maximum number of pages to process. Default None (all pages)."""
+
+    dpi: Optional[int] = 150
+    """Rendering DPI for rasterised pages. Default 150."""
+
+    # Features
+    precise_bounding_box: Optional[bool] = True
+    """Use precise bounding-box calculation. Default True."""
+
+    preserve_very_small_text: Optional[bool] = False
+    """Include very small text that would normally be filtered. Default False."""
+
+    preserve_layout_alignment_across_pages: Optional[bool] = False
+    """Preserve cross-page layout alignment. Default False."""
+
     model_config = SettingsConfigDict(
         env_prefix='parxy_liteparse_', env_file='.env', extra='ignore'
     )

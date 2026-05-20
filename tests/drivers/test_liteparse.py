@@ -1,9 +1,11 @@
+import json
 import os
 import pytest
 import httpx
 from unittest.mock import Mock, patch, MagicMock
 
 from parxy_core.models import Page
+from parxy_core.models.models import TextBlock, BoundingBox
 from parxy_core.models.config import LiteParseConfig
 from parxy_core.drivers import LiteParseDriver
 from parxy_core.exceptions import (
@@ -96,6 +98,112 @@ class TestLiteParseDriver:
         assert document.pages[0].height == 792.0
         assert document.pages[0].blocks is None
         assert document.pages[0].text == '1'
+
+    def test_liteparse_driver_read_document_block_level(self):
+        mock_client = _make_mock_client(
+            status_code=200,
+            json_body={
+                'pages': [
+                    {
+                        'pageNum': 1,
+                        'width': 612.0,
+                        'height': 792.0,
+                        'text': 'Revenue grew 15%\nCosts stayed flat',
+                        'textItems': [
+                            {
+                                'str': 'Revenue grew 15%',
+                                'x': 72.0,
+                                'y': 200.0,
+                                'width': 150.0,
+                                'height': 12.0,
+                                'w': 150.0,
+                                'h': 12.0,
+                                'r': 0,
+                                'fontName': 'Arial',
+                                'fontSize': 12.0,
+                                'confidence': 1,
+                            },
+                            {
+                                'str': 'Costs stayed flat',
+                                'x': 72.0,
+                                'y': 220.0,
+                                'width': 130.0,
+                                'height': 12.0,
+                                'w': 130.0,
+                                'h': 12.0,
+                                'r': 0,
+                                'fontName': 'Arial',
+                                'fontSize': 10.0,
+                                'confidence': 1,
+                            },
+                        ],
+                    }
+                ]
+            },
+        )
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig())
+            path = self.__fixture_path('test-doc.pdf')
+            document = driver.parse(path, level='block')
+
+        page = document.pages[0]
+        assert page.blocks is not None
+        assert len(page.blocks) == 2
+
+        block = page.blocks[0]
+        assert isinstance(block, TextBlock)
+        assert block.text == 'Revenue grew 15%'
+        assert block.page == 1
+        assert isinstance(block.bbox, BoundingBox)
+        assert block.bbox.x0 == 72.0
+        assert block.bbox.y0 == 200.0
+        assert block.bbox.x1 == 222.0  # 72 + 150
+        assert block.bbox.y1 == 212.0  # 200 + 12
+        assert block.style is not None
+        assert block.style.font_name == 'Arial'
+        assert block.style.font_size == 12.0
+
+    def test_liteparse_driver_page_level_has_no_blocks(self):
+        mock_client = _make_mock_client(
+            status_code=200,
+            json_body={
+                'pages': [
+                    {
+                        'pageNum': 1,
+                        'width': 612.0,
+                        'height': 792.0,
+                        'text': 'Hello',
+                        'textItems': [
+                            {
+                                'str': 'Hello',
+                                'x': 10,
+                                'y': 10,
+                                'width': 50,
+                                'height': 12,
+                                'w': 50,
+                                'h': 12,
+                                'r': 0,
+                                'fontName': 'Arial',
+                                'fontSize': 12,
+                                'confidence': 1,
+                            },
+                        ],
+                    }
+                ]
+            },
+        )
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig())
+            path = self.__fixture_path('test-doc.pdf')
+            document = driver.parse(path, level='page')
+
+        assert document.pages[0].blocks is None
 
     def test_liteparse_driver_read_document(self):
         expected_text = (
@@ -303,6 +411,128 @@ class TestLiteParseDriver:
         call_url = mock_client.post.call_args[0][0]
         assert call_url == 'http://my-server:8080/parse'
 
+    def test_liteparse_driver_sends_config_json_to_api(self):
+        mock_client = _make_mock_client(status_code=200, json_body={'pages': []})
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig())
+            driver.parse(self.__fixture_path('empty-doc.pdf'), level='page')
+
+        call_kwargs = mock_client.post.call_args.kwargs
+        assert 'data' in call_kwargs
+        assert 'config' in call_kwargs['data']
+        config = json.loads(call_kwargs['data']['config'])
+        assert isinstance(config, dict)
+
+    def test_liteparse_driver_config_fields_are_camel_case(self):
+        mock_client = _make_mock_client(status_code=200, json_body={'pages': []})
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig(ocr_language='de', dpi=300))
+            driver.parse(self.__fixture_path('empty-doc.pdf'), level='page')
+
+        config = json.loads(mock_client.post.call_args.kwargs['data']['config'])
+        assert 'ocrLanguage' in config
+        assert config['ocrLanguage'] == 'de'
+        assert 'numWorkers' in config
+        assert 'preciseBoundingBox' in config
+        assert config['dpi'] == 300
+
+    def test_liteparse_driver_output_format_always_json(self):
+        mock_client = _make_mock_client(status_code=200, json_body={'pages': []})
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig())
+            driver.parse(self.__fixture_path('empty-doc.pdf'), level='page')
+
+        config = json.loads(mock_client.post.call_args.kwargs['data']['config'])
+        assert config['outputFormat'] == 'json'
+
+    def test_liteparse_driver_none_config_fields_excluded(self):
+        mock_client = _make_mock_client(status_code=200, json_body={'pages': []})
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig())
+            driver.parse(self.__fixture_path('empty-doc.pdf'), level='page')
+
+        config = json.loads(mock_client.post.call_args.kwargs['data']['config'])
+        assert 'ocrServerUrl' not in config
+        assert 'targetPages' not in config
+        assert 'password' not in config
+
+    def test_liteparse_driver_kwarg_overrides_config_value(self):
+        mock_client = _make_mock_client(status_code=200, json_body={'pages': []})
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig(dpi=150))
+            driver.parse(self.__fixture_path('empty-doc.pdf'), level='page', dpi=300)
+
+        config = json.loads(mock_client.post.call_args.kwargs['data']['config'])
+        assert config['dpi'] == 300
+
+    def test_liteparse_driver_target_pages_and_password_are_per_request(self):
+        mock_client = _make_mock_client(status_code=200, json_body={'pages': []})
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig())
+            driver.parse(
+                self.__fixture_path('empty-doc.pdf'),
+                level='page',
+                target_pages='1,2',
+                password='s3cr3t',
+            )
+
+        config = json.loads(mock_client.post.call_args.kwargs['data']['config'])
+        assert config['targetPages'] == '1,2'
+        assert config['password'] == 's3cr3t'
+
+    def test_liteparse_driver_multiple_kwarg_overrides(self):
+        mock_client = _make_mock_client(status_code=200, json_body={'pages': []})
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig())
+            driver.parse(
+                self.__fixture_path('empty-doc.pdf'),
+                level='page',
+                ocr_language='fr',
+                dpi=200,
+                target_pages='1,2',
+                preserve_very_small_text=True,
+            )
+
+        config = json.loads(mock_client.post.call_args.kwargs['data']['config'])
+        assert config['ocrLanguage'] == 'fr'
+        assert config['dpi'] == 200
+        assert config['targetPages'] == '1,2'
+        assert config['preserveVerySmallText'] is True
+
+    def test_liteparse_driver_kwarg_overrides_do_not_affect_tracing(self):
+        mock_client = _make_mock_client(status_code=200, json_body={'pages': []})
+
+        with patch(
+            'parxy_core.drivers.liteparse.httpx.Client', return_value=mock_client
+        ):
+            driver = LiteParseDriver(config=LiteParseConfig())
+            # dpi is a config override; it must not bleed into the span kwargs
+            driver.parse(self.__fixture_path('empty-doc.pdf'), level='page', dpi=300)
+
+        config = json.loads(mock_client.post.call_args.kwargs['data']['config'])
+        assert config['dpi'] == 300
+
 
 @pytest.mark.skipif(
     not _liteparse_service_available(),
@@ -355,3 +585,14 @@ class TestLiteParseDriverIntegration:
         assert 'driver_elapsed_time' in document.parsing_metadata
         assert isinstance(document.parsing_metadata['driver_elapsed_time'], float)
         assert document.parsing_metadata['driver_elapsed_time'] > 0
+
+    def test_liteparse_driver_target_pages_returns_subset(self):
+        driver = LiteParseDriver(config=LiteParseConfig())
+        path = self.__fixture_path('pdf-headings-images-tables.pdf')
+
+        document_all = driver.parse(path, level='page')
+        document_first = driver.parse(path, level='page', target_pages='1')
+
+        assert len(document_all.pages) > 1
+        assert len(document_first.pages) == 1
+        assert document_first.pages[0].number == 1
