@@ -297,10 +297,18 @@ If you see `Cannot connect to Docling server`:
 
 ### TaskNotFound Errors
 
-- UVICORN_WORKERS=1 
-- DOCLING_SERVE_ENG_KIND=local
-      - DOCLING_SERVE_ENG_LOC_NUM_WORKERS=1
-      - DOCLING_SERVE_ENG_LOC_SHARE_MODELS=true
+Parxy uses the async API to process documents.
+When using local workers the task queue is held in memory by the Uvicorn worker. Using multiple `UVICORN_WORKERS` may 
+result in the task stored in a different worker process that the one serving the original request.
+
+When using the `local` queue ensure that `UVICORN_WORKERS` is set to `1` as the workers do not share the queue.
+If needed you may use Redis or other queue
+
+
+```
+UVICORN_WORKERS=1 
+```
+
 
 ### Authentication Errors
 
