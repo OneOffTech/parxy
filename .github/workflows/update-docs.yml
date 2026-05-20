@@ -27,7 +27,7 @@ jobs:
           python-version: 3.13
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --frozen
 
       - name: Generate reference docs
         run: uv run python scripts/generate_docs.py

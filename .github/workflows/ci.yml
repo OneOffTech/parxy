@@ -45,7 +45,7 @@ jobs:
         python-version: ${{ matrix.python }}
     
     - name: Pull dependencies
-      run: uv sync --all-extras --all-groups
+      run: uv sync --all-extras --all-groups --frozen
 
     - name: Create .env file with fake API keys
       run: |
