@@ -317,6 +317,11 @@ For large documents or slow hardware, the default 240-second timeout may not be 
 PARXY_DOCLING_TIMEOUT=300
 ```
 
+### Error without message
+
+Docling-serve return a generic failure in case a document has more pages than `DOCLING_SERVE_MAX_NUM_PAGES`.
+
+
 ## See Also
 
 - [docling-serve GitHub Repository](https://github.com/docling-project/docling-serve)
