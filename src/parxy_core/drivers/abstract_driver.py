@@ -139,9 +139,8 @@ class Driver(ABC):
                 return document
 
             except Exception as ex:
-                self._logger.error(
+                self._logger.debug(
                     f'Error while parsing file {file if isinstance(file, str) else "stream"} using {self.__class__.__name__}',
-                    exc_info=True,
                 )
 
                 tracer.count(

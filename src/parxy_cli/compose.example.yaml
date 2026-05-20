@@ -1,12 +1,67 @@
 
 services:
-    ## PDFAct service
-    pdfact:
-        image: "ghcr.io/data-house/pdfact:main"
-        ports:
-            - "4567:4567"
-        networks:
-            - parxy
+  ## PDFAct service
+  pdfact:
+    image: "ghcr.io/data-house/pdfact:main"
+    ports:
+      - "4567:4567"
+    networks:
+      - parxy
+
+  docling:
+    image: ghcr.io/docling-project/docling-serve-cu128:v1.18.0
+    restart: unless-stopped
+    # TODO: add a volume where models are downloaded so the next start is faster
+    ports:
+      - "5001:5001"
+    environment:
+      # Configuration https://github.com/docling-project/docling-serve/blob/main/docs/configuration.md
+      # Server settings
+      # Force 1 worker when DOCLING_SERVE_ENG_KIND=local. Task queue is in memory and not shared between worker processes
+      - UVICORN_WORKERS=1 
+      - UVICORN_TIMEOUT_KEEP_ALIVE=1800
+      - DOCLING_SERVE_LOG_LEVEL=debug
+      # Models
+      - DOCLING_SERVE_LOAD_MODELS_AT_BOOT=True
+      # UI
+      - DOCLING_SERVE_ENABLE_UI=1
+      # timeouts
+      - DOCLING_SERVE_MAX_DOCUMENT_TIMEOUT=1800 
+      - DOCLING_SERVE_MAX_SYNC_WAIT=180 # 3 minutes
+      # GPU configuration
+      - DOCLING_DEVICE=cuda
+      - DOCLING_CUDA_USE_FLASH_ATTENTION2=true
+      # Worker settings (single GPU - local queue - avoid contention)
+      - DOCLING_SERVE_ENG_KIND=local
+      - DOCLING_SERVE_ENG_LOC_NUM_WORKERS=1
+      - DOCLING_SERVE_ENG_LOC_SHARE_MODELS=true
+      # Batch sizes https://docling-project.github.io/docling/usage/gpu/
+      - DOCLING_PERF_PAGE_BATCH_SIZE=4
+      - DOCLING_PERF_ELEMENTS_BATCH_SIZE=8
+      - DOCLING_SERVE_LAYOUT_BATCH_SIZE=16
+      - DOCLING_SERVE_TABLE_BATCH_SIZE=4
+      - DOCLING_SERVE_OCR_BATCH_SIZE=4
+      - DOCLING_SERVE_MAX_NUM_PAGES=100 # maximum number of pages to process
+      # CPU threading
+      - DOCLING_NUM_THREADS=4
+    deploy:
+      resources:
+        limits:
+          memory: 16g
+        reservations:
+          memory: 8g
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 180s # Models take time to load
+
+
 
     ## Open Telemetry collector
     ## To enable traces collection set PARXY_TRACING_ENABLE=True
@@ -21,5 +76,5 @@ services:
     #     command: ["--config=/etc/otelcol-contrib/config.yaml"]
 
 networks:
-    parxy:
-        driver: bridge
+  parxy:
+    driver: bridge

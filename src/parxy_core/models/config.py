@@ -221,3 +221,47 @@ class UnstructuredLocalConfig(BaseConfig):
     model_config = SettingsConfigDict(
         env_prefix='parxy_unstructured_local_', env_file='.env', extra='ignore'
     )
+
+
+class DoclingConfig(BaseConfig):
+    """Configuration values for Docling Serve. All env variables must start with `parxy_docling_`"""
+
+    base_url: str = 'http://localhost:5001'
+    """The base URL of the Docling Serve API."""
+
+    api_key: Optional[SecretStr] = Field(exclude=True, default=None)
+    """Optional API key for authenticated docling-serve instances."""
+
+    timeout: float = 240.0
+    """HTTP request timeout in seconds. Default 240."""
+
+    do_ocr: Optional[bool] = False
+    """Enable OCR on bitmap content. Default False."""
+
+    do_table_structure: Optional[bool] = True
+    """Enable table structure extraction. Default True."""
+
+    pdf_backend: Optional[str] = 'docling_parse'
+    """PDF backend to use. Options: docling_parse, pypdfium2. Default docling_parse."""
+
+    table_mode: Optional[str] = 'accurate'
+    """Table extraction mode. Options: fast, accurate. Default accurate."""
+
+    include_images: Optional[bool] = False
+    """Include images in output. Default False."""
+
+    images_scale: Optional[float] = None
+    """Scale factor for images. Default None (uses server default of 2.0)."""
+
+    do_picture_classification: Optional[bool] = False
+    """Classify pictures in documents. Default False."""
+
+    do_picture_description: Optional[bool] = False
+    """Generate descriptions for pictures. Default False."""
+
+    poll_wait: float = 10.0
+    """Server-side long-polling wait duration in seconds. Default 10."""
+
+    model_config = SettingsConfigDict(
+        env_prefix='parxy_docling_', env_file='.env', extra='ignore'
+    )
