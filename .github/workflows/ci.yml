@@ -27,6 +27,11 @@ jobs:
         image: ghcr.io/data-house/pdfact:main
         ports:
           - 4567:4567
+      liteparse:
+        image: ghcr.io/run-llama/liteparse-server:main
+        command: "bun run start-slim:bun"
+        ports:
+          - 5000:5000
     
     steps:
     - uses: actions/checkout@v6

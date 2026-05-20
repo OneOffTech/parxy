@@ -13,12 +13,14 @@ from parxy_core.drivers.pypdfium2 import PyPDFium2Driver
 from parxy_core.drivers.pdfplumber import PDFPlumberDriver
 from parxy_core.drivers.pdfminer import PDFMinerDriver
 from parxy_core.drivers.docling import DoclingDriver
+from parxy_core.drivers.liteparse import LiteParseDriver
 from parxy_core.models import (
     PdfActConfig,
     LandingAIConfig,
     LlamaParseConfig,
     LlmWhispererConfig,
     UnstructuredLocalConfig,
+    LiteParseConfig,
     ParxyConfig,
     DoclingConfig,
 )
@@ -226,6 +228,9 @@ class DriverFactory:
     def _create_docling_driver(self) -> DoclingDriver:
         return DoclingDriver(config=DoclingConfig(), logger=self._logger)
 
+    def _create_liteparse_driver(self) -> LiteParseDriver:
+        return LiteParseDriver(config=LiteParseConfig(), logger=self._logger)
+
     def _create_landingai_driver(self) -> LandingAIADEDriver:
         """Create a LandingAI ADE Driver instance.
 
@@ -304,6 +309,7 @@ class DriverFactory:
             'pdfplumber',
             'pdfminer',
             'docling',
+            'liteparse',
         ]
 
         return supported_drivers
