@@ -28,4 +28,5 @@ from parxy_core.models.config import (
     LlmWhispererConfig as LlmWhispererConfig,
     UnstructuredLocalConfig as UnstructuredLocalConfig,
     DoclingConfig as DoclingConfig,
+    LiteParseConfig as LiteParseConfig,
 )

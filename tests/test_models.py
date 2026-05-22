@@ -1,3 +1,5 @@
+import pytest
+
 from parxy_core.models import (
     BoundingBox,
     Style,
@@ -20,6 +22,44 @@ class TestModels:
         assert bbox.y0 == 10.0
         assert bbox.x1 == 100.0
         assert bbox.y1 == 50.0
+
+    def test_bounding_box_width_and_height(self):
+        bbox = BoundingBox(x0=10.0, y0=20.0, x1=110.0, y1=70.0)
+        assert bbox.width == 100.0
+        assert bbox.height == 50.0
+
+    def test_bounding_box_to_pixels_at_72dpi_is_identity(self):
+        bbox = BoundingBox(x0=72.0, y0=144.0, x1=216.0, y1=288.0)
+        px = bbox.to_pixels(dpi=72)
+        assert px.x0 == pytest.approx(72.0)
+        assert px.y0 == pytest.approx(144.0)
+        assert px.x1 == pytest.approx(216.0)
+        assert px.y1 == pytest.approx(288.0)
+
+    def test_bounding_box_to_pixels_scales_correctly(self):
+        bbox = BoundingBox(x0=72.0, y0=72.0, x1=144.0, y1=144.0)
+        px = bbox.to_pixels(dpi=144)
+        scale = 144 / 72  # 2.0
+        assert px.x0 == pytest.approx(72.0 * scale)
+        assert px.y0 == pytest.approx(72.0 * scale)
+        assert px.x1 == pytest.approx(144.0 * scale)
+        assert px.y1 == pytest.approx(144.0 * scale)
+
+    def test_bounding_box_to_pixels_preserves_width_and_height_ratio(self):
+        bbox = BoundingBox(x0=0.0, y0=0.0, x1=72.0, y1=36.0)
+        px = bbox.to_pixels(dpi=150)
+        scale = 150 / 72
+        assert px.width == pytest.approx(bbox.width * scale)
+        assert px.height == pytest.approx(bbox.height * scale)
+
+    def test_bounding_box_to_pixels_default_dpi_is_150(self):
+        bbox = BoundingBox(x0=0.0, y0=0.0, x1=72.0, y1=72.0)
+        assert bbox.to_pixels() == bbox.to_pixels(dpi=150)
+
+    def test_bounding_box_to_pixels_returns_new_instance(self):
+        bbox = BoundingBox(x0=0.0, y0=0.0, x1=72.0, y1=72.0)
+        px = bbox.to_pixels(dpi=150)
+        assert px is not bbox
 
     def test_style(self):
         style = Style(

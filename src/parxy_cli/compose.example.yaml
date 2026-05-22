@@ -8,6 +8,16 @@ services:
     networks:
       - parxy
 
+  ## LiteParse service
+  liteparse:
+    image: "ghcr.io/run-llama/liteparse-server:main"
+    command: ["bun", "run", "start-slim:bun"] # Disable instrumentation
+    ports:
+      - "5000:5000"
+    networks:
+      - parxy
+
+  ## Docling Service
   docling:
     image: ghcr.io/docling-project/docling-serve-cu128:v1.18.0
     restart: unless-stopped

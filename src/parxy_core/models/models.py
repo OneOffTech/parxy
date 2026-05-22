@@ -13,6 +13,24 @@ class BoundingBox(BaseModel):
     x1: float
     y1: float
 
+    @property
+    def width(self) -> float:
+        return self.x1 - self.x0
+
+    @property
+    def height(self) -> float:
+        return self.y1 - self.y0
+
+    def to_pixels(self, dpi: float = 150) -> 'BoundingBox':
+        """Return a new BoundingBox scaled from PDF points to pixels at the given DPI."""
+        scale = dpi / 72
+        return BoundingBox(
+            x0=self.x0 * scale,
+            y0=self.y0 * scale,
+            x1=self.x1 * scale,
+            y1=self.y1 * scale,
+        )
+
 
 class Style(BaseModel):
     font_name: Optional[str] = None

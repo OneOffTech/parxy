@@ -26,10 +26,10 @@ jobs:
         python-version: 3.13
 
     - name: Ruff lint
-      run: uv run ruff check --exit-zero .
+      run: uv run --frozen ruff check --exit-zero .
     
     - name: Ruff format
-      run: uv run ruff format .
+      run: uv run --frozen ruff format .
 
     - name: Commit changes
       uses: stefanzweifel/git-auto-commit-action@v7

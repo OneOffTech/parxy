@@ -14,3 +14,4 @@ from parxy_core.drivers.pypdfium2 import (
 from parxy_core.drivers.pdfplumber import PDFPlumberDriver as PDFPlumberDriver
 from parxy_core.drivers.pdfminer import PDFMinerDriver as PDFMinerDriver
 from parxy_core.drivers.docling import DoclingDriver as DoclingDriver
+from parxy_core.drivers.liteparse import LiteParseDriver as LiteParseDriver

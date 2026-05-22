@@ -27,6 +27,11 @@ jobs:
         image: ghcr.io/data-house/pdfact:main
         ports:
           - 4567:4567
+      liteparse:
+        image: ghcr.io/run-llama/liteparse-server:main
+        command: "bun run start-slim:bun"
+        ports:
+          - 5000:5000
     
     steps:
     - uses: actions/checkout@v6
@@ -40,7 +45,7 @@ jobs:
         python-version: ${{ matrix.python }}
     
     - name: Pull dependencies
-      run: uv sync --all-extras --all-groups
+      run: uv sync --all-extras --all-groups --frozen
 
     - name: Create .env file with fake API keys
       run: |
