@@ -29,4 +29,5 @@ from parxy_core.models.config import (
     UnstructuredLocalConfig as UnstructuredLocalConfig,
     DoclingConfig as DoclingConfig,
     LiteParseConfig as LiteParseConfig,
+    ReductoConfig as ReductoConfig,
 )

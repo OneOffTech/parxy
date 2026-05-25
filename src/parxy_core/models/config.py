@@ -4,7 +4,7 @@ import logging
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from pydantic import Field, SecretStr, BaseModel
+from pydantic import Field, SecretStr
 
 
 class BaseConfig(BaseSettings):
@@ -264,6 +264,32 @@ class DoclingConfig(BaseConfig):
 
     model_config = SettingsConfigDict(
         env_prefix='parxy_docling_', env_file='.env', extra='ignore'
+    )
+
+
+class ReductoConfig(BaseConfig):
+    """Configuration values for Reducto service. All env variables must start with `parxy_reducto_`"""
+
+    api_key: Optional[SecretStr] = Field(exclude=True, default=None)
+    """The authentication key."""
+
+    environment: Optional[Literal['production', 'eu', 'au']] = None
+    """The Reducto environment. Options: 'production', 'eu', 'au'. Default None (uses production)."""
+
+    base_url: Optional[str] = None
+    """Custom base URL. When set, takes precedence over environment."""
+
+    timeout: Optional[float] = None
+    """HTTP request timeout in seconds. Default None (uses SDK default)."""
+
+    extraction_mode: Optional[Literal['ocr', 'hybrid']] = None
+    """Text extraction mode. 'hybrid' combines OCR with embedded text (default). 'ocr' uses OCR only."""
+
+    table_output_format: Optional[Literal['html', 'json', 'md', 'jsonbbox', 'dynamic', 'csv']] = None
+    """Table output format. Default None (uses API default of 'dynamic')."""
+
+    model_config = SettingsConfigDict(
+        env_prefix='parxy_reducto_', env_file='.env', extra='ignore'
     )
 
 

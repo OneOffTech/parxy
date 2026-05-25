@@ -2037,6 +2037,7 @@ all = [
     { name = "pdfminer-six" },
     { name = "pdfplumber" },
     { name = "pypdfium2" },
+    { name = "reductoai" },
     { name = "textual" },
     { name = "unstructured", extra = ["pdf"] },
 ]
@@ -2060,6 +2061,9 @@ pdfplumber = [
 ]
 pypdfium2 = [
     { name = "pypdfium2" },
+]
+reducto = [
+    { name = "reductoai" },
 ]
 tui = [
     { name = "textual" },
@@ -2100,6 +2104,8 @@ requires-dist = [
     { name = "pypdfium2", marker = "extra == 'all'", specifier = ">=5.7.1" },
     { name = "pypdfium2", marker = "extra == 'pypdfium2'", specifier = ">=5.7.1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
+    { name = "reductoai", marker = "extra == 'all'", specifier = ">=0.22.0" },
+    { name = "reductoai", marker = "extra == 'reducto'", specifier = ">=0.22.0" },
     { name = "requests", specifier = ">=2.32.4" },
     { name = "rich", specifier = ">=13.7.0" },
     { name = "textual", marker = "extra == 'all'", specifier = ">=0.89.0" },
@@ -2109,7 +2115,7 @@ requires-dist = [
     { name = "unstructured", extras = ["pdf"], marker = "extra == 'unstructured-local'", specifier = ">=0.18.13" },
     { name = "validators", specifier = ">=0.35.0" },
 ]
-provides-extras = ["llama", "llmwhisperer", "unstructured-local", "landingai", "tui", "pypdfium2", "pdfplumber", "pdfminer", "docling", "all"]
+provides-extras = ["llama", "llmwhisperer", "unstructured-local", "landingai", "tui", "pypdfium2", "pdfplumber", "pdfminer", "docling", "reducto", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -2798,6 +2804,23 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/bb/ce/ff942d19fce5385054650bb71a58495ddda299d94661ccc4e6e7fa44868b/rapidfuzz-3.14.5-cp314-cp314t-win32.whl", hash = "sha256:0f23e37019ec07712d58976b1ab2b889f8649a7f7c2f626a2f34ea9139e79279", size = 1803950, upload-time = "2026-04-07T11:16:10.873Z" },
     { url = "https://files.pythonhosted.org/packages/5c/0f/9aafc63f9661222b819b391c187eed29fc90ad5935f9690e5ecc2d2047a4/rapidfuzz-3.14.5-cp314-cp314t-win_amd64.whl", hash = "sha256:7d5ca9c7832e6879a707296d1463685f7c243a27846227044504741640caec66", size = 1632357, upload-time = "2026-04-07T11:16:13.1Z" },
     { url = "https://files.pythonhosted.org/packages/70/a6/51fc1b0e61e3326e1c68a61cfd0c6b3c34c843681c4b1eefbf0596f59162/rapidfuzz-3.14.5-cp314-cp314t-win_arm64.whl", hash = "sha256:3e91dcd2549b8f8d843f98ba03a17e01f3d8b72ce942adbbb6761bc58ffce813", size = 855409, upload-time = "2026-04-07T11:16:15.787Z" },
+]
+
+[[package]]
+name = "reductoai"
+version = "0.22.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2d/56/fc608656c68c261a2c61056d5fa8f59440a6a023b8071a5295a10654b4b9/reductoai-0.22.0.tar.gz", hash = "sha256:77965a930627f4f440fe7d7dbe7318c643da589e4c1fefbb2d4106b15af77a71", size = 313933, upload-time = "2026-03-29T01:25:49.705Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/bb/fa663e679011a91f41012cb66aa18e14278ea617868a769369895efd70d0/reductoai-0.22.0-py3-none-any.whl", hash = "sha256:a0c8d9c0372c49d618da83304f62ed0da0aae57fe37abd4072dbe87e206aa2e6", size = 154407, upload-time = "2026-03-29T01:25:48.356Z" },
 ]
 
 [[package]]

@@ -21,6 +21,7 @@ Parxy supports the following document processing services and libraries. The **E
 | [**PDFMiner**](https://github.com/pdfminer/pdfminer.six) | Preview | `pdfminer` | ✅ | ✅ |
 | [**Docling**](https://docling-project.github.io/docling/) | Preview | `docling` | ✅ | ✅ |
 | [**LiteParse**](https://github.com/run-llama/liteparse) | Preview | `liteparse` | ✅ | ✅ |
+| [**Reducto**](https://reducto.ai/) | Preview | `reducto` | ✅ | ✅ |
 
 Status meanings: **Live** = stable; **Preview** = functional but the API may change.
 
