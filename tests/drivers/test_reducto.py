@@ -436,7 +436,9 @@ class TestReductoDriverUnit:
 
         bbox = ReductoBox(left=0.1, top=0.2, width=0.5, height=0.3, page=1)
         blocks = [
-            ResultFullResultChunkBlock(type='Text', content='Block with bbox.', bbox=bbox)
+            ResultFullResultChunkBlock(
+                type='Text', content='Block with bbox.', bbox=bbox
+            )
         ]
         full_response = self._build_full_response(blocks=blocks)
         mock_create_client.return_value = self._make_mock_client(full_response)
@@ -485,10 +487,16 @@ class TestReductoDriverUnit:
         bbox_p1 = ReductoBox(left=0.0, top=0.0, width=1.0, height=0.1, page=1)
         bbox_p2 = ReductoBox(left=0.0, top=0.0, width=1.0, height=0.1, page=2)
         blocks = [
-            ResultFullResultChunkBlock(type='Text', content='Page 1 text.', bbox=bbox_p1),
-            ResultFullResultChunkBlock(type='Text', content='Page 2 text.', bbox=bbox_p2),
+            ResultFullResultChunkBlock(
+                type='Text', content='Page 1 text.', bbox=bbox_p1
+            ),
+            ResultFullResultChunkBlock(
+                type='Text', content='Page 2 text.', bbox=bbox_p2
+            ),
         ]
-        chunk = ResultFullResultChunk(blocks=blocks, content='Page 1 text. Page 2 text.', embed='')
+        chunk = ResultFullResultChunk(
+            blocks=blocks, content='Page 1 text. Page 2 text.', embed=''
+        )
         result = ResultFullResult(chunks=[chunk], type='full')
         full_response = FullParseResponse(
             duration=2.0,
@@ -547,7 +555,9 @@ class TestReductoDriverUnit:
 
     @patch('parxy_core.drivers.reducto.ReductoDriver._create_client')
     @patch('parxy_core.drivers.abstract_driver.tracer')
-    def test_reducto_driver_tracing_exception_recorded(self, mock_tracer, mock_create_client):
+    def test_reducto_driver_tracing_exception_recorded(
+        self, mock_tracer, mock_create_client
+    ):
         mock_create_client.return_value = MagicMock()
         mock_span = MagicMock()
         mock_span.__enter__ = Mock(return_value=mock_span)

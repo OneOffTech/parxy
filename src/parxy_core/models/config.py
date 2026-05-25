@@ -285,7 +285,9 @@ class ReductoConfig(BaseConfig):
     extraction_mode: Optional[Literal['ocr', 'hybrid']] = None
     """Text extraction mode. 'hybrid' combines OCR with embedded text (default). 'ocr' uses OCR only."""
 
-    table_output_format: Optional[Literal['html', 'json', 'md', 'jsonbbox', 'dynamic', 'csv']] = None
+    table_output_format: Optional[
+        Literal['html', 'json', 'md', 'jsonbbox', 'dynamic', 'csv']
+    ] = None
     """Table output format. Default None (uses API default of 'dynamic')."""
 
     model_config = SettingsConfigDict(
