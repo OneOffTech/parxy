@@ -167,6 +167,8 @@ For more information take a look at our [Getting Started with Parxy tutorial](./
 | [**pdfplumber**](https://github.com/jsvine/pdfplumber) | `pdfplumber` | ✅ | ✅ | Preview |
 | [**PDFMiner**](https://github.com/pdfminer/pdfminer.six) | `pdfminer` | ✅ | ✅ | Preview | 
 | [**Docling**](https://docling-project.github.io/docling/) | `docling` | ✅ | ✅ | Preview |
+| [**LiteParse**](https://github.com/run-llama/liteparse) | `liteparse` | ✅ | ✅ | Preview |
+| [**Reducto**](https://reducto.ai/) | `reducto` | ✅ | ✅ | Preview |
 | [**Unstructured.io** cloud service](https://docs.unstructured.io/open-source/introduction/overview) |   |  |  | Planned |
 | [**Chunkr**](https://www.chunkr.ai/) |   |  |  | Planned |
 

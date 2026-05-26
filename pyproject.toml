@@ -58,6 +58,9 @@ pdfminer = [
 docling = [
     "docling-slim[service-client]>=2.93.0",
 ]
+reducto = [
+    "reductoai>=0.22.0",
+]
 all = [
     "llama-cloud>=2.0.0",
     "llmwhisperer-client>=2.4.2",
@@ -68,6 +71,7 @@ all = [
     "pdfplumber>=0.11.0",
     "pdfminer.six>=20251230",
     "docling-slim[service-client]>=2.93.0",
+    "reductoai>=0.22.0",
 ]
 
 

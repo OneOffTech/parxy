@@ -15,3 +15,4 @@ from parxy_core.drivers.pdfplumber import PDFPlumberDriver as PDFPlumberDriver
 from parxy_core.drivers.pdfminer import PDFMinerDriver as PDFMinerDriver
 from parxy_core.drivers.docling import DoclingDriver as DoclingDriver
 from parxy_core.drivers.liteparse import LiteParseDriver as LiteParseDriver
+from parxy_core.drivers.reducto import ReductoDriver as ReductoDriver

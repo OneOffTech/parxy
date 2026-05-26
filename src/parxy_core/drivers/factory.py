@@ -14,6 +14,7 @@ from parxy_core.drivers.pdfplumber import PDFPlumberDriver
 from parxy_core.drivers.pdfminer import PDFMinerDriver
 from parxy_core.drivers.docling import DoclingDriver
 from parxy_core.drivers.liteparse import LiteParseDriver
+from parxy_core.drivers.reducto import ReductoDriver
 from parxy_core.models import (
     PdfActConfig,
     LandingAIConfig,
@@ -21,6 +22,7 @@ from parxy_core.models import (
     LlmWhispererConfig,
     UnstructuredLocalConfig,
     LiteParseConfig,
+    ReductoConfig,
     ParxyConfig,
     DoclingConfig,
 )
@@ -231,6 +233,9 @@ class DriverFactory:
     def _create_liteparse_driver(self) -> LiteParseDriver:
         return LiteParseDriver(config=LiteParseConfig(), logger=self._logger)
 
+    def _create_reducto_driver(self) -> ReductoDriver:
+        return ReductoDriver(config=ReductoConfig(), logger=self._logger)
+
     def _create_landingai_driver(self) -> LandingAIADEDriver:
         """Create a LandingAI ADE Driver instance.
 
@@ -310,6 +315,7 @@ class DriverFactory:
             'pdfminer',
             'docling',
             'liteparse',
+            'reducto',
         ]
 
         return supported_drivers

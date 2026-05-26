@@ -39,6 +39,7 @@ class Parxy:
     LLAMAPARSE = 'llamaparse'
     LLMWHISPERER = 'llmwhisperer'
     UNSTRUCTURED_LIBRARY = 'unstructured_local'
+    REDUCTO = 'reducto'
 
     # Private class variable to hold the DriverFactory instance
     _factory: Optional[DriverFactory] = None
