@@ -1,20 +1,14 @@
+from __future__ import annotations
+
 import logging
 
 from typing import Dict, Optional, Callable, Self, List
 
+# NOTE: Concrete driver classes are imported lazily inside their respective
+# `_create_*_driver` methods. Importing them at module load would eagerly pull
+# in every driver's dependencies (e.g. docling -> transformers/torch), adding
+# ~10s to CLI startup even for commands that never touch those drivers.
 from parxy_core.drivers.abstract_driver import Driver
-from parxy_core.drivers.landingai import LandingAIADEDriver
-from parxy_core.drivers.pymupdf import PyMuPdfDriver
-from parxy_core.drivers.pdfact import PdfActDriver
-from parxy_core.drivers.llamaparse import LlamaParseDriver
-from parxy_core.drivers.llmwhisperer import LlmWhispererDriver
-from parxy_core.drivers.unstructured_local import UnstructuredLocalDriver
-from parxy_core.drivers.pypdfium2 import PyPDFium2Driver
-from parxy_core.drivers.pdfplumber import PDFPlumberDriver
-from parxy_core.drivers.pdfminer import PDFMinerDriver
-from parxy_core.drivers.docling import DoclingDriver
-from parxy_core.drivers.liteparse import LiteParseDriver
-from parxy_core.drivers.reducto import ReductoDriver
 from parxy_core.models import (
     PdfActConfig,
     LandingAIConfig,
@@ -167,6 +161,8 @@ class DriverFactory:
         PyMuPdfDriver
             A new instance
         """
+        from parxy_core.drivers.pymupdf import PyMuPdfDriver
+
         return PyMuPdfDriver(logger=self._logger)
 
     def _create_pdfact_driver(self) -> PdfActDriver:
@@ -177,6 +173,8 @@ class DriverFactory:
         PdfActDriver
             A new instance
         """
+        from parxy_core.drivers.pdfact import PdfActDriver
+
         return PdfActDriver(config=PdfActConfig(), logger=self._logger)
 
     def _create_llamaparse_driver(self) -> LlamaParseDriver:
@@ -187,6 +185,8 @@ class DriverFactory:
         LlamaParseDriver
             A new instance
         """
+        from parxy_core.drivers.llamaparse import LlamaParseDriver
+
         return LlamaParseDriver(
             config=LlamaParseConfig(),
             logger=self._logger,
@@ -200,6 +200,8 @@ class DriverFactory:
         LlmWhispererDriver
             A new instance
         """
+        from parxy_core.drivers.llmwhisperer import LlmWhispererDriver
+
         return LlmWhispererDriver(
             config=LlmWhispererConfig(),
             logger=self._logger,
@@ -213,27 +215,41 @@ class DriverFactory:
         UnstructuredLocalDriver
             A new instance
         """
+        from parxy_core.drivers.unstructured_local import UnstructuredLocalDriver
+
         return UnstructuredLocalDriver(
             config=UnstructuredLocalConfig(),
             logger=self._logger,
         )
 
     def _create_pypdfium_driver(self) -> PyPDFium2Driver:
+        from parxy_core.drivers.pypdfium2 import PyPDFium2Driver
+
         return PyPDFium2Driver(logger=self._logger)
 
     def _create_pdfplumber_driver(self) -> PDFPlumberDriver:
+        from parxy_core.drivers.pdfplumber import PDFPlumberDriver
+
         return PDFPlumberDriver(logger=self._logger)
 
     def _create_pdfminer_driver(self) -> PDFMinerDriver:
+        from parxy_core.drivers.pdfminer import PDFMinerDriver
+
         return PDFMinerDriver(logger=self._logger)
 
     def _create_docling_driver(self) -> DoclingDriver:
+        from parxy_core.drivers.docling import DoclingDriver
+
         return DoclingDriver(config=DoclingConfig(), logger=self._logger)
 
     def _create_liteparse_driver(self) -> LiteParseDriver:
+        from parxy_core.drivers.liteparse import LiteParseDriver
+
         return LiteParseDriver(config=LiteParseConfig(), logger=self._logger)
 
     def _create_reducto_driver(self) -> ReductoDriver:
+        from parxy_core.drivers.reducto import ReductoDriver
+
         return ReductoDriver(config=ReductoConfig(), logger=self._logger)
 
     def _create_landingai_driver(self) -> LandingAIADEDriver:
@@ -244,6 +260,8 @@ class DriverFactory:
         LandingAIADEDriver
             A new instance
         """
+        from parxy_core.drivers.landingai import LandingAIADEDriver
+
         return LandingAIADEDriver(
             config=LandingAIConfig(),
             logger=self._logger,
