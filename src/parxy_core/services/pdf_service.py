@@ -1075,9 +1075,7 @@ class PdfService:
 
             for level, title, page in toc:
                 page_number = page if page and page > 0 else None
-                entries.append(
-                    {'title': title, 'page': page_number, 'level': level}
-                )
+                entries.append({'title': title, 'page': page_number, 'level': level})
 
                 node = {
                     'title': title,
@@ -1152,10 +1150,7 @@ class PdfService:
         for container in ('Alt', 'Seq', 'Bag'):
             holder = element.find(rdf + container)
             if holder is not None:
-                items = [
-                    (li.text or '').strip()
-                    for li in holder.findall(rdf + 'li')
-                ]
+                items = [(li.text or '').strip() for li in holder.findall(rdf + 'li')]
                 items = [i for i in items if i]
                 if container == 'Alt' and len(items) == 1:
                     return items[0]
