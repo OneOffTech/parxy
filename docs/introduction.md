@@ -44,6 +44,10 @@ Once installed, `parxy` provides the following commands:
 | `parxy docker` | Generate a Docker Compose configuration for self-hosted services |
 | `parxy pdf:merge` | Merge multiple PDF files into one, with support for selecting specific page ranges |
 | `parxy pdf:split` | Split a PDF file into individual pages |
+| `parxy pdf:outline` | Print or export a PDF's outline (bookmarks / table of contents) |
+| `parxy pdf:tags` | Extract the tag (structure) tree of a tagged, accessible PDF |
+| `parxy pdf:tags-check` | Check whether a PDF is a tagged (accessible) PDF |
+| `parxy pdf:xmp` | Read and extract the XMP metadata of a PDF |
 
 ```bash
 # Parse a PDF to markdown

@@ -763,3 +763,332 @@ class TestSplitCommand:
         assert result.exit_code == 0
         unwanted_dir = sample_pdfs['pdf1'].parent / 'doc1_split'
         assert not unwanted_dir.exists()
+
+
+@pytest.fixture
+def untagged_pdf(tmp_path):
+    """Create a plain (untagged) PDF with content."""
+    pdf_path = tmp_path / 'untagged.pdf'
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_text((72, 72), 'Untagged content')
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+@pytest.fixture
+def tagged_pdf(tmp_path):
+    """Create a tagged PDF skeleton via the tag-template command."""
+    from parxy_core.services.pdf_service import PdfService
+
+    pdf_path = tmp_path / 'tagged.pdf'
+    PdfService.create_tag_template(pdf_path, pages=2, lang='en-US')
+    return pdf_path
+
+
+@pytest.fixture
+def tagged_pdf_with_text(tmp_path):
+    """Create a tagged PDF with real, structure-bearing text content."""
+    pdf_path = tmp_path / 'tagged_text.pdf'
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_htmlbox(
+        pymupdf.Rect(36, 36, 576, 756),
+        '<h1>Hello Heading</h1><p>A paragraph of body text.</p>',
+    )
+    cat = doc.pdf_catalog()
+    doc.xref_set_key(cat, 'MarkInfo/Marked', 'true')
+    st = doc.get_new_xref()
+    doc.update_object(st, '<< /Type /StructTreeRoot /K [] >>')
+    doc.xref_set_key(cat, 'StructTreeRoot', f'{st} 0 R')
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+class TestTagTemplateCommand:
+    """Tests for the pdf:tag-template command."""
+
+    def test_creates_template(self, runner, tmp_path):
+        from parxy_core.services.pdf_service import PdfService
+
+        out = tmp_path / 'template.pdf'
+        result = runner.invoke(
+            app,
+            ['pdf:tag-template', '-o', str(out), '--pages', '3', '--lang', 'de-DE'],
+        )
+
+        assert result.exit_code == 0
+        assert out.exists()
+        info = PdfService.is_tagged(out)
+        assert info['tagged'] is True
+        assert info['page_count'] == 3
+        assert info['lang'] == 'de-DE'
+
+    def test_adds_pdf_extension(self, runner, tmp_path):
+        out = tmp_path / 'template'
+        result = runner.invoke(app, ['pdf:tag-template', '-o', str(out)])
+        assert result.exit_code == 0
+        assert (tmp_path / 'template.pdf').exists()
+
+    def test_rejects_zero_pages(self, runner, tmp_path):
+        result = runner.invoke(
+            app, ['pdf:tag-template', '-o', str(tmp_path / 'x.pdf'), '--pages', '0']
+        )
+        assert result.exit_code == 1
+
+
+class TestTagsCheckCommand:
+    """Tests for the pdf:tags-check command."""
+
+    def test_tagged_exits_zero(self, runner, tagged_pdf):
+        result = runner.invoke(app, ['pdf:tags-check', str(tagged_pdf)])
+        assert result.exit_code == 0
+
+    def test_untagged_exits_two(self, runner, untagged_pdf):
+        result = runner.invoke(app, ['pdf:tags-check', str(untagged_pdf)])
+        assert result.exit_code == 2
+
+    def test_json_output(self, runner, tagged_pdf):
+        import json
+
+        result = runner.invoke(app, ['pdf:tags-check', str(tagged_pdf), '--json'])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data['tagged'] is True
+        assert data['page_count'] == 2
+
+    def test_missing_file(self, runner, tmp_path):
+        result = runner.invoke(app, ['pdf:tags-check', str(tmp_path / 'nope.pdf')])
+        assert result.exit_code == 1
+
+
+class TestTagsCommand:
+    """Tests for the pdf:tags command."""
+
+    def test_prints_tree(self, runner, tagged_pdf):
+        result = runner.invoke(app, ['pdf:tags', str(tagged_pdf)])
+        assert result.exit_code == 0
+        assert 'Document' in result.stdout
+
+    def test_untagged_exits_two(self, runner, untagged_pdf):
+        result = runner.invoke(app, ['pdf:tags', str(untagged_pdf)])
+        assert result.exit_code == 2
+
+    def test_json_to_file(self, runner, tagged_pdf, tmp_path):
+        import json
+
+        out = tmp_path / 'tags.json'
+        result = runner.invoke(app, ['pdf:tags', str(tagged_pdf), '-o', str(out)])
+        assert result.exit_code == 0
+        assert out.exists()
+        data = json.loads(out.read_text(encoding='utf-8'))
+        assert data['tagged'] is True
+        assert data['tag_counts'] == {'Document': 1, 'P': 2}
+
+    def test_text_flag_includes_content(self, runner, tagged_pdf_with_text):
+        import json
+
+        result = runner.invoke(
+            app, ['pdf:tags', str(tagged_pdf_with_text), '--text', '--json']
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert 'pages' in data
+        assert 'tag_counts' not in data  # per-page text view, not the xref walk
+        assert 'Hello Heading' in result.stdout
+
+
+class TestTagSkeletonCommand:
+    """Tests for the pdf:tag-skeleton command."""
+
+    def test_strips_content_keeps_tags(self, runner, tagged_pdf, tmp_path):
+        from parxy_core.services.pdf_service import PdfService
+
+        out = tmp_path / 'skeleton.pdf'
+        result = runner.invoke(
+            app, ['pdf:tag-skeleton', str(tagged_pdf), '-o', str(out)]
+        )
+        assert result.exit_code == 0
+        assert out.exists()
+
+        info = PdfService.is_tagged(out)
+        assert info['tagged'] is True
+        assert info['struct_element_count'] == 3  # 1 Document + 2 P
+
+    def test_default_output_path(self, runner, tagged_pdf):
+        result = runner.invoke(app, ['pdf:tag-skeleton', str(tagged_pdf)])
+        assert result.exit_code == 0
+        expected = tagged_pdf.parent / f'{tagged_pdf.stem}_tags.pdf'
+        assert expected.exists()
+
+    def test_missing_file(self, runner, tmp_path):
+        result = runner.invoke(app, ['pdf:tag-skeleton', str(tmp_path / 'nope.pdf')])
+        assert result.exit_code == 1
+
+
+@pytest.fixture
+def pdf_with_outline(tmp_path):
+    """Create a PDF with a nested bookmark hierarchy."""
+    pdf_path = tmp_path / 'outline.pdf'
+    doc = pymupdf.open()
+    for _ in range(5):
+        doc.new_page()
+    doc.set_toc(
+        [
+            [1, 'Chapter 1', 1],
+            [2, 'Section 1.1', 2],
+            [1, 'Chapter 2', 4],
+        ]
+    )
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+@pytest.fixture
+def pdf_without_outline(tmp_path):
+    """Create a PDF with no bookmarks."""
+    pdf_path = tmp_path / 'no-outline.pdf'
+    doc = pymupdf.open()
+    doc.new_page()
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+class TestOutlineCommand:
+    """Tests for the pdf:outline command."""
+
+    def test_prints_tree(self, runner, pdf_with_outline):
+        result = runner.invoke(app, ['pdf:outline', str(pdf_with_outline)])
+        assert result.exit_code == 0
+        assert 'Chapter 1' in result.stdout
+        assert 'Section 1.1' in result.stdout
+        assert 'Chapter 2' in result.stdout
+
+    def test_flat_listing(self, runner, pdf_with_outline):
+        result = runner.invoke(app, ['pdf:outline', str(pdf_with_outline), '--flat'])
+        assert result.exit_code == 0
+        assert 'Chapter 1' in result.stdout
+
+    def test_no_outline_exits_two(self, runner, pdf_without_outline):
+        result = runner.invoke(app, ['pdf:outline', str(pdf_without_outline)])
+        assert result.exit_code == 2
+
+    def test_json_to_stdout(self, runner, pdf_with_outline):
+        import json
+
+        result = runner.invoke(app, ['pdf:outline', str(pdf_with_outline), '--json'])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data['has_outline'] is True
+        assert data['entry_count'] == 3
+        assert len(data['tree']) == 2
+        assert data['tree'][0]['children'][0]['title'] == 'Section 1.1'
+
+    def test_json_to_file(self, runner, pdf_with_outline, tmp_path):
+        import json
+
+        out = tmp_path / 'outline.json'
+        result = runner.invoke(
+            app, ['pdf:outline', str(pdf_with_outline), '-o', str(out)]
+        )
+        assert result.exit_code == 0
+        assert out.exists()
+        data = json.loads(out.read_text(encoding='utf-8'))
+        assert data['entry_count'] == 3
+
+    def test_missing_file(self, runner, tmp_path):
+        result = runner.invoke(app, ['pdf:outline', str(tmp_path / 'nope.pdf')])
+        assert result.exit_code == 1
+
+
+_SAMPLE_XMP = """<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xmlns:pdf="http://ns.adobe.com/pdf/1.3/"
+      pdf:Producer="Test Producer">
+   <dc:title>
+    <rdf:Alt>
+     <rdf:li xml:lang="x-default">A Sample Title</rdf:li>
+    </rdf:Alt>
+   </dc:title>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>"""
+
+
+@pytest.fixture
+def pdf_with_xmp(tmp_path):
+    """Create a PDF carrying an XMP metadata packet."""
+    pdf_path = tmp_path / 'with-xmp.pdf'
+    doc = pymupdf.open()
+    doc.new_page()
+    doc.set_xml_metadata(_SAMPLE_XMP)
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+@pytest.fixture
+def pdf_without_xmp(tmp_path):
+    """Create a PDF with no XMP packet."""
+    pdf_path = tmp_path / 'no-xmp.pdf'
+    doc = pymupdf.open()
+    doc.new_page()
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+class TestXmpCommand:
+    """Tests for the pdf:xmp command."""
+
+    def test_prints_properties(self, runner, pdf_with_xmp):
+        result = runner.invoke(app, ['pdf:xmp', str(pdf_with_xmp)])
+        assert result.exit_code == 0
+        assert 'dc:title' in result.stdout
+        assert 'A Sample Title' in result.stdout
+
+    def test_raw_output(self, runner, pdf_with_xmp):
+        result = runner.invoke(app, ['pdf:xmp', str(pdf_with_xmp), '--raw'])
+        assert result.exit_code == 0
+        assert '<rdf:RDF' in result.stdout
+
+    def test_raw_no_xmp_exits_two(self, runner, pdf_without_xmp):
+        result = runner.invoke(app, ['pdf:xmp', str(pdf_without_xmp), '--raw'])
+        assert result.exit_code == 2
+
+    def test_json_output(self, runner, pdf_with_xmp):
+        import json
+
+        result = runner.invoke(app, ['pdf:xmp', str(pdf_with_xmp), '--json'])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data['has_xmp'] is True
+        assert data['properties']['dc:title'] == 'A Sample Title'
+
+    def test_output_xml_writes_raw(self, runner, pdf_with_xmp, tmp_path):
+        out = tmp_path / 'meta.xml'
+        result = runner.invoke(app, ['pdf:xmp', str(pdf_with_xmp), '-o', str(out)])
+        assert result.exit_code == 0
+        assert out.exists()
+        assert '<rdf:RDF' in out.read_text(encoding='utf-8')
+
+    def test_output_json_writes_parsed(self, runner, pdf_with_xmp, tmp_path):
+        import json
+
+        out = tmp_path / 'meta.json'
+        result = runner.invoke(app, ['pdf:xmp', str(pdf_with_xmp), '-o', str(out)])
+        assert result.exit_code == 0
+        data = json.loads(out.read_text(encoding='utf-8'))
+        assert data['properties']['dc:title'] == 'A Sample Title'
+
+    def test_missing_file(self, runner, tmp_path):
+        result = runner.invoke(app, ['pdf:xmp', str(tmp_path / 'nope.pdf')])
+        assert result.exit_code == 1

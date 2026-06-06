@@ -223,6 +223,28 @@ parxy pdf:merge [OPTIONS] INPUTS...
 |--------|-------|------|---------|-------------|
 | `--output` | `-o` | `text` | - | Output file path for the merged PDF. If not specified, you will be prompted. |
 
+## `parxy pdf:outline`
+
+Print or export the outline (bookmarks / table of contents) of a PDF
+
+```
+parxy pdf:outline [OPTIONS] INPUT_FILE
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `INPUT_FILE` | Yes | PDF file to inspect |
+
+**Options:**
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--output` | `-o` | `text` | - | Write the outline as JSON to this file instead of printing a tree. |
+| `--json` | - | `flag` | `false` | Print the outline as JSON to stdout. |
+| `--flat` | - | `flag` | `false` | Print a flat, indented list instead of a tree. |
+
 ## `parxy pdf:split`
 
 Split a PDF file into individual pages
@@ -245,6 +267,134 @@ parxy pdf:split [OPTIONS] INPUT_FILE
 | `--prefix` | `-p` | `text` | - | Prefix for output filenames. If not specified, uses the input filename. |
 | `--pages` | - | `text` | - | Page range to extract (1-based). Examples: "1" (single page), "1:3" (pages 1-3), ":3" (up to page 3), "3:" (from page 3). If not specified, all pages are extracted. |
 | `--combine` | - | `flag` | `false` | Combine extracted pages into a single PDF instead of one file per page. |
+| `--every` | `-e` | `integer` | - | Split into chunks of N pages each. Cannot be used with --combine. |
+
+## `parxy pdf:split-by-text`
+
+Split a PDF into chunks whenever a page matches a text condition
+
+```
+parxy pdf:split-by-text [OPTIONS] INPUT_FILE
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `INPUT_FILE` | Yes | PDF file to split |
+
+**Options:**
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--text` | `-t` | `text` | - | Text to match. Can be repeated for multiple patterns (OR logic). |
+| `--mode` | `-m` | `text` | `contains` | Matching mode: "contains" (default) or "starts-with". |
+| `--ignore-case` | `-i` | `flag` | `false` | Case-insensitive matching. |
+| `--regex` | - | `flag` | `false` | Treat --text values as regular expressions. |
+| `--discard-preamble` | - | `flag` | `false` | Discard pages that appear before the first matching page. |
+| `--output` | `-o` | `text` | - | Output directory for chunk files (default: {stem}_split next to input). |
+| `--prefix` | `-p` | `text` | - | Prefix for output filenames. Defaults to the input filename stem. |
+
+## `parxy pdf:tag-skeleton`
+
+Copy a tagged PDF keeping its tags but removing visible content
+
+```
+parxy pdf:tag-skeleton [OPTIONS] INPUT_FILE
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `INPUT_FILE` | Yes | Tagged PDF file to strip |
+
+**Options:**
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--output` | `-o` | `text` | - | Output path for the tags-only PDF (default: {stem}_tags.pdf next to input). |
+
+## `parxy pdf:tag-template`
+
+Create an empty tagged PDF skeleton for accessibility work
+
+```
+parxy pdf:tag-template [OPTIONS]
+```
+
+**Options:**
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--output` | `-o` | `text` | - | Output file path for the template PDF. If not specified, you will be prompted. |
+| `--pages` | - | `integer` | `1` | Number of blank pages to create (default: 1). |
+| `--lang` | - | `text` | `en-US` | Document language tag set on the catalog (default: en-US). |
+| `--title` | - | `text` | - | Optional document title stored in the PDF metadata. |
+
+## `parxy pdf:tags`
+
+Extract the tag (structure) tree of a tagged PDF
+
+```
+parxy pdf:tags [OPTIONS] INPUT_FILE
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `INPUT_FILE` | Yes | PDF file to inspect |
+
+**Options:**
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--output` | `-o` | `text` | - | Write the extracted tags as JSON to this file instead of printing a tree. |
+| `--json` | - | `flag` | `false` | Print the extracted tags as JSON to stdout. |
+| `--text` | - | `flag` | `false` | Include the text content of each element. Rebuilds the tree per page; accessibility attributes (alt text, page refs) are not shown in this mode. |
+
+## `parxy pdf:tags-check`
+
+Check whether a PDF is a tagged (accessible) PDF
+
+```
+parxy pdf:tags-check [OPTIONS] INPUT_FILE
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `INPUT_FILE` | Yes | PDF file to inspect |
+
+**Options:**
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--json` | - | `flag` | `false` | Output the detection result as JSON. |
+
+## `parxy pdf:xmp`
+
+Read and extract the XMP metadata of a PDF
+
+```
+parxy pdf:xmp [OPTIONS] INPUT_FILE
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `INPUT_FILE` | Yes | PDF file to inspect |
+
+**Options:**
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--output` | `-o` | `text` | - | Write the metadata to this file. A .xml extension writes the raw XMP packet; any other extension writes parsed JSON. |
+| `--json` | - | `flag` | `false` | Print the parsed metadata as JSON to stdout. |
+| `--raw` | - | `flag` | `false` | Print the raw XMP XML packet to stdout. |
 
 ## `parxy tui`
 
