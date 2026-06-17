@@ -1,8 +1,6 @@
 import io
 from typing import TYPE_CHECKING, Optional
 
-import requests
-
 from parxy_core.models.config import LlamaParseConfig
 from parxy_core.tracing.utils import trace_with_output
 
@@ -83,11 +81,12 @@ _PARSE_MODE_TO_TIER: dict[str, str] = {
 }
 
 # Estimated credits per page per tier (for cost fallback estimation).
+# https://developers.llamaindex.ai/llamaparse/general/pricing/
 _credits_per_tier: dict[str, int] = {
     'fast': 1,
     'cost_effective': 3,
-    'agentic': 6,
-    'agentic_plus': 10,
+    'agentic': 10,
+    'agentic_plus': 45,
 }
 
 # Options that can be overridden per-call via kwargs
@@ -229,84 +228,6 @@ class LlamaParseDriver(Driver):
         if max_pages:
             opts['max_pages'] = max_pages
         return opts
-
-    def _fetch_usage_metrics(self, job_id: str) -> Optional[dict]:
-        """Fetch actual usage metrics from the LlamaParse beta API.
-
-        Parameters
-        ----------
-        job_id : str
-            The job ID to fetch metrics for
-
-        Returns
-        -------
-        Optional[dict]
-            Dictionary with cost and mode data, or None if unavailable.
-        """
-        if not self._config or not self._config.organization_id:
-            return None
-
-        try:
-            base_url = self._config.base_url.rstrip('/')
-            endpoint = f'{base_url}/api/v1/beta/usage-metrics'
-
-            params = {
-                'organization_id': self._config.organization_id,
-                'event_aggregation_key': job_id,
-            }
-
-            headers = {
-                'Authorization': f'Bearer {self._config.api_key.get_secret_value()}',
-                'Content-Type': 'application/json',
-            }
-
-            response = requests.get(
-                endpoint, params=params, headers=headers, timeout=10
-            )
-            response.raise_for_status()
-
-            data = response.json()
-            items = data.get('items', [])
-
-            if not items:
-                return None
-
-            parsing_mode_counts: dict = {}
-            mode_details = []
-
-            for item in items:
-                if item.get('event_type') == 'pages_parsed':
-                    mode = item.get('properties', {}).get('mode', 'unknown')
-                    pages = item.get('value', 0)
-                    model = item.get('properties', {}).get('model', 'unknown')
-
-                    parsing_mode_counts[mode] = parsing_mode_counts.get(mode, 0) + pages
-                    mode_details.append(
-                        {
-                            'mode': mode,
-                            'model': model,
-                            'pages': pages,
-                            'day': item.get('day'),
-                        }
-                    )
-
-            total_cost = sum(
-                _credits_per_tier.get(mode, 3) * count
-                for mode, count in parsing_mode_counts.items()
-            )
-
-            return {
-                'total_cost': total_cost,
-                'cost_unit': 'credits',
-                'parsing_mode_counts': parsing_mode_counts,
-                'mode_details': mode_details,
-            }
-
-        except Exception as e:
-            self._logger.warning(
-                f'Failed to fetch usage metrics from beta API: {str(e)}'
-            )
-            return None
 
     def _handle(
         self,
@@ -452,30 +373,16 @@ class LlamaParseDriver(Driver):
         converted_document.parsing_metadata['job_error'] = res.job.error_message
         converted_document.parsing_metadata['tier'] = tier
 
-        usage_metrics = self._fetch_usage_metrics(res.job.id)
-
-        if usage_metrics:
-            converted_document.parsing_metadata['cost_estimation'] = usage_metrics[
-                'total_cost'
-            ]
-            converted_document.parsing_metadata['cost_estimation_unit'] = usage_metrics[
-                'cost_unit'
-            ]
-            converted_document.parsing_metadata['parsing_mode_counts'] = usage_metrics[
-                'parsing_mode_counts'
-            ]
-            converted_document.parsing_metadata['cost_data_source'] = 'beta_api'
-            converted_document.parsing_metadata['usage_details'] = usage_metrics[
-                'mode_details'
-            ]
-        else:
-            page_count = len(converted_document.pages)
-            credits_per_page = _credits_per_tier.get(tier, 3)
-            converted_document.parsing_metadata['cost_estimation'] = (
-                credits_per_page * page_count
-            )
-            converted_document.parsing_metadata['cost_estimation_unit'] = 'credits'
-            converted_document.parsing_metadata['cost_data_source'] = 'estimation'
+        # LlamaParse no longer exposes a usage-metrics endpoint for precise
+        # per-job cost, so the cost is estimated from the page count and the
+        # credits-per-page rate of the resolved tier.
+        page_count = len(converted_document.pages)
+        credits_per_page = _credits_per_tier.get(tier, 3)
+        converted_document.parsing_metadata['cost_estimation'] = (
+            credits_per_page * page_count
+        )
+        converted_document.parsing_metadata['cost_estimation_unit'] = 'credits'
+        converted_document.parsing_metadata['cost_data_source'] = 'estimation'
 
         return converted_document
 

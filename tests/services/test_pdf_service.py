@@ -700,3 +700,398 @@ class TestOptimizePdf:
 
         expected_percent = (expected_reduction / result['original_size']) * 100
         assert abs(result['reduction_percent'] - expected_percent) < 0.01
+
+
+@pytest.fixture
+def untagged_pdf(tmp_path):
+    """Create a plain (untagged) PDF with visible content."""
+    pdf_path = tmp_path / 'untagged.pdf'
+    doc = pymupdf.open()
+    for i in range(2):
+        page = doc.new_page(width=612, height=792)
+        page.insert_text((72, 72), f'Untagged page {i + 1}')
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+@pytest.fixture
+def tagged_pdf(tmp_path):
+    """Create a tagged PDF skeleton via the service under test."""
+    pdf_path = tmp_path / 'tagged.pdf'
+    PdfService.create_tag_template(pdf_path, pages=3, lang='de-DE', title='Sample')
+    return pdf_path
+
+
+class TestCreateTagTemplate:
+    """Tests for PdfService.create_tag_template."""
+
+    def test_creates_tagged_pdf(self, tmp_path):
+        out = tmp_path / 'template.pdf'
+        PdfService.create_tag_template(out, pages=2, lang='en-US')
+
+        assert out.exists()
+        info = PdfService.is_tagged(out)
+        assert info['tagged'] is True
+        assert info['marked'] is True
+        assert info['has_struct_tree'] is True
+        assert info['page_count'] == 2
+        assert info['lang'] == 'en-US'
+
+    def test_one_paragraph_per_page(self, tmp_path):
+        out = tmp_path / 'template.pdf'
+        PdfService.create_tag_template(out, pages=4)
+
+        tags = PdfService.extract_tags(out)
+        assert tags['tag_counts'] == {'Document': 1, 'P': 4}
+
+    def test_sets_metadata_title(self, tmp_path):
+        out = tmp_path / 'template.pdf'
+        PdfService.create_tag_template(out, pages=1, title='My Title')
+
+        doc = pymupdf.open(out)
+        try:
+            assert doc.metadata['title'] == 'My Title'
+        finally:
+            doc.close()
+
+    def test_creates_parent_directory(self, tmp_path):
+        out = tmp_path / 'nested' / 'dir' / 'template.pdf'
+        PdfService.create_tag_template(out, pages=1)
+        assert out.exists()
+
+    def test_rejects_zero_pages(self, tmp_path):
+        with pytest.raises(ValueError):
+            PdfService.create_tag_template(tmp_path / 'x.pdf', pages=0)
+
+
+class TestIsTagged:
+    """Tests for PdfService.is_tagged."""
+
+    def test_untagged_pdf(self, untagged_pdf):
+        info = PdfService.is_tagged(untagged_pdf)
+        assert info['tagged'] is False
+        assert info['marked'] is False
+        assert info['has_struct_tree'] is False
+        assert info['struct_element_count'] == 0
+        assert info['page_count'] == 2
+
+    def test_tagged_pdf(self, tagged_pdf):
+        info = PdfService.is_tagged(tagged_pdf)
+        assert info['tagged'] is True
+        assert info['struct_element_count'] == 4  # 1 Document + 3 P
+        assert info['lang'] == 'de-DE'
+
+    def test_file_not_found(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            PdfService.is_tagged(tmp_path / 'missing.pdf')
+
+
+class TestExtractTags:
+    """Tests for PdfService.extract_tags."""
+
+    def test_untagged_returns_no_roots(self, untagged_pdf):
+        result = PdfService.extract_tags(untagged_pdf)
+        assert result['tagged'] is False
+        assert result['roots'] == []
+        assert result['tag_counts'] == {}
+
+    def test_tagged_tree_structure(self, tagged_pdf):
+        result = PdfService.extract_tags(tagged_pdf)
+        assert result['tagged'] is True
+        assert len(result['roots']) == 1
+
+        document = result['roots'][0]
+        assert document['type'] == 'Document'
+        assert len(document['children']) == 3
+
+        # Each paragraph references a distinct, 1-based page number
+        pages = [child['page'] for child in document['children']]
+        assert pages == [1, 2, 3]
+        for child in document['children']:
+            assert child['type'] == 'P'
+
+    def test_tag_counts(self, tagged_pdf):
+        result = PdfService.extract_tags(tagged_pdf)
+        assert result['tag_counts'] == {'Document': 1, 'P': 3}
+
+    def test_file_not_found(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            PdfService.extract_tags(tmp_path / 'missing.pdf')
+
+
+@pytest.fixture
+def tagged_pdf_with_text(tmp_path):
+    """Create a tagged PDF carrying real marked-content text via headings."""
+    pdf_path = tmp_path / 'tagged_text.pdf'
+    doc = pymupdf.open()
+    page = doc.new_page(width=612, height=792)
+    page.insert_htmlbox(
+        pymupdf.Rect(36, 36, 576, 756),
+        '<h1>Hello Heading</h1><p>A paragraph of body text.</p>',
+    )
+    # Mark the document as tagged so is_tagged() reports tagged=True.
+    cat = doc.pdf_catalog()
+    doc.xref_set_key(cat, 'MarkInfo/Marked', 'true')
+    st = doc.get_new_xref()
+    doc.update_object(st, '<< /Type /StructTreeRoot /K [] >>')
+    doc.xref_set_key(cat, 'StructTreeRoot', f'{st} 0 R')
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+class TestExtractTagsWithText:
+    """Tests for PdfService.extract_tags_with_text."""
+
+    def _all_text(self, pages):
+        """Flatten all node text across all pages."""
+        collected = []
+
+        def walk(node):
+            if node.get('text'):
+                collected.append(node['text'])
+            for child in node['children']:
+                walk(child)
+
+        for page in pages:
+            for root in page['roots']:
+                walk(root)
+        return ' '.join(collected)
+
+    def test_returns_per_page_structure(self, tagged_pdf_with_text):
+        result = PdfService.extract_tags_with_text(tagged_pdf_with_text)
+        assert result['page_count'] == 1
+        assert len(result['pages']) == 1
+        assert result['pages'][0]['page'] == 1
+        assert result['pages'][0]['roots']  # non-empty
+
+    def test_includes_text_content(self, tagged_pdf_with_text):
+        result = PdfService.extract_tags_with_text(tagged_pdf_with_text)
+        text = self._all_text(result['pages'])
+        assert 'Hello Heading' in text
+        assert 'A paragraph of body text.' in text
+
+    def test_node_shape(self, tagged_pdf_with_text):
+        result = PdfService.extract_tags_with_text(tagged_pdf_with_text)
+        root = result['pages'][0]['roots'][0]
+        assert set(root.keys()) == {'type', 'standard_type', 'text', 'children'}
+
+    def test_file_not_found(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            PdfService.extract_tags_with_text(tmp_path / 'missing.pdf')
+
+
+class TestStripToTags:
+    """Tests for PdfService.strip_to_tags."""
+
+    def test_removes_visible_content(self, untagged_pdf, tmp_path):
+        out = tmp_path / 'stripped.pdf'
+        PdfService.strip_to_tags(untagged_pdf, out)
+
+        doc = pymupdf.open(out)
+        try:
+            assert doc.page_count == 2
+            for page in doc:
+                assert page.get_text().strip() == ''
+        finally:
+            doc.close()
+
+    def test_preserves_tags(self, tagged_pdf, tmp_path):
+        out = tmp_path / 'stripped.pdf'
+        result = PdfService.strip_to_tags(tagged_pdf, out)
+
+        assert result['tagged'] is True
+        assert result['struct_element_count'] == 4
+
+        # Structure tree survives the round-trip
+        info = PdfService.is_tagged(out)
+        assert info['tagged'] is True
+        assert info['struct_element_count'] == 4
+
+    def test_reports_sizes(self, tagged_pdf, tmp_path):
+        out = tmp_path / 'stripped.pdf'
+        result = PdfService.strip_to_tags(tagged_pdf, out)
+        assert result['original_size'] == tagged_pdf.stat().st_size
+        assert result['stripped_size'] == out.stat().st_size
+
+    def test_creates_parent_directory(self, untagged_pdf, tmp_path):
+        out = tmp_path / 'nested' / 'stripped.pdf'
+        PdfService.strip_to_tags(untagged_pdf, out)
+        assert out.exists()
+
+    def test_file_not_found(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            PdfService.strip_to_tags(tmp_path / 'missing.pdf', tmp_path / 'o.pdf')
+
+
+@pytest.fixture
+def pdf_without_outline(tmp_path):
+    """Create a PDF with pages but no bookmarks."""
+    pdf_path = tmp_path / 'no-outline.pdf'
+    doc = pymupdf.open()
+    for _ in range(3):
+        doc.new_page()
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+@pytest.fixture
+def pdf_with_outline(tmp_path):
+    """Create a PDF with a nested bookmark hierarchy."""
+    pdf_path = tmp_path / 'outline.pdf'
+    doc = pymupdf.open()
+    for _ in range(5):
+        doc.new_page()
+    # [level (1-based), title, page (1-based)]
+    doc.set_toc(
+        [
+            [1, 'Chapter 1', 1],
+            [2, 'Section 1.1', 2],
+            [2, 'Section 1.2', 3],
+            [1, 'Chapter 2', 4],
+            [2, 'Section 2.1', 5],
+        ]
+    )
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+class TestExtractOutline:
+    """Tests for PdfService.extract_outline."""
+
+    def test_no_outline(self, pdf_without_outline):
+        result = PdfService.extract_outline(pdf_without_outline)
+        assert result['has_outline'] is False
+        assert result['entries'] == []
+        assert result['tree'] == []
+        assert result['entry_count'] == 0
+        assert result['page_count'] == 3
+
+    def test_flat_entries(self, pdf_with_outline):
+        result = PdfService.extract_outline(pdf_with_outline)
+        assert result['has_outline'] is True
+        assert result['entry_count'] == 5
+        titles = [e['title'] for e in result['entries']]
+        assert titles == [
+            'Chapter 1',
+            'Section 1.1',
+            'Section 1.2',
+            'Chapter 2',
+            'Section 2.1',
+        ]
+        assert result['entries'][0] == {
+            'title': 'Chapter 1',
+            'page': 1,
+            'level': 1,
+        }
+
+    def test_nested_tree(self, pdf_with_outline):
+        result = PdfService.extract_outline(pdf_with_outline)
+        tree = result['tree']
+        assert len(tree) == 2
+
+        chapter1 = tree[0]
+        assert chapter1['title'] == 'Chapter 1'
+        assert chapter1['page'] == 1
+        assert [c['title'] for c in chapter1['children']] == [
+            'Section 1.1',
+            'Section 1.2',
+        ]
+
+        chapter2 = tree[1]
+        assert chapter2['title'] == 'Chapter 2'
+        assert [c['title'] for c in chapter2['children']] == ['Section 2.1']
+
+    def test_file_not_found(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            PdfService.extract_outline(tmp_path / 'missing.pdf')
+
+
+# Minimal XMP packet exercising simple text, an Alt (title) and a Seq (creator).
+_SAMPLE_XMP = """<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xmlns:pdf="http://ns.adobe.com/pdf/1.3/"
+      xmlns:xmp="http://ns.adobe.com/xap/1.0/"
+      pdf:Producer="Test Producer">
+   <dc:title>
+    <rdf:Alt>
+     <rdf:li xml:lang="x-default">A Sample Title</rdf:li>
+    </rdf:Alt>
+   </dc:title>
+   <dc:creator>
+    <rdf:Seq>
+     <rdf:li>Alice</rdf:li>
+     <rdf:li>Bob</rdf:li>
+    </rdf:Seq>
+   </dc:creator>
+   <xmp:CreateDate>2024-01-01T00:00:00Z</xmp:CreateDate>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>"""
+
+
+@pytest.fixture
+def pdf_with_xmp(tmp_path):
+    """Create a PDF carrying an XMP metadata packet."""
+    pdf_path = tmp_path / 'with-xmp.pdf'
+    doc = pymupdf.open()
+    doc.new_page()
+    doc.set_xml_metadata(_SAMPLE_XMP)
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+@pytest.fixture
+def pdf_without_xmp(tmp_path):
+    """Create a PDF with no XMP packet."""
+    pdf_path = tmp_path / 'no-xmp.pdf'
+    doc = pymupdf.open()
+    doc.new_page()
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+class TestExtractXmpMetadata:
+    """Tests for PdfService.extract_xmp_metadata."""
+
+    def test_no_xmp(self, pdf_without_xmp):
+        result = PdfService.extract_xmp_metadata(pdf_without_xmp)
+        assert result['has_xmp'] is False
+        assert result['raw'] is None
+        assert result['properties'] == {}
+        assert result['page_count'] == 1
+
+    def test_has_xmp_and_raw(self, pdf_with_xmp):
+        result = PdfService.extract_xmp_metadata(pdf_with_xmp)
+        assert result['has_xmp'] is True
+        assert result['raw'] is not None
+        assert 'A Sample Title' in result['raw']
+
+    def test_simple_alt_collapses_to_string(self, pdf_with_xmp):
+        props = PdfService.extract_xmp_metadata(pdf_with_xmp)['properties']
+        assert props['dc:title'] == 'A Sample Title'
+
+    def test_seq_returns_list(self, pdf_with_xmp):
+        props = PdfService.extract_xmp_metadata(pdf_with_xmp)['properties']
+        assert props['dc:creator'] == ['Alice', 'Bob']
+
+    def test_attribute_form_property(self, pdf_with_xmp):
+        props = PdfService.extract_xmp_metadata(pdf_with_xmp)['properties']
+        assert props['pdf:Producer'] == 'Test Producer'
+
+    def test_simple_text_property(self, pdf_with_xmp):
+        props = PdfService.extract_xmp_metadata(pdf_with_xmp)['properties']
+        assert props['xmp:CreateDate'] == '2024-01-01T00:00:00Z'
+
+    def test_file_not_found(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            PdfService.extract_xmp_metadata(tmp_path / 'missing.pdf')

@@ -412,11 +412,20 @@ metadata = {
     "tier": "cost_effective",         # the tier used for this parse
     "cost_estimation": 3,
     "cost_estimation_unit": "credits",
-    "cost_data_source": "estimation", # or "beta_api" when organization_id is set
+    "cost_data_source": "estimation", # always an estimate (see note below)
 }
 ```
 
 `page_parsing_modes` is no longer populated because the v2 API applies a single tier to the job, not per-page modes.
+
+### Cost is Always Estimated
+
+LlamaParse no longer exposes a usage-metrics endpoint for retrieving the precise
+credit cost of a job. `cost_estimation` is therefore always derived from the page
+count multiplied by the credits-per-page rate of the resolved `tier`
+(`fast` = 1, `cost_effective` = 3, `agentic` = 10, `agentic_plus` = 45), and
+`cost_data_source` is always `"estimation"`. Treat it as an approximation rather
+than billed usage.
 
 ## See Also
 

@@ -14,6 +14,9 @@ The Parxy CLI lets you:
 | `parxy markdown` | Convert documents to Markdown files, with support for multiple drivers and folder processing                |
 | `parxy pdf:merge`| Merge multiple PDF files into one, with support for page ranges                                            |
 | `parxy pdf:split`| Split a PDF into individual pages, with optional page range and single-file extraction                      |
+| `parxy pdf:outline`| Print or export a PDF's outline (bookmarks / table of contents)                                          |
+| `parxy pdf:tags` | Inspect and extract the tag (structure) tree of a tagged, accessible PDF                                    |
+| `parxy pdf:xmp`  | Read and extract XMP metadata from a PDF                                                                    |
 | `parxy drivers`  | List available document processing drivers                                                                  |
 | `parxy env`      | Generate a default `.env` configuration file                                                                |
 | `parxy docker`   | Create a Docker Compose configuration for running Parxy-related services                                    |
@@ -303,6 +306,88 @@ Page range formats (1-based): `3` · `2:5` · `:5` · `3:`
 For more detailed examples and use cases, see the [Merge and split PDFs](../howto/merge_and_split_pdfs.md) guide.
 
 
+## Inspecting PDFs
+
+Beyond text extraction, Parxy can inspect a PDF's structure and metadata: its outline (bookmarks), its accessibility tag tree, and its XMP metadata. Each command prints a human-readable view by default and can emit JSON with `--json` (to stdout) or `--output` (to a file).
+
+### Outline (bookmarks)
+
+The `pdf:outline` command prints the table of contents as a tree:
+
+```bash
+parxy pdf:outline document.pdf
+```
+
+Use `--flat` for an indented list instead of a tree, or export the structure:
+
+```bash
+# Flat listing
+parxy pdf:outline document.pdf --flat
+
+# Export as JSON (flat entries + nested tree)
+parxy pdf:outline document.pdf -o outline.json
+```
+
+The command exits with code `2` when the PDF has no bookmarks, which is handy in scripts.
+
+### Tags (accessibility structure)
+
+A *tagged* PDF carries a logical structure tree (`/StructTreeRoot`) that makes it accessible. Start by checking whether a PDF is tagged:
+
+```bash
+parxy pdf:tags-check document.pdf
+```
+
+This reports whether the content is marked, whether a structure tree is present, the document language, and the number of structure elements. It exits with `0` for a tagged PDF and `2` otherwise.
+
+Extract the tag tree itself with `pdf:tags`:
+
+```bash
+# Print the structure tree (with page references and alt text)
+parxy pdf:tags document.pdf
+
+# Include the visible text of each element (rebuilt per page)
+parxy pdf:tags document.pdf --text
+
+# Export the full nested structure as JSON
+parxy pdf:tags document.pdf -o tags.json
+```
+
+The default view walks the document-wide structure tree and shows accessibility attributes (alt text, titles, page references) but not body text, which lives in the page content streams. The `--text` view reconstructs the structure per page including each element's visible text, but without the accessibility attributes.
+
+Two companion commands help with accessibility work:
+
+```bash
+# Copy a tagged PDF keeping its tags but removing visible content
+parxy pdf:tag-skeleton document.pdf -o tags-only.pdf
+
+# Create an empty tagged PDF skeleton from scratch
+parxy pdf:tag-template -o template.pdf --pages 3 --lang en-US
+```
+
+### XMP metadata
+
+The `pdf:xmp` command reads the XMP metadata packet (an RDF/XML block holding properties such as `dc:title`, `dc:creator`, and `pdf:Producer`) and prints the parsed properties alongside the classic `/Info` dictionary:
+
+```bash
+parxy pdf:xmp document.pdf
+```
+
+You can view the original packet or export the metadata:
+
+```bash
+# Print the raw XMP XML packet
+parxy pdf:xmp document.pdf --raw
+
+# Export parsed metadata as JSON
+parxy pdf:xmp document.pdf --json
+
+# Save the raw XMP packet (a .xml path writes the raw packet,
+# any other extension writes parsed JSON)
+parxy pdf:xmp document.pdf -o metadata.xml
+```
+
+
 ## Managing Drivers
 
 To view the list of supported document parsing drivers:
@@ -368,6 +453,9 @@ With the CLI, you can use Parxy as a **standalone document parsing tool** — id
 | `parxy markdown` | Generate Markdown files; accepts JSON results and supports `--page-separators` |
 | `parxy pdf:merge`| Merge multiple PDF files with page range support             |
 | `parxy pdf:split`| Split PDF into individual pages; supports `--pages` and `--combine` |
+| `parxy pdf:outline`| Print or export a PDF's outline (bookmarks)               |
+| `parxy pdf:tags` | Inspect and extract a tagged PDF's structure tree; supports `--text` |
+| `parxy pdf:xmp`  | Read and extract XMP metadata; supports `--raw` and JSON export |
 | `parxy drivers`  | List supported drivers                                       |
 | `parxy env`      | Create default configuration file                            |
 | `parxy docker`   | Generate Docker Compose setup                                |
