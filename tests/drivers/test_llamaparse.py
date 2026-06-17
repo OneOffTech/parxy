@@ -187,6 +187,10 @@ class TestLlamaParseDriver:
         assert document.parsing_metadata['cost_estimation'] >= 0
         assert 'cost_estimation_unit' in document.parsing_metadata
         assert document.parsing_metadata['cost_estimation_unit'] == 'credits'
+        # LlamaParse no longer exposes a usage-metrics endpoint, so the cost is
+        # always estimated from page count and the tier's credits-per-page rate.
+        assert 'cost_data_source' in document.parsing_metadata
+        assert document.parsing_metadata['cost_data_source'] == 'estimation'
 
     def test_llamaparse_driver_legacy_parse_mode_maps_to_tier(self):
         driver = LlamaParseDriver(LlamaParseConfig(parse_mode='parse_page_with_llm'))

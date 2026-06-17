@@ -32,7 +32,7 @@ parxy_cli = [".env.example", "compose.example.yaml", "otel-collector-config.exam
 
 [project.optional-dependencies]
 llama = [
-    "llama-cloud>=2.0.0",
+    "llama-cloud>=2.9.0",
 ]
 llmwhisperer = [
     "llmwhisperer-client>=2.4.2",
@@ -62,7 +62,7 @@ reducto = [
     "reductoai>=0.22.0",
 ]
 all = [
-    "llama-cloud>=2.0.0",
+    "llama-cloud>=2.9.0",
     "llmwhisperer-client>=2.4.2",
     "unstructured[pdf]>=0.18.13",
     "landingai-ade>=0.15.1",
